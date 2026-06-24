@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { query } from "@/lib/db";
-import { RECEIVED_SQL, SPENT_SQL } from "@/lib/queries";
+import { RECEIVED_SQL, SPENT_SQL, SPENT_TOTAL_SQL } from "@/lib/queries";
 import { ok } from "@/lib/api";
 
 export async function GET(req: NextRequest) {
@@ -26,7 +26,8 @@ export async function GET(req: NextRequest) {
   const sites = await query(
     `SELECT p.id, p.name, p.status,
        ${RECEIVED_SQL} AS received,
-       ${SPENT_SQL} AS spent
+       ${SPENT_TOTAL_SQL} AS spent,
+       ${SPENT_SQL} AS spent_site
      FROM projects p
      LEFT JOIN transactions t ON t.project_id = p.id ${df.length ? "AND " + df.join(" AND ") : ""}
      GROUP BY p.id ORDER BY p.name`,
@@ -60,8 +61,8 @@ export async function GET(req: NextRequest) {
     sites: sites.map((s: any) => ({
       ...s,
       received: Number(s.received),
-      spent: Number(s.spent),
-      balance: Number(s.received) - Number(s.spent),
+      spent: Number(s.spent), // total spend (site funds + direct bank)
+      balance: Number(s.received) - Number(s.spent_site), // balance uses site funds only
     })),
     categories: categories.map((c: any) => ({ ...c, total: Number(c.total), count: Number(c.count) })),
     partners: partners.map((p: any) => ({

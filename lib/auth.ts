@@ -4,7 +4,17 @@
 
 export const SESSION_COOKIE = "re_session";
 
+const IS_PROD = process.env.NODE_ENV === "production";
 const FALLBACK_SECRET = "dev-only-insecure-secret-change-me";
+
+// Fail closed in production if the signing secret is missing — never sign sessions
+// with the public dev fallback.
+function getSecret(): string {
+  const s = process.env.AUTH_SECRET;
+  if (s) return s;
+  if (IS_PROD) throw new Error("AUTH_SECRET is not configured");
+  return FALLBACK_SECRET;
+}
 
 function toHex(buf: ArrayBuffer): string {
   return Array.from(new Uint8Array(buf))
@@ -14,7 +24,7 @@ function toHex(buf: ArrayBuffer): string {
 
 /** Deterministic session token derived from AUTH_SECRET. Set as the cookie on login. */
 export async function sessionToken(): Promise<string> {
-  const secret = process.env.AUTH_SECRET || FALLBACK_SECRET;
+  const secret = getSecret();
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(secret),
@@ -33,7 +43,9 @@ export async function isValidSession(cookieValue: string | undefined): Promise<b
 }
 
 export function checkCredentials(username: string, password: string): boolean {
-  const U = process.env.ADMIN_USERNAME || "admin";
-  const P = process.env.ADMIN_PASSWORD || "admin123";
-  return username === U && password === P;
+  const U = process.env.ADMIN_USERNAME;
+  const P = process.env.ADMIN_PASSWORD;
+  // In production, refuse logins unless real credentials are configured (no defaults).
+  if (IS_PROD && (!U || !P)) return false;
+  return username === (U || "admin") && password === (P || "admin123");
 }

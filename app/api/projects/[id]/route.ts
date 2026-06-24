@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { pool, query, ready } from "@/lib/db";
-import { RECEIVED_SQL, SPENT_SQL, SPENT_14D_SQL } from "@/lib/queries";
+import { RECEIVED_SQL, SPENT_SQL, SPENT_TOTAL_SQL, SPENT_14D_SQL } from "@/lib/queries";
 import { ok, fail } from "@/lib/api";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -8,7 +8,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const rows = await query(
     `SELECT p.*,
        ${RECEIVED_SQL} AS received,
-       ${SPENT_SQL} AS spent,
+       ${SPENT_TOTAL_SQL} AS spent,
+       ${SPENT_SQL} AS spent_site,
        ${SPENT_14D_SQL} AS spent14,
        MAX(t.txn_date) AS last_txn_date
      FROM projects p
@@ -41,9 +42,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     {
       ...p,
       received: Number(p.received),
-      spent: Number(p.spent),
+      spent: Number(p.spent), // total spend (site funds + direct bank)
       spent14: Number(p.spent14),
-      balance: Number(p.received) - Number(p.spent),
+      balance: Number(p.received) - Number(p.spent_site), // balance uses site funds only
       byCategory: byCategory.map((c: any) => ({ ...c, total: Number(c.total) })),
       transactions: txns,
     },

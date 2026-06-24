@@ -1,5 +1,5 @@
 import { query } from "@/lib/db";
-import { RECEIVED_SQL, SPENT_SQL, SPENT_14D_SQL } from "@/lib/queries";
+import { RECEIVED_SQL, SPENT_SQL, SPENT_TOTAL_SQL, SPENT_14D_SQL } from "@/lib/queries";
 import { siteStatus } from "@/lib/format";
 import { ok } from "@/lib/api";
 
@@ -33,7 +33,10 @@ export async function GET() {
   // Per-site summary (with burn / runway)
   const sites = await query(
     `SELECT p.id, p.name, p.status,
-       ${RECEIVED_SQL} AS received, ${SPENT_SQL} AS spent, ${SPENT_14D_SQL} AS spent14
+       ${RECEIVED_SQL} AS received,
+       ${SPENT_TOTAL_SQL} AS spent,
+       ${SPENT_SQL} AS spent_site,
+       ${SPENT_14D_SQL} AS spent14
      FROM projects p LEFT JOIN transactions t ON t.project_id = p.id
      WHERE p.status <> 'completed'
      GROUP BY p.id ORDER BY (${RECEIVED_SQL} - ${SPENT_SQL}) DESC`
@@ -60,7 +63,8 @@ export async function GET() {
     monthExpense: Number(month[0]?.t || 0),
     activeSites: Number(activeSites[0]?.c || 0),
     sites: sites.map((s: any) => {
-      const balance = Number(s.received) - Number(s.spent);
+      // Balance reflects only allocated site funds; "spent" shows total spend on the site.
+      const balance = Number(s.received) - Number(s.spent_site);
       return {
         id: s.id,
         name: s.name,

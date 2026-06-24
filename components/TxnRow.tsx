@@ -1,4 +1,5 @@
 "use client";
+import { Trash2 } from "lucide-react";
 import { Label } from "@/components/ui";
 import { inr, formatDate, CATEGORY_ICON, TYPE_LABELS, TYPE_COLOR, TYPE_ICON } from "@/lib/format";
 
@@ -30,12 +31,12 @@ function flow(t: any): string {
   }
 }
 
-export function TxnRow({ t }: { t: any }) {
+export function TxnRow({ t, onDelete }: { t: any; onDelete?: (t: any) => void }) {
   const sign = signOf(t.type);
   const Icon = t.type === "expense" ? CATEGORY_ICON[t.category] || TYPE_ICON.expense : TYPE_ICON[t.type];
 
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3">
+    <div className="group flex items-center justify-between gap-3 px-4 py-3">
       <div className="flex min-w-0 items-center gap-3">
         {t.receipt_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -63,14 +64,25 @@ export function TxnRow({ t }: { t: any }) {
           </p>
         </div>
       </div>
-      <span
-        className={`shrink-0 whitespace-nowrap text-sm font-semibold ${
-          sign < 0 ? "text-danger" : sign > 0 ? "text-success" : "text-info"
-        }`}
-      >
-        {sign < 0 ? "-" : sign > 0 ? "+" : ""}
-        {inr(t.amount)}
-      </span>
+      <div className="flex shrink-0 items-center gap-2">
+        <span
+          className={`whitespace-nowrap text-sm font-semibold ${
+            sign < 0 ? "text-danger" : sign > 0 ? "text-success" : "text-info"
+          }`}
+        >
+          {sign < 0 ? "-" : sign > 0 ? "+" : ""}
+          {inr(t.amount)}
+        </span>
+        {onDelete && (
+          <button
+            onClick={() => onDelete(t)}
+            aria-label="Delete transaction"
+            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-danger/10 hover:text-danger"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

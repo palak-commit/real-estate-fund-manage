@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { query, pool, ready } from "@/lib/db";
-import { RECEIVED_SQL, SPENT_SQL } from "@/lib/queries";
+import { RECEIVED_SQL, SPENT_SQL, SPENT_TOTAL_SQL } from "@/lib/queries";
 import { ok, fail } from "@/lib/api";
 
 const STATUSES = ["active", "on_hold", "completed"];
@@ -9,7 +9,8 @@ export async function GET() {
   const projects = await query(
     `SELECT p.*,
        ${RECEIVED_SQL} AS received,
-       ${SPENT_SQL} AS spent,
+       ${SPENT_TOTAL_SQL} AS spent,
+       ${SPENT_SQL} AS spent_site,
        MAX(t.txn_date) AS last_txn_date
      FROM projects p
      LEFT JOIN transactions t ON t.project_id = p.id
@@ -20,8 +21,8 @@ export async function GET() {
     projects.map((p: any) => ({
       ...p,
       received: Number(p.received),
-      spent: Number(p.spent),
-      balance: Number(p.received) - Number(p.spent),
+      spent: Number(p.spent), // total spend (site funds + direct bank)
+      balance: Number(p.received) - Number(p.spent_site), // balance uses site funds only
     })),
     "Projects fetched successfully"
   );

@@ -144,7 +144,72 @@ export default function AccountsPage() {
         {err && <p className="mt-2 text-sm text-danger">{err}</p>}
       </Card>
 
-      <Card className="overflow-hidden">
+      {/* Mobile: card list (the table overflows on small screens) */}
+      <div className="space-y-3 lg:hidden">
+        {!accounts ? (
+          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)
+        ) : accounts.length === 0 ? (
+          <Card>
+            <EmptyState>No accounts yet.</EmptyState>
+          </Card>
+        ) : (
+          accounts.map((a) => (
+            <Card key={a.id} className="p-4">
+              {editId === a.id ? (
+                <div className="space-y-3">
+                  <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+                  <Select
+                    value={editForm.account_type}
+                    onChange={(e) => setEditForm({ ...editForm, account_type: e.target.value })}
+                  >
+                    {Object.entries(ACCOUNT_TYPE_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>
+                        {v}
+                      </option>
+                    ))}
+                  </Select>
+                  <div className="flex gap-2">
+                    <Button onClick={() => saveEdit(a.id)} className="flex-1">
+                      <Check className="h-4 w-4" /> Save
+                    </Button>
+                    <Button variant="outline" onClick={() => setEditId(null)} className="flex-1">
+                      <X className="h-4 w-4" /> Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{a.name}</p>
+                      <div className="mt-1">
+                        <Label color={TYPE_COLOR[a.account_type]}>{ACCOUNT_TYPE_LABELS[a.account_type]}</Label>
+                      </div>
+                    </div>
+                    <p className={`shrink-0 text-lg font-bold ${a.current_balance < 0 ? "text-danger" : ""}`}>
+                      {inr(a.current_balance)}
+                    </p>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <Button variant="outline" onClick={() => setFundAccount(a)} className="flex-1 !py-1.5 text-xs">
+                      <Plus className="h-3.5 w-3.5" /> Add Funds
+                    </Button>
+                    <Button variant="ghost" onClick={() => startEdit(a)} className="!px-2.5 text-muted-foreground">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="danger" onClick={() => del(a)} className="!px-2.5">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </>
+              )}
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Desktop: table */}
+      <Card className="hidden overflow-hidden lg:block">
         <table className="w-full text-sm">
           <thead className="bg-muted text-left text-muted-foreground">
             <tr>

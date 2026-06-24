@@ -43,7 +43,7 @@ export default function ProjectsPage() {
     });
     setSaving(false);
     setForm({ name: "", status: "active" });
-    toast("Project added", "success");
+    toast("Site added", "success");
     load();
   }
 
@@ -57,16 +57,16 @@ export default function ProjectsPage() {
     });
     if (!ok) return;
     await fetch(`/api/projects/${p.id}`, { method: "DELETE" });
-    toast("Project deleted", "success");
+    toast("Site deleted", "success");
     load();
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Projects &amp; Sites</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Sites</h1>
 
       <Card className="p-4">
-        <h2 className="mb-3 font-semibold">Add New Project</h2>
+        <h2 className="mb-3 font-semibold">Add New Site</h2>
         <form onSubmit={add} className="grid gap-3 md:grid-cols-3">
           <Field label="Name">
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Green City" required />
@@ -82,7 +82,7 @@ export default function ProjectsPage() {
           </Field>
           <div className="flex items-end">
             <Button type="submit" loading={saving} className="w-full">
-              Add Project
+              Add Site
             </Button>
           </div>
         </form>

@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { query, pool, ready } from "@/lib/db";
+import { RECEIVED_SQL, SPENT_SQL } from "@/lib/queries";
 import { accountEffects } from "@/lib/ledger";
+import { inr } from "@/lib/format";
 import { ok, fail } from "@/lib/api";
 
 const TYPES = ["transfer", "expense", "income", "partner_contribution", "partner_withdrawal"];
@@ -28,6 +30,15 @@ export async function GET(req: NextRequest) {
   if (searchParams.get("type")) {
     where.push("t.type = ?");
     args.push(searchParams.get("type"));
+  }
+  if (searchParams.get("category")) {
+    where.push("t.category = ?");
+    args.push(searchParams.get("category"));
+  }
+  if (searchParams.get("account")) {
+    // Matches the account as either source or destination.
+    where.push("(t.source_account_id = ? OR t.dest_account_id = ?)");
+    args.push(searchParams.get("account"), searchParams.get("account"));
   }
   if (searchParams.get("from")) {
     where.push("t.txn_date >= ?");
@@ -104,9 +115,44 @@ export async function POST(req: NextRequest) {
     category = null;
   }
 
+  const effects = accountEffects({ type, amount, source_account_id: S, dest_account_id: D });
+
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
+
+    // Funds guard: no account may go negative. Lock the debited rows, then verify.
+    const debits = effects.filter((e) => e.delta < 0);
+    if (debits.length) {
+      const ids = debits.map((e) => e.accountId);
+      const [accRows]: any = await conn.query(
+        `SELECT id, name, current_balance FROM accounts WHERE id IN (${ids.map(() => "?").join(",")}) FOR UPDATE`,
+        ids
+      );
+      const byId = new Map<number, any>(accRows.map((a: any) => [a.id, a]));
+      for (const e of debits) {
+        const a = byId.get(e.accountId);
+        const bal = Number(a?.current_balance ?? 0);
+        if (bal + e.delta < -0.005) {
+          await conn.rollback();
+          return fail(`Insufficient balance — ${a?.name ?? "account"} has only ${inr(bal)} available`);
+        }
+      }
+    }
+
+    // Site-funded expense (no source account): the site's own funds must cover it.
+    if (type === "expense" && !S && P) {
+      const [siteRows]: any = await conn.query(
+        `SELECT (${RECEIVED_SQL} - ${SPENT_SQL}) AS bal FROM transactions t WHERE t.project_id = ?`,
+        [P]
+      );
+      const bal = Number(siteRows[0]?.bal || 0);
+      if (bal + 0.005 < amount) {
+        await conn.rollback();
+        return fail(`Insufficient site funds — only ${inr(bal)} available. Allocate more funds first.`);
+      }
+    }
+
     const [res]: any = await conn.query(
       `INSERT INTO transactions
         (type, txn_date, project_id, source_account_id, dest_account_id, amount, category, paid_to, note, receipt_url)
@@ -116,7 +162,7 @@ export async function POST(req: NextRequest) {
 
     // Apply the canonical balance effects (shared with the reconciler in lib/ledger).
     // Site funds (project received/spent) are DERIVED, so only real accounts are touched.
-    for (const e of accountEffects({ type, amount, source_account_id: S, dest_account_id: D })) {
+    for (const e of effects) {
       await conn.query("UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?", [
         e.delta,
         e.accountId,
@@ -127,7 +173,8 @@ export async function POST(req: NextRequest) {
     return ok({ id: res.insertId }, "Transaction saved", {}, 201);
   } catch (e: any) {
     await conn.rollback();
-    return fail(e.message || "Something went wrong", 500);
+    console.error("POST /api/transactions failed:", e);
+    return fail("Something went wrong. Please try again.", 500);
   } finally {
     conn.release();
   }
