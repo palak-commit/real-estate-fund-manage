@@ -1,0 +1,68 @@
+import { NextRequest, NextResponse } from "next/server";
+import { query } from "@/lib/db";
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+
+  // Date filter applied to txn_date
+  const df: string[] = [];
+  const a: any[] = [];
+  if (from) {
+    df.push("t.txn_date >= ?");
+    a.push(from);
+  }
+  if (to) {
+    df.push("t.txn_date <= ?");
+    a.push(to);
+  }
+  const and = df.length ? " AND " + df.join(" AND ") : "";
+
+  // Site report — received vs spent in range
+  const sites = await query(
+    `SELECT p.id, p.name, p.status,
+       COALESCE(SUM(CASE WHEN t.type IN ('transfer','income') AND t.dest_account_id IS NULL THEN t.amount END),0) AS received,
+       COALESCE(SUM(CASE WHEN t.type='expense' THEN t.amount END),0) AS spent
+     FROM projects p
+     LEFT JOIN transactions t ON t.project_id = p.id ${df.length ? "AND " + df.join(" AND ") : ""}
+     GROUP BY p.id ORDER BY p.name`,
+    a
+  );
+
+  // Category report — expenses grouped by category in range
+  const categories = await query(
+    `SELECT category, COALESCE(SUM(amount),0) AS total, COUNT(*) AS count
+     FROM transactions t
+     WHERE t.type='expense' AND t.category IS NOT NULL ${and}
+     GROUP BY category ORDER BY total DESC`,
+    a
+  );
+
+  // Partner report — contributed / withdrawn in range, outstanding = current balance
+  const partners = await query(
+    `SELECT acc.id, acc.name, acc.current_balance AS outstanding,
+       COALESCE((SELECT SUM(amount) FROM transactions t
+         WHERE t.type='partner_contribution' AND t.source_account_id = acc.id ${and}),0) AS contributed,
+       COALESCE((SELECT SUM(amount) FROM transactions t
+         WHERE t.type='partner_withdrawal' AND t.dest_account_id = acc.id ${and}),0) AS withdrawn
+     FROM accounts acc WHERE acc.account_type='partner' ORDER BY acc.name`,
+    [...a, ...a]
+  );
+
+  return NextResponse.json({
+    sites: sites.map((s: any) => ({
+      ...s,
+      received: Number(s.received),
+      spent: Number(s.spent),
+      balance: Number(s.received) - Number(s.spent),
+    })),
+    categories: categories.map((c: any) => ({ ...c, total: Number(c.total), count: Number(c.count) })),
+    partners: partners.map((p: any) => ({
+      ...p,
+      outstanding: Number(p.outstanding),
+      contributed: Number(p.contributed),
+      withdrawn: Number(p.withdrawn),
+    })),
+  });
+}
