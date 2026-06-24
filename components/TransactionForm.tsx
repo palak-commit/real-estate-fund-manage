@@ -16,7 +16,7 @@ import {
 type Account = { id: number; name: string; account_type: string; current_balance: number };
 type Project = { id: number; name: string };
 
-const TYPES = ["expense", "transfer", "income", "partner_contribution", "partner_withdrawal"];
+const TYPES = ["expense", "transfer", "income", "partner_withdrawal"];
 
 function blank() {
   return {
@@ -285,18 +285,6 @@ export default function TransactionForm({
             </Labeled>
           )}
 
-          {f.type === "partner_contribution" && (
-            <Labeled label="Partner">
-              <Select value={f.source_account_id} onChange={(e) => set({ source_account_id: e.target.value })}>
-                <option value="">Select partner…</option>
-                {partners.map(accOpt)}
-              </Select>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Money is added to this partner’s account. Use “Fund Transfer” to move it to a bank/cash account.
-              </p>
-            </Labeled>
-          )}
-
           {f.type === "partner_withdrawal" && (
             <>
               <Labeled label="From Account (bank/cash)">
@@ -314,15 +302,7 @@ export default function TransactionForm({
             </>
           )}
 
-          <Labeled
-            label={
-              f.type === "income"
-                ? "Income From (optional)"
-                : f.type === "partner_contribution"
-                ? "Received From (optional)"
-                : "Paid To (optional)"
-            }
-          >
+          <Labeled label={f.type === "income" ? "Income From (optional)" : "Paid To (optional)"}>
             <Input
               value={f.paid_to}
               onChange={(e) => set({ paid_to: e.target.value })}

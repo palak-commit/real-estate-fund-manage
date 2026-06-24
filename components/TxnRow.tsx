@@ -14,8 +14,11 @@ function flow(t: any): string {
   switch (t.type) {
     case "transfer":
       return `${t.source_name || "?"} → ${dest || "?"}`;
-    case "expense":
-      return `${t.source_name || t.project_name || "—"}${t.paid_to ? ` → ${t.paid_to}` : ""}`;
+    case "expense": {
+      // Where the money came from: a bank/cash account, or the site's own funds.
+      const paidFrom = t.source_name ? t.source_name : "Site funds";
+      return `Paid from ${paidFrom}${t.paid_to ? ` → ${t.paid_to}` : ""}`;
+    }
     case "income":
       return `${t.paid_to ? `${t.paid_to} → ` : ""}${dest || "?"}`;
     case "partner_contribution":
@@ -48,6 +51,7 @@ export function TxnRow({ t }: { t: any }) {
               {t.type === "expense" ? t.category || "Expense" : TYPE_LABELS[t.type]}
             </span>
             <Label color={TYPE_COLOR[t.type]}>{TYPE_LABELS[t.type]}</Label>
+            {t.type === "expense" && t.project_name && <Label color="indigo">{t.project_name}</Label>}
             {t.type !== "expense" && t.project_name && t.dest_name && (
               <Label color="indigo">{t.project_name}</Label>
             )}
