@@ -7,13 +7,14 @@ import { inr, ACCOUNT_TYPE_LABELS, TYPE_LABELS, todayISO, sanitizeAmount } from 
 import CategoryPicker from "@/components/CategoryPicker";
 
 type Account = { id: number; name: string; account_type: string; current_balance: number };
-type Project = { id: number; name: string };
+type Project = { id: number; name: string; balance: number };
 
-const TYPES = ["expense", "transfer", "partner_withdrawal"];
+const TYPES = ["site_expense", "expense", "transfer", "partner_withdrawal"];
+const labelFor = (tp: string) => (tp === "site_expense" ? "Site Expense" : TYPE_LABELS[tp]);
 
 function blank() {
   return {
-    type: "expense",
+    type: "site_expense",
     txn_date: todayISO(),
     amount: "",
     category: "",
@@ -66,19 +67,31 @@ export default function TransactionForm({
   // Only accounts with money can be a source for transfers / partner withdrawals.
   const fundedBanks = banks.filter((a) => a.current_balance > 0);
   const fundedPartners = partners.filter((a) => a.current_balance > 0);
+  const fundedAll = accounts.filter((a) => a.current_balance > 0);
 
-  // Money-out limit: expenses, transfers and partner withdrawals can't exceed the source account balance.
+  // Site Expense: which site, and where it's paid from ("site" funds or "acc:<id>").
+  const selectedSite = projects.find((p) => String(p.id) === f.project_id);
+  const siteExpenseFrom = f.paidFrom || "site";
+
+  // Money-out limit: a money-out source can't be exceeded.
   const amt = Number(f.amount) || 0;
   const sourceAcctId =
     f.type === "expense"
       ? f.paidFrom.startsWith("acc:")
         ? f.paidFrom.slice(4)
         : ""
+      : f.type === "site_expense"
+      ? siteExpenseFrom.startsWith("acc:")
+        ? siteExpenseFrom.slice(4)
+        : ""
       : f.type === "transfer" || f.type === "partner_withdrawal"
       ? f.source_account_id
       : "";
   const sourceAcct = sourceAcctId ? accounts.find((a) => String(a.id) === sourceAcctId) : undefined;
-  const overBudget = !!sourceAcct && amt > 0 && amt > sourceAcct.current_balance;
+  // Over-budget when paying from an account, OR from site funds beyond the site's balance.
+  const overSiteFunds =
+    f.type === "site_expense" && siteExpenseFrom === "site" && !!selectedSite && amt > 0 && amt > selectedSite.balance;
+  const overBudget = (!!sourceAcct && amt > 0 && amt > sourceAcct.current_balance) || overSiteFunds;
 
   function decode(v: string) {
     if (v.startsWith("acc:")) return { dest_account_id: v.slice(4), project_id: "" };
@@ -96,7 +109,12 @@ export default function TransactionForm({
       paid_to: f.paid_to,
     };
 
-    if (f.type === "expense") {
+    if (f.type === "site_expense") {
+      payload.type = "expense";
+      payload.category = f.category;
+      payload.project_id = f.project_id;
+      payload.source_account_id = siteExpenseFrom === "site" ? "" : siteExpenseFrom.slice(4);
+    } else if (f.type === "expense") {
       const d = decode(f.paidFrom);
       payload.category = f.category;
       payload.source_account_id = d.dest_account_id;
@@ -115,7 +133,10 @@ export default function TransactionForm({
     }
 
     if (!payload.amount || Number(payload.amount) <= 0) return setErr("Enter a valid amount");
-    if (f.type === "expense" && !f.category) return setErr("Select a category");
+    if ((f.type === "expense" || f.type === "site_expense") && !f.category) return setErr("Select a category");
+    if (f.type === "site_expense" && !f.project_id) return setErr("Select a site");
+    if (overSiteFunds && selectedSite)
+      return setErr(`Insufficient site funds — ${selectedSite.name} has only ${inr(selectedSite.balance)} available`);
     if (sourceAcct && amt > sourceAcct.current_balance)
       return setErr(`Insufficient balance — ${sourceAcct.name} has only ${inr(sourceAcct.current_balance)} available`);
 
@@ -193,7 +214,7 @@ export default function TransactionForm({
                 f.type === tp ? "border-primary bg-primary text-white" : "border-border hover:bg-muted"
               }`}
             >
-              {TYPE_LABELS[tp]}
+              {labelFor(tp)}
             </button>
           ))}
         </div>
@@ -219,7 +240,7 @@ export default function TransactionForm({
         </div>
 
         {/* Category chips */}
-        {f.type === "expense" && (
+        {(f.type === "expense" || f.type === "site_expense") && (
           <div className="mt-4">
             <p className="mb-1.5 text-sm font-medium text-muted-foreground">Category</p>
             <CategoryPicker value={f.category} onChange={(c) => set({ category: c })} />
@@ -227,11 +248,62 @@ export default function TransactionForm({
         )}
 
         <div className="mt-4 space-y-4">
+          {f.type === "site_expense" && (
+            <>
+              <Labeled label="Site">
+                <CustomSelect
+                  value={f.project_id}
+                  onChange={(val) => set({ project_id: val })}
+                  options={projects.map((p) => ({
+                    label: `${p.name} (${inr(p.balance)} available)`,
+                    value: String(p.id),
+                  }))}
+                  placeholder="Select site…"
+                />
+              </Labeled>
+              <Labeled label="Paid From">
+                <CustomSelect
+                  value={siteExpenseFrom}
+                  onChange={(val) => set({ paidFrom: val })}
+                  options={[
+                    {
+                      group: "Site funds",
+                      items: [
+                        {
+                          label: selectedSite
+                            ? `Site funds (${inr(selectedSite.balance)} available)`
+                            : "Site funds",
+                          value: "site",
+                        },
+                      ],
+                    },
+                    ...(fundedAll.length > 0
+                      ? [
+                          {
+                            group: "Direct from account",
+                            items: fundedAll.map((a) => ({
+                              label: `${a.name} · ${ACCOUNT_TYPE_LABELS[a.account_type]} (${inr(a.current_balance)})`,
+                              value: `acc:${a.id}`,
+                            })),
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {siteExpenseFrom === "site"
+                    ? "Deducted from the site’s allocated funds."
+                    : "Paid directly from the account — site funds stay untouched."}
+                </p>
+              </Labeled>
+            </>
+          )}
+
           {f.type === "expense" && (
             <Labeled label="Paid From (account)">
               <CustomSelect value={f.paidFrom} onChange={(val) => set({ paidFrom: val })} options={fundedSourceOptions()} placeholder="Select…" />
               <p className="mt-1 text-xs text-muted-foreground">
-                To record a site expense, use “Record Expense” instead.
+                Not tied to a site. For a site expense, use the “Site Expense” tab.
               </p>
             </Labeled>
           )}

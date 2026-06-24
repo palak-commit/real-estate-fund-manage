@@ -21,6 +21,8 @@ type Site = {
 type Dash = {
   availableToAllocate: number;
   totalMoney: number;
+  bank: number;
+  cash: number;
   partner: number;
   siteFunds: number;
   todayExpense: number;
@@ -73,10 +75,12 @@ export default function Home() {
         <Skeleton className="h-28 w-full rounded-2xl" />
       ) : (
         <div className="rounded-2xl bg-sidebar p-5 text-white">
-          <p className="text-sm text-white/70">Total Capital (Bank + Cash + Sites)</p>
+          <p className="text-sm text-white/70">Total Capital (Bank + Cash + Partner)</p>
           <p className="mt-1 text-3xl font-bold tracking-tight">{inr(d.totalMoney)}</p>
           <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-sm sm:grid-cols-4">
-            <Strip label="Available to Allocate" value={inr(d.availableToAllocate)} />
+            <Strip label="Bank" value={inr(d.bank)} />
+            <Strip label="Cash" value={inr(d.cash)} />
+            <Strip label="Partner Funds" value={inr(d.partner)} />
             <Strip label="In Sites" value={inr(d.siteFunds)} />
             <Strip label="Spent Today" value={inr(d.todayExpense)} />
             <Strip label="This Month" value={inr(d.monthExpense)} />

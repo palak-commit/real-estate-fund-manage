@@ -58,7 +58,7 @@ export async function GET() {
     partner: acc.partner,
     siteFunds,
     availableToAllocate: acc.bank + acc.cash,
-    totalMoney: acc.bank + acc.cash + siteFunds,
+    totalMoney: acc.bank + acc.cash + acc.partner,
     todayExpense: Number(today[0]?.t || 0),
     monthExpense: Number(month[0]?.t || 0),
     activeSites: Number(activeSites[0]?.c || 0),
