@@ -5,7 +5,6 @@ import { useState } from "react";
 import {
   LayoutDashboard,
   Receipt,
-  ReceiptText,
   BarChart3,
   Building2,
   Landmark,
@@ -19,7 +18,6 @@ import { useActions } from "@/components/ActionsProvider";
 
 const PRIMARY = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/expenses", label: "Expenses", icon: ReceiptText },
   { href: "/transactions", label: "Transactions", icon: Receipt },
   { href: "/reports", label: "Reports", icon: BarChart3 },
 ];

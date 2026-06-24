@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   LayoutDashboard,
-  ReceiptText,
   BarChart3,
   Building2,
   Landmark,
@@ -17,13 +16,12 @@ import { useActions } from "@/components/ActionsProvider";
 
 const LEFT = [
   { href: "/", label: "Home", icon: LayoutDashboard },
-  { href: "/expenses", label: "Expenses", icon: ReceiptText },
+  { href: "/transactions", label: "Transactions", icon: Receipt },
 ];
 const RIGHT = [{ href: "/reports", label: "Reports", icon: BarChart3 }];
 const MORE = [
   { href: "/projects", label: "Sites", icon: Building2 },
   { href: "/accounts", label: "Accounts", icon: Landmark },
-  { href: "/transactions", label: "All Transactions", icon: Receipt },
 ];
 
 export default function BottomNav() {

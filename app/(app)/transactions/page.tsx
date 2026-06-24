@@ -50,6 +50,7 @@ export default function HistoryPage() {
   const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
   const [pg, setPg] = useState<Pagination | null>(null);
+  const [sumAmount, setSumAmount] = useState(0);
 
   // Reset to page 1 whenever a filter changes.
   useEffect(() => setPage(1), [type, projectId, category, account, from, to]);
@@ -68,6 +69,7 @@ export default function HistoryPage() {
       .then((res) => {
         setTxns(res.data ?? []);
         setPg(res.pagination ?? null);
+        setSumAmount(res.summary?.amount ?? 0);
       });
   }, [type, projectId, category, account, from, to, page]);
 
@@ -181,7 +183,14 @@ export default function HistoryPage() {
             Clear
           </button>
         )}
-        <span className="ml-auto text-sm text-muted-foreground">{pg ? `${pg.total} entries` : "—"}</span>
+        <div className="ml-auto text-right">
+          <p className="text-xs text-muted-foreground">{pg ? `${pg.total} entries` : "—"}</p>
+          {type && pg && pg.total > 0 && (
+            <p className="text-sm font-semibold">
+              {TYPE_LABELS[type]} total: {inr(sumAmount)}
+            </p>
+          )}
+        </div>
       </div>
 
       <Card className="overflow-hidden">

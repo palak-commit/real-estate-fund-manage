@@ -60,7 +60,8 @@ export default function QuickExpenseSheet({
       });
     fetch("/api/accounts")
       .then((r) => r.json())
-      .then((j) => setAccounts((j.data as Account[]).filter((a) => a.account_type !== "partner")));
+      // Any account with money (bank, cash or partner) can directly pay an expense.
+      .then((j) => setAccounts((j.data as Account[]).filter((a) => a.current_balance > 0)));
   }, [open, presetProjectId]);
 
   if (!open) return null;

@@ -9,7 +9,7 @@ import CategoryPicker from "@/components/CategoryPicker";
 type Account = { id: number; name: string; account_type: string; current_balance: number };
 type Project = { id: number; name: string };
 
-const TYPES = ["expense", "transfer", "income", "partner_withdrawal"];
+const TYPES = ["expense", "transfer", "partner_withdrawal"];
 
 function blank() {
   return {
@@ -157,7 +157,19 @@ export default function TransactionForm({
         opts.push({ group: "Partners", items: filteredPartners.map(opt) });
       }
     }
-    
+
+    return opts;
+  };
+
+  // Expense source: any FUNDED account (bank, cash or partner) with a balance > 0.
+  const fundedSourceOptions = () => {
+    const opt = (a: Account) => ({
+      label: `${a.name} (${ACCOUNT_TYPE_LABELS[a.account_type]}) · ${inr(a.current_balance)}`,
+      value: `acc:${a.id}`,
+    });
+    const opts: any[] = [];
+    if (fundedBanks.length > 0) opts.push({ group: "Accounts", items: fundedBanks.map(opt) });
+    if (fundedPartners.length > 0) opts.push({ group: "Partners", items: fundedPartners.map(opt) });
     return opts;
   };
 
@@ -217,7 +229,7 @@ export default function TransactionForm({
         <div className="mt-4 space-y-4">
           {f.type === "expense" && (
             <Labeled label="Paid From (account)">
-              <CustomSelect value={f.paidFrom} onChange={(val) => set({ paidFrom: val })} options={accountOptions()} placeholder="Select…" />
+              <CustomSelect value={f.paidFrom} onChange={(val) => set({ paidFrom: val })} options={fundedSourceOptions()} placeholder="Select…" />
               <p className="mt-1 text-xs text-muted-foreground">
                 To record a site expense, use “Record Expense” instead.
               </p>
@@ -248,29 +260,18 @@ export default function TransactionForm({
             </>
           )}
 
-          {f.type === "income" && (
-            <Labeled label="Received Into (account)">
-              <CustomSelect value={f.dest} onChange={(val) => set({ dest: val })} options={accountOptions()} placeholder="Select…" />
+          {f.type === "partner_withdrawal" && (
+            <Labeled label="Partner">
+              <CustomSelect value={f.source_account_id} onChange={(val) => set({ source_account_id: val })} options={fundedPartners.map(accOpt)} placeholder="Select partner…" />
+              <p className="mt-1 text-xs text-muted-foreground">Money is taken out of this partner’s account.</p>
             </Labeled>
           )}
 
-
-          {f.type === "partner_withdrawal" && (
-            <>
-              <Labeled label="From Account (bank/cash)">
-                <CustomSelect value={f.source_account_id} onChange={(val) => set({ source_account_id: val })} options={fundedBanks.map(accOpt)} placeholder="Select…" />
-              </Labeled>
-              <Labeled label="Partner">
-                <CustomSelect value={f.dest_account_id} onChange={(val) => set({ dest_account_id: val })} options={partners.map(accOpt)} placeholder="Select partner…" />
-              </Labeled>
-            </>
-          )}
-
-          <Labeled label={f.type === "income" ? "Income From (optional)" : "Paid To (optional)"}>
+          <Labeled label="Paid To (optional)">
             <Input
               value={f.paid_to}
               onChange={(e) => set({ paid_to: e.target.value })}
-              placeholder={f.type === "income" ? "e.g. Flat booking, Rent, Land sale" : "e.g. Ramesh Contractor"}
+              placeholder="e.g. Ramesh Contractor"
             />
           </Labeled>
         </div>

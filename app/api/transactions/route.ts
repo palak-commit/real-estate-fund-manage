@@ -54,11 +54,13 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, Number(searchParams.get("page") || 1));
   const offset = (page - 1) * limit;
 
-  const countRows = await query<{ total: number }>(
-    `SELECT COUNT(*) AS total FROM transactions t ${whereSql}`,
+  // Count + summed amount over the full filtered set (not just the current page).
+  const aggRows = await query<{ total: number; amount: number }>(
+    `SELECT COUNT(*) AS total, COALESCE(SUM(amount), 0) AS amount FROM transactions t ${whereSql}`,
     args
   );
-  const total = Number(countRows[0]?.total || 0);
+  const total = Number(aggRows[0]?.total || 0);
+  const amount = Number(aggRows[0]?.amount || 0);
   const totalPages = limit > 0 ? Math.ceil(total / limit) : 0;
 
   const rows = await query(
@@ -75,6 +77,7 @@ export async function GET(req: NextRequest) {
       hasNextPage: page < totalPages,
       hasPrevPage: page > 1,
     },
+    summary: { count: total, amount },
   });
 }
 
@@ -110,8 +113,7 @@ export async function POST(req: NextRequest) {
     if (!S) return fail("Partner account is required");
     category = null;
   } else if (type === "partner_withdrawal") {
-    if (!S) return fail("Source account is required");
-    if (!D) return fail("Partner account is required");
+    if (!S) return fail("Partner account is required");
     category = null;
   }
 

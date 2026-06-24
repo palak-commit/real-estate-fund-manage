@@ -35,8 +35,8 @@ export function accountEffects(t: TxnLike): AccountDelta[] {
       if (S) out.push({ accountId: S, delta: +A }); // money added to the partner account
       break;
     case "partner_withdrawal":
+      // The partner takes money out of their own account.
       if (S) out.push({ accountId: S, delta: -A });
-      if (D) out.push({ accountId: D, delta: -A });
       break;
   }
   return out;
