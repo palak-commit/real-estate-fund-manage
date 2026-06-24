@@ -79,7 +79,6 @@ export async function POST(req: NextRequest) {
     category = null;
   } else if (type === "partner_contribution") {
     if (!S) return NextResponse.json({ error: "Partner account is required" }, { status: 400 });
-    if (!D) return NextResponse.json({ error: "Destination account is required" }, { status: 400 });
     category = null;
   } else if (type === "partner_withdrawal") {
     if (!S) return NextResponse.json({ error: "Source account is required" }, { status: 400 });
@@ -121,9 +120,9 @@ export async function POST(req: NextRequest) {
         if (D) await adj(D, +amount); // else: income lands as site funds of P (derived)
         break;
       case "partner_contribution":
-        // The partner brings in fresh money that lands directly in the chosen account.
-        // The partner account is only recorded (source) — its balance is NOT changed.
-        await adj(D, +amount); // real account: money in
+        // Fresh money is added directly to the partner's own account. They can later
+        // move it to a bank/cash account via Fund Transfer.
+        await adj(S, +amount); // partner account: money in
         break;
       case "partner_withdrawal":
         await adj(S, -amount); // real account: money out

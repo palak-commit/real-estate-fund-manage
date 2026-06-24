@@ -23,11 +23,19 @@ export const pool =
     ...cfg,
     database: dbName,
     waitForConnections: true,
-    connectionLimit: 10,
+    // Serverless: many concurrent function instances each open a pool, so keep the
+    // per-instance limit small to avoid exhausting the database's connection cap.
+    connectionLimit: Number(process.env.DB_POOL_LIMIT || 5),
+    maxIdle: 2,
+    idleTimeout: 30_000,
+    enableKeepAlive: true, // keep TCP alive so idle connections aren't silently dropped
+    keepAliveInitialDelay: 10_000,
+    connectTimeout: 15_000,
     decimalNumbers: true,
   });
 
-if (process.env.NODE_ENV !== "production") global._pool = pool;
+// Reuse the pool across warm invocations (in dev this also survives hot-reload).
+global._pool = pool;
 
 // Auto-create database + tables (and seed if empty) on first DB access.
 // Idempotent: CREATE ... IF NOT EXISTS, so it's safe on every server start.
@@ -81,19 +89,37 @@ export function ready(): Promise<void> {
 // Errors that mean the schema vanished (DB/table dropped while running)
 const SCHEMA_GONE = new Set(["ER_NO_SUCH_TABLE", "ER_BAD_DB_ERROR", "ER_BAD_FIELD_ERROR"]);
 
+// Transient connection drops — common on serverless where the DB closes idle
+// connections that are still sitting in the pool. Safe to retry on a fresh connection.
+const CONNECTION_LOST = new Set([
+  "PROTOCOL_CONNECTION_LOST",
+  "ECONNRESET",
+  "EPIPE",
+  "ETIMEDOUT",
+  "ECONNREFUSED",
+  "ER_CON_COUNT_ERROR",
+]);
+
 export async function query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
   await ready();
-  try {
-    const [rows] = await pool.query(sql, params);
-    return rows as T[];
-  } catch (e: any) {
-    if (SCHEMA_GONE.has(e?.code)) {
-      // Schema disappeared — rebuild it and retry once.
-      global._dbInit = undefined;
-      await ready();
+  let lastErr: any;
+  // Try up to 3 times: a dead pooled connection fails fast, then the pool hands
+  // out a fresh one on the next attempt.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
       const [rows] = await pool.query(sql, params);
       return rows as T[];
+    } catch (e: any) {
+      lastErr = e;
+      if (SCHEMA_GONE.has(e?.code)) {
+        // Schema disappeared — rebuild it and retry.
+        global._dbInit = undefined;
+        await ready();
+        continue;
+      }
+      if (CONNECTION_LOST.has(e?.code)) continue; // retry on a fresh connection
+      throw e; // genuine error — don't mask it
     }
-    throw e;
   }
+  throw lastErr;
 }

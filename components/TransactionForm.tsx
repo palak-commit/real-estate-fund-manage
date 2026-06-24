@@ -286,20 +286,15 @@ export default function TransactionForm({
           )}
 
           {f.type === "partner_contribution" && (
-            <>
-              <Labeled label="Partner">
-                <Select value={f.source_account_id} onChange={(e) => set({ source_account_id: e.target.value })}>
-                  <option value="">Select partner…</option>
-                  {partners.map(accOpt)}
-                </Select>
-              </Labeled>
-              <Labeled label="Deposited Into (bank/cash)">
-                <Select value={f.dest_account_id} onChange={(e) => set({ dest_account_id: e.target.value })}>
-                  <option value="">Select…</option>
-                  {banks.map(accOpt)}
-                </Select>
-              </Labeled>
-            </>
+            <Labeled label="Partner">
+              <Select value={f.source_account_id} onChange={(e) => set({ source_account_id: e.target.value })}>
+                <option value="">Select partner…</option>
+                {partners.map(accOpt)}
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Money is added to this partner’s account. Use “Fund Transfer” to move it to a bank/cash account.
+              </p>
+            </Labeled>
           )}
 
           {f.type === "partner_withdrawal" && (
