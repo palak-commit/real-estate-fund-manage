@@ -14,6 +14,7 @@ const LEVEL_STYLE: Record<SiteLevel, string> = {
   ok: "bg-success/10 text-success",
   low: "bg-warning/10 text-warning",
   critical: "bg-danger/10 text-danger",
+  none: "bg-muted text-muted-foreground",
 };
 
 export default function ProjectDetail() {
@@ -21,11 +22,12 @@ export default function ProjectDetail() {
   const { recordExpense, allocateFunds } = useActions();
   const [p, setP] = useState<any>(null);
   const [notFound, setNotFound] = useState(false);
+  const [tab, setTab] = useState<"activity" | "category" | "expenses">("activity");
 
   const load = useCallback(() => {
     fetch(`/api/projects/${id}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
-      .then(setP)
+      .then((j) => setP(j.data))
       .catch(() => setNotFound(true));
   }, [id]);
 
@@ -46,10 +48,20 @@ export default function ProjectDetail() {
     return Object.entries(g);
   }, [p]);
 
+  // Expenses only (for the dedicated Expenses section)
+  const expenses = useMemo(
+    () => (p?.transactions || []).filter((t: any) => t.type === "expense"),
+    [p]
+  );
+  const totalExpenses = useMemo(
+    () => expenses.reduce((s: number, t: any) => s + Number(t.amount), 0),
+    [expenses]
+  );
+
   if (notFound) return <p className="text-muted-foreground">Site not found.</p>;
   if (!p) return <Spinner />;
 
-  const { runway, level } = siteStatus(p.balance, Number(p.spent14 || 0));
+  const { runway, level } = siteStatus(p.balance, Number(p.spent14 || 0), Number(p.received || 0));
 
   return (
     <div className="space-y-6">
@@ -94,13 +106,52 @@ export default function ProjectDetail() {
         </div>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-5">
-        {/* Category breakdown */}
-        <Card className="overflow-hidden lg:col-span-2">
-          <div className="border-b border-border px-4 py-3">
-            <h2 className="font-semibold">Spend by Category</h2>
-          </div>
-          {p.byCategory.length === 0 ? (
+      {/* Tabbed detail: Activity · Spend by Category · Expenses */}
+      <Card className="overflow-hidden">
+        <div className="flex gap-1 border-b border-border px-2">
+          {([
+            { key: "activity", label: "Activity" },
+            { key: "category", label: "Spend by Category" },
+            { key: "expenses", label: `Expenses (${expenses.length})` },
+          ] as const).map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-medium transition ${
+                tab === t.key
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Activity */}
+        {tab === "activity" &&
+          (grouped.length === 0 ? (
+            <EmptyState>No activity yet.</EmptyState>
+          ) : (
+            <div className="max-h-[60vh] overflow-y-auto">
+              {grouped.map(([day, items]) => (
+                <div key={day}>
+                  <div className="sticky top-0 bg-muted/70 px-4 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
+                    {formatDate(day)}
+                  </div>
+                  <div className="divide-y divide-border">
+                    {items.map((t: any) => (
+                      <TxnRow key={t.id} t={{ ...t, project_name: p.name }} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+
+        {/* Spend by Category */}
+        {tab === "category" &&
+          (p.byCategory.length === 0 ? (
             <EmptyState>No expenses yet.</EmptyState>
           ) : (
             <div className="space-y-3 p-4">
@@ -122,34 +173,26 @@ export default function ProjectDetail() {
                 );
               })}
             </div>
-          )}
-        </Card>
+          ))}
 
-        {/* Activity timeline */}
-        <Card className="overflow-hidden lg:col-span-3">
-          <div className="border-b border-border px-4 py-3">
-            <h2 className="font-semibold">Activity</h2>
-          </div>
-          {grouped.length === 0 ? (
-            <EmptyState>No activity yet.</EmptyState>
+        {/* Expenses */}
+        {tab === "expenses" &&
+          (expenses.length === 0 ? (
+            <EmptyState>No expenses yet.</EmptyState>
           ) : (
-            <div className="max-h-[60vh] overflow-y-auto">
-              {grouped.map(([day, items]) => (
-                <div key={day}>
-                  <div className="sticky top-0 bg-muted/70 px-4 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
-                    {formatDate(day)}
-                  </div>
-                  <div className="divide-y divide-border">
-                    {items.map((t: any) => (
-                      <TxnRow key={t.id} t={{ ...t, project_name: p.name }} />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      </div>
+            <>
+              <div className="flex items-center justify-between border-b border-border px-4 py-2 text-sm text-muted-foreground">
+                <span>{expenses.length} {expenses.length === 1 ? "expense" : "expenses"}</span>
+                <span className="font-semibold text-danger">{inr(totalExpenses)}</span>
+              </div>
+              <div className="max-h-[60vh] divide-y divide-border overflow-y-auto">
+                {expenses.map((t: any) => (
+                  <TxnRow key={t.id} t={{ ...t, project_name: p.name }} />
+                ))}
+              </div>
+            </>
+          ))}
+      </Card>
     </div>
   );
 }

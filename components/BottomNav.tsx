@@ -6,7 +6,7 @@ import { useActions } from "@/components/ActionsProvider";
 
 const LEFT = [
   { href: "/", label: "Home", icon: LayoutDashboard },
-  { href: "/transactions", label: "Activity", icon: Receipt },
+  { href: "/transactions", label: "Transactions", icon: Receipt },
 ];
 const RIGHT = [
   { href: "/reports", label: "Reports", icon: BarChart3 },

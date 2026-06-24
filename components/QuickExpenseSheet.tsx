@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { X, ChevronDown } from "lucide-react";
 import { Button, Input, Select } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
-import { CATEGORIES, CATEGORY_ICON, inr, todayISO, sanitizeAmount, ACCOUNT_TYPE_LABELS } from "@/lib/format";
+import { inr, todayISO, sanitizeAmount, ACCOUNT_TYPE_LABELS } from "@/lib/format";
+import CategoryPicker from "@/components/CategoryPicker";
 
 type Project = { id: number; name: string; balance: number };
 type Account = { id: number; name: string; account_type: string; current_balance: number };
@@ -47,7 +48,8 @@ export default function QuickExpenseSheet({
     setErr("");
     fetch("/api/projects")
       .then((r) => r.json())
-      .then((ps: Project[]) => {
+      .then((j) => {
+        const ps: Project[] = j.data;
         setProjects(ps);
         const last = typeof window !== "undefined" ? localStorage.getItem(LAST_SITE_KEY) : null;
         const pick =
@@ -58,7 +60,7 @@ export default function QuickExpenseSheet({
       });
     fetch("/api/accounts")
       .then((r) => r.json())
-      .then((as: Account[]) => setAccounts(as.filter((a) => a.account_type !== "partner")));
+      .then((j) => setAccounts((j.data as Account[]).filter((a) => a.account_type !== "partner")));
   }, [open, presetProjectId]);
 
   if (!open) return null;
@@ -100,7 +102,7 @@ export default function QuickExpenseSheet({
       }),
     });
     setSaving(false);
-    if (!res.ok) return setErr((await res.json()).error || "Something went wrong");
+    if (!res.ok) return setErr((await res.json()).message || "Something went wrong");
 
     if (typeof window !== "undefined") localStorage.setItem(LAST_SITE_KEY, projectId);
     window.dispatchEvent(new CustomEvent("txn:created"));
@@ -149,24 +151,7 @@ export default function QuickExpenseSheet({
 
         {/* Category chips */}
         <p className="mb-1.5 mt-4 text-sm font-medium text-muted-foreground">Category</p>
-        <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map((c) => {
-            const Icon = CATEGORY_ICON[c];
-            const active = category === c;
-            return (
-              <button
-                key={c}
-                onClick={() => setCategory(c)}
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition ${
-                  active ? "border-primary bg-primary text-white" : "border-border hover:bg-muted"
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {c}
-              </button>
-            );
-          })}
-        </div>
+        <CategoryPicker value={category} onChange={setCategory} />
 
         {/* Site */}
         <p className="mb-1.5 mt-4 text-sm font-medium text-muted-foreground">Site</p>

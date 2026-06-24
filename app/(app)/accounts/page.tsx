@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Pencil, Trash2, Check, X, Plus } from "lucide-react";
+import { Pencil, Trash2, Check, X, Plus, RefreshCw } from "lucide-react";
 import { Card, Button, Input, Select, Field, Label, Skeleton, EmptyState } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import AddFundsSheet from "@/components/AddFundsSheet";
@@ -25,8 +25,24 @@ export default function AccountsPage() {
   const [editId, setEditId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ name: "", account_type: "bank" });
   const [fundAccount, setFundAccount] = useState<Account | null>(null);
+  const [rechecking, setRechecking] = useState(false);
 
-  const load = () => fetch("/api/accounts").then((r) => r.json()).then(setAccounts);
+  const load = () => fetch("/api/accounts").then((r) => r.json()).then((j) => setAccounts(j.data));
+
+  async function recheckBalances() {
+    setRechecking(true);
+    try {
+      const res = await fetch("/api/admin/recompute", { method: "POST" });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.message || "Could not recheck balances");
+      toast(j.message, "success");
+      if (j.data.corrected > 0) load();
+    } catch (e: any) {
+      toast(e.message || "Could not recheck balances", "error");
+    } finally {
+      setRechecking(false);
+    }
+  }
   useEffect(() => {
     load();
   }, []);
@@ -41,7 +57,7 @@ export default function AccountsPage() {
       body: JSON.stringify(form),
     });
     setSaving(false);
-    if (!res.ok) return setErr((await res.json()).error || "Error");
+    if (!res.ok) return setErr((await res.json()).message || "Error");
     setForm({ name: "", account_type: "bank", opening_balance: "" });
     toast("Account added", "success");
     load();
@@ -57,7 +73,7 @@ export default function AccountsPage() {
     if (!ok) return;
     const res = await fetch(`/api/accounts/${a.id}`, { method: "DELETE" });
     if (!res.ok) {
-      toast((await res.json()).error || "Could not delete", "error");
+      toast((await res.json()).message || "Could not delete", "error");
       return;
     }
     toast("Account deleted", "success");
@@ -85,7 +101,12 @@ export default function AccountsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Accounts</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold tracking-tight">Accounts</h1>
+        <Button variant="outline" onClick={recheckBalances} loading={rechecking} className="!py-1.5 text-xs">
+          <RefreshCw className="h-3.5 w-3.5" /> Recheck balances
+        </Button>
+      </div>
 
       <div className="grid grid-cols-3 gap-4">
         {(["bank", "cash", "partner"] as const).map((t) => (

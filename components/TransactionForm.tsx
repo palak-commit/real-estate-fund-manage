@@ -3,15 +3,8 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { Button, Input, Select } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
-import {
-  CATEGORIES,
-  CATEGORY_ICON,
-  inr,
-  ACCOUNT_TYPE_LABELS,
-  TYPE_LABELS,
-  todayISO,
-  sanitizeAmount,
-} from "@/lib/format";
+import { inr, ACCOUNT_TYPE_LABELS, TYPE_LABELS, todayISO, sanitizeAmount } from "@/lib/format";
+import CategoryPicker from "@/components/CategoryPicker";
 
 type Account = { id: number; name: string; account_type: string; current_balance: number };
 type Project = { id: number; name: string };
@@ -61,8 +54,8 @@ export default function TransactionForm({
     }
     setF(init);
     setErr("");
-    fetch("/api/accounts").then((r) => r.json()).then(setAccounts);
-    fetch("/api/projects").then((r) => r.json()).then(setProjects);
+    fetch("/api/accounts").then((r) => r.json()).then((j) => setAccounts(j.data));
+    fetch("/api/projects").then((r) => r.json()).then((j) => setProjects(j.data));
   }, [open, preset?.type, preset?.projectId]);
 
   if (!open) return null;
@@ -133,7 +126,7 @@ export default function TransactionForm({
       body: JSON.stringify(payload),
     });
     setSaving(false);
-    if (!res.ok) return setErr((await res.json()).error || "Something went wrong");
+    if (!res.ok) return setErr((await res.json()).message || "Something went wrong");
     toast("Transaction saved", "success");
     window.dispatchEvent(new CustomEvent("txn:created"));
     onClose();
@@ -212,24 +205,7 @@ export default function TransactionForm({
         {f.type === "expense" && (
           <div className="mt-4">
             <p className="mb-1.5 text-sm font-medium text-muted-foreground">Category</p>
-            <div className="flex flex-wrap gap-2">
-              {CATEGORIES.map((c) => {
-                const Icon = CATEGORY_ICON[c];
-                const active = f.category === c;
-                return (
-                  <button
-                    key={c}
-                    onClick={() => set({ category: c })}
-                    className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition ${
-                      active ? "border-primary bg-primary text-white" : "border-border hover:bg-muted"
-                    }`}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {c}
-                  </button>
-                );
-              })}
-            </div>
+            <CategoryPicker value={f.category} onChange={(c) => set({ category: c })} />
           </div>
         )}
 
@@ -284,6 +260,7 @@ export default function TransactionForm({
               </Select>
             </Labeled>
           )}
+
 
           {f.type === "partner_withdrawal" && (
             <>

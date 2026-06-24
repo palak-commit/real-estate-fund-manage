@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { query, pool, ready } from "@/lib/db";
-import { CATEGORIES } from "@/lib/format";
+import { accountEffects } from "@/lib/ledger";
+import { ok, fail } from "@/lib/api";
 
 const TYPES = ["transfer", "expense", "income", "partner_contribution", "partner_withdrawal"];
 
@@ -16,7 +17,7 @@ const SELECT = `
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const limit = Math.min(Number(searchParams.get("limit") || 100), 1000);
+  const limit = Math.min(Math.max(1, Number(searchParams.get("limit") || 50)), 200);
   const where: string[] = [];
   const args: any[] = [];
 
@@ -38,11 +39,32 @@ export async function GET(req: NextRequest) {
   }
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-  const rows = await query(
-    `${SELECT} ${whereSql} ORDER BY t.txn_date DESC, t.id DESC LIMIT ?`,
-    [...args, limit]
+  // Pagination: ?page=1&limit=50 (limit capped at 200). `page` defaults to 1.
+  const page = Math.max(1, Number(searchParams.get("page") || 1));
+  const offset = (page - 1) * limit;
+
+  const countRows = await query<{ total: number }>(
+    `SELECT COUNT(*) AS total FROM transactions t ${whereSql}`,
+    args
   );
-  return NextResponse.json(rows);
+  const total = Number(countRows[0]?.total || 0);
+  const totalPages = limit > 0 ? Math.ceil(total / limit) : 0;
+
+  const rows = await query(
+    `${SELECT} ${whereSql} ORDER BY t.txn_date DESC, t.id DESC LIMIT ? OFFSET ?`,
+    [...args, limit, offset]
+  );
+
+  return ok(rows, rows.length ? "Transactions fetched successfully" : "No transactions found", {
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+    },
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -56,33 +78,29 @@ export async function POST(req: NextRequest) {
   const txnDate = b.txn_date || new Date().toLocaleDateString("en-CA");
   let category: string | null = b.category || null;
 
-  if (!TYPES.includes(type)) return NextResponse.json({ error: "Invalid type" }, { status: 400 });
-  if (!amount || amount <= 0)
-    return NextResponse.json({ error: "Amount must be greater than 0" }, { status: 400 });
+  if (!TYPES.includes(type)) return fail("Invalid type");
+  if (!amount || amount <= 0) return fail("Amount must be greater than 0");
 
   // Per-type validation
   if (type === "transfer") {
-    if (!S) return NextResponse.json({ error: "Source account is required" }, { status: 400 });
-    if (!D && !P)
-      return NextResponse.json({ error: "Destination account or project is required" }, { status: 400 });
-    if (D && D === S)
-      return NextResponse.json({ error: "Source and destination must be different" }, { status: 400 });
+    if (!S) return fail("Source account is required");
+    if (!D && !P) return fail("Destination account or project is required");
+    if (D && D === S) return fail("Source and destination must be different");
     category = null;
   } else if (type === "expense") {
-    if (!category || !(CATEGORIES as readonly string[]).includes(category))
-      return NextResponse.json({ error: "Category is required" }, { status: 400 });
-    if (!P && !S)
-      return NextResponse.json({ error: "Project (site) or account is required" }, { status: 400 });
+    if (!category) return fail("Category is required");
+    const known = await query("SELECT 1 FROM categories WHERE name = ? LIMIT 1", [category]);
+    if (!known.length) return fail("Unknown category");
+    if (!P && !S) return fail("Project (site) or account is required");
   } else if (type === "income") {
-    if (!D && !P)
-      return NextResponse.json({ error: "Destination account or project is required" }, { status: 400 });
+    if (!D && !P) return fail("Destination account or project is required");
     category = null;
   } else if (type === "partner_contribution") {
-    if (!S) return NextResponse.json({ error: "Partner account is required" }, { status: 400 });
+    if (!S) return fail("Partner account is required");
     category = null;
   } else if (type === "partner_withdrawal") {
-    if (!S) return NextResponse.json({ error: "Source account is required" }, { status: 400 });
-    if (!D) return NextResponse.json({ error: "Partner account is required" }, { status: 400 });
+    if (!S) return fail("Source account is required");
+    if (!D) return fail("Partner account is required");
     category = null;
   }
 
@@ -96,45 +114,20 @@ export async function POST(req: NextRequest) {
       [type, txnDate, P, S, D, amount, category, b.paid_to || null, b.note || null, b.receipt_url || null]
     );
 
-    const adj = (id: number | null, delta: number) =>
-      id
-        ? conn.query("UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?", [
-            delta,
-            id,
-          ])
-        : Promise.resolve();
-
-    // Balance-effect engine. Site funds (project received/spent) are DERIVED from
-    // transactions, so here we only touch real account balances.
-    switch (type) {
-      case "transfer":
-        await adj(S, -amount);
-        if (D) await adj(D, +amount); // else: money becomes site funds of P (derived)
-        break;
-      case "expense":
-        // If a source account is given, money leaves that account (even when tagged to a
-        // site for reporting). With no source, the expense draws from the site's funds (derived).
-        if (S) await adj(S, -amount);
-        break;
-      case "income":
-        if (D) await adj(D, +amount); // else: income lands as site funds of P (derived)
-        break;
-      case "partner_contribution":
-        // Fresh money is added directly to the partner's own account. They can later
-        // move it to a bank/cash account via Fund Transfer.
-        await adj(S, +amount); // partner account: money in
-        break;
-      case "partner_withdrawal":
-        await adj(S, -amount); // real account: money out
-        await adj(D, -amount); // partner account: outstanding down
-        break;
+    // Apply the canonical balance effects (shared with the reconciler in lib/ledger).
+    // Site funds (project received/spent) are DERIVED, so only real accounts are touched.
+    for (const e of accountEffects({ type, amount, source_account_id: S, dest_account_id: D })) {
+      await conn.query("UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?", [
+        e.delta,
+        e.accountId,
+      ]);
     }
 
     await conn.commit();
-    return NextResponse.json({ id: res.insertId }, { status: 201 });
+    return ok({ id: res.insertId }, "Transaction saved", {}, 201);
   } catch (e: any) {
     await conn.rollback();
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    return fail(e.message || "Something went wrong", 500);
   } finally {
     conn.release();
   }

@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { RECEIVED_SQL, SPENT_SQL, SPENT_14D_SQL } from "@/lib/queries";
 import { siteStatus } from "@/lib/format";
+import { ok } from "@/lib/api";
 
 export async function GET() {
   // Account balances by type
@@ -49,7 +49,7 @@ export async function GET() {
      ORDER BY t.txn_date DESC, t.id DESC LIMIT 10`
   );
 
-  return NextResponse.json({
+  return ok({
     bank: acc.bank,
     cash: acc.cash,
     partner: acc.partner,
@@ -68,9 +68,9 @@ export async function GET() {
         received: Number(s.received),
         spent: Number(s.spent),
         balance,
-        ...siteStatus(balance, Number(s.spent14)),
+        ...siteStatus(balance, Number(s.spent14), Number(s.received)),
       };
     }),
     recent,
-  });
+  }, "Dashboard fetched successfully");
 }

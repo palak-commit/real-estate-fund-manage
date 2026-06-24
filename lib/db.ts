@@ -2,6 +2,18 @@ import mysql from "mysql2/promise";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
+// Predefined expense categories seeded on first run.
+const DEFAULT_CATEGORIES = [
+  "Labour",
+  "JCB",
+  "Diesel",
+  "Material",
+  "Legal",
+  "Government",
+  "Contractor",
+  "Miscellaneous",
+];
+
 declare global {
   // eslint-disable-next-line no-var
   var _pool: mysql.Pool | undefined;
@@ -68,6 +80,16 @@ async function initialize(): Promise<void> {
       await admin.query(
         `INSERT INTO projects (name, status) VALUES
           ('Green City', 'active'), ('River View', 'active'), ('Farm House', 'active')`
+      );
+    }
+
+    // Seed the predefined categories whenever the table is empty (reference data, not
+    // user transactions) — so existing databases also get the default set on next start.
+    const [catRows]: any = await admin.query("SELECT COUNT(*) AS c FROM categories");
+    if (Number(catRows[0]?.c || 0) === 0) {
+      await admin.query(
+        `INSERT IGNORE INTO categories (name) VALUES ${DEFAULT_CATEGORIES.map(() => "(?)").join(",")}`,
+        DEFAULT_CATEGORIES
       );
     }
   } finally {

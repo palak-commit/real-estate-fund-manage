@@ -3,10 +3,11 @@ import { useCallback, useEffect, useState } from "react";
 import { ReceiptText } from "lucide-react";
 import { Card, Select, Input, EmptyState } from "@/components/ui";
 import { TxnRow } from "@/components/TxnRow";
-import { CATEGORIES, inr, todayISO } from "@/lib/format";
+import { inr, todayISO } from "@/lib/format";
 
 type Project = { id: number; name: string };
 type Account = { id: number; name: string; account_type: string };
+type Category = { id: number; name: string };
 
 function ListSkeleton() {
   return (
@@ -29,6 +30,7 @@ export default function ExpensesPage() {
   const [txns, setTxns] = useState<any[] | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [category, setCategory] = useState("");
   const [projectId, setProjectId] = useState("");
   const [account, setAccount] = useState(""); // "", "site", or an account id
@@ -37,20 +39,21 @@ export default function ExpensesPage() {
 
   const load = useCallback(() => {
     setTxns(null);
-    const qs = new URLSearchParams({ limit: "300", type: "expense" });
+    const qs = new URLSearchParams({ limit: "200", type: "expense" });
     if (projectId) qs.set("project_id", projectId);
     if (from) qs.set("from", from);
     if (to) qs.set("to", to);
     fetch(`/api/transactions?${qs}`)
       .then((r) => r.json())
-      .then(setTxns);
+      .then((res) => setTxns(res.data ?? []));
   }, [projectId, from, to]);
 
   useEffect(() => {
-    fetch("/api/projects").then((r) => r.json()).then(setProjects);
+    fetch("/api/projects").then((r) => r.json()).then((j) => setProjects(j.data));
+    fetch("/api/categories").then((r) => r.json()).then((j) => setCategories(j.data));
     fetch("/api/accounts")
       .then((r) => r.json())
-      .then((as: Account[]) => setAccounts(as.filter((a) => a.account_type !== "partner")));
+      .then((j) => setAccounts((j.data as Account[]).filter((a) => a.account_type !== "partner")));
   }, []);
 
   useEffect(() => {
@@ -77,9 +80,9 @@ export default function ExpensesPage() {
         <Filter label="Category">
           <Select value={category} onChange={(e) => setCategory(e.target.value)} className="!w-auto">
             <option value="">All Categories</option>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
+            {categories.map((c) => (
+              <option key={c.id} value={c.name}>
+                {c.name}
               </option>
             ))}
           </Select>

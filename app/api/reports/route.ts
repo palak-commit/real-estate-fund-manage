@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { query } from "@/lib/db";
+import { RECEIVED_SQL, SPENT_SQL } from "@/lib/queries";
+import { ok } from "@/lib/api";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -19,11 +21,12 @@ export async function GET(req: NextRequest) {
   }
   const and = df.length ? " AND " + df.join(" AND ") : "";
 
-  // Site report — received vs spent in range
+  // Site report — received vs spent in range. Uses the SAME shared SQL as the Dashboard
+  // (lib/queries) so site balances are identical on every screen.
   const sites = await query(
     `SELECT p.id, p.name, p.status,
-       COALESCE(SUM(CASE WHEN t.type IN ('transfer','income') AND t.dest_account_id IS NULL THEN t.amount END),0) AS received,
-       COALESCE(SUM(CASE WHEN t.type='expense' THEN t.amount END),0) AS spent
+       ${RECEIVED_SQL} AS received,
+       ${SPENT_SQL} AS spent
      FROM projects p
      LEFT JOIN transactions t ON t.project_id = p.id ${df.length ? "AND " + df.join(" AND ") : ""}
      GROUP BY p.id ORDER BY p.name`,
@@ -39,18 +42,21 @@ export async function GET(req: NextRequest) {
     a
   );
 
-  // Partner report — contributed / withdrawn in range, outstanding = current balance
+  // Partner report — contributed / withdrawn in range, outstanding = current balance.
+  // Contributions are now recorded as "Add Funds" (income into the partner account); the
+  // legacy partner_contribution type is also counted so historical data still adds up.
   const partners = await query(
     `SELECT acc.id, acc.name, acc.current_balance AS outstanding,
        COALESCE((SELECT SUM(amount) FROM transactions t
-         WHERE t.type='partner_contribution' AND t.source_account_id = acc.id ${and}),0) AS contributed,
+         WHERE ((t.type='income' AND t.dest_account_id = acc.id)
+             OR (t.type='partner_contribution' AND t.source_account_id = acc.id)) ${and}),0) AS contributed,
        COALESCE((SELECT SUM(amount) FROM transactions t
          WHERE t.type='partner_withdrawal' AND t.dest_account_id = acc.id ${and}),0) AS withdrawn
      FROM accounts acc WHERE acc.account_type='partner' ORDER BY acc.name`,
     [...a, ...a]
   );
 
-  return NextResponse.json({
+  return ok({
     sites: sites.map((s: any) => ({
       ...s,
       received: Number(s.received),
@@ -64,5 +70,5 @@ export async function GET(req: NextRequest) {
       contributed: Number(p.contributed),
       withdrawn: Number(p.withdrawn),
     })),
-  });
+  }, "Reports fetched successfully");
 }

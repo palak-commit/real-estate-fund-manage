@@ -34,11 +34,13 @@ export default function AllocateFundsSheet({
     setAmount("");
     setDate(todayISO());
     setErr("");
-    fetch("/api/projects").then((r) => r.json()).then((ps: Project[]) => {
+    fetch("/api/projects").then((r) => r.json()).then((j) => {
+      const ps: Project[] = j.data;
       setProjects(ps);
       setProjectId(presetProjectId?.toString() || (ps[0] ? String(ps[0].id) : ""));
     });
-    fetch("/api/accounts").then((r) => r.json()).then((as: Account[]) => {
+    fetch("/api/accounts").then((r) => r.json()).then((j) => {
+      const as: Account[] = j.data;
       // Only accounts that actually have money can fund a site.
       const banks = as.filter((a) => a.account_type !== "partner" && a.current_balance > 0);
       setAccounts(banks);
@@ -79,7 +81,7 @@ export default function AllocateFundsSheet({
       }),
     });
     setSaving(false);
-    if (!res.ok) return setErr((await res.json()).error || "Something went wrong");
+    if (!res.ok) return setErr((await res.json()).message || "Something went wrong");
 
     if (typeof window !== "undefined") localStorage.setItem(LAST_SRC_KEY, sourceId);
     window.dispatchEvent(new CustomEvent("txn:created"));

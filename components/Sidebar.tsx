@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   LayoutDashboard,
@@ -12,12 +12,13 @@ import {
   Menu,
   X,
   Plus,
+  LogOut,
   Home as HomeIcon,
 } from "lucide-react";
 import { useActions } from "@/components/ActionsProvider";
 
 const PRIMARY = [
-  { href: "/", label: "Command Center", icon: LayoutDashboard },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/expenses", label: "Expenses", icon: ReceiptText },
   { href: "/transactions", label: "Transactions", icon: Receipt },
   { href: "/reports", label: "Reports", icon: BarChart3 },
@@ -29,8 +30,15 @@ const MANAGE = [
 
 export default function Sidebar() {
   const path = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const { openMore } = useActions();
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+    router.refresh();
+  }
 
   const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
@@ -86,10 +94,17 @@ export default function Sidebar() {
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-sm font-semibold text-white">
             A
           </div>
-          <div className="min-w-0 leading-tight">
+          <div className="min-w-0 flex-1 leading-tight">
             <p className="truncate text-xs font-medium text-white">Admin</p>
             <p className="truncate text-[11px] text-white/50">avnitnavadiya404@gmail.com</p>
           </div>
+          <button
+            onClick={logout}
+            aria-label="Sign out"
+            className="rounded-lg p-1.5 text-white/60 transition hover:bg-white/10 hover:text-white"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </div>

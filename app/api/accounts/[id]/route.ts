@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { pool, query, ready } from "@/lib/db";
+import { ok, fail } from "@/lib/api";
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await ready();
@@ -10,7 +11,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     account_type,
     id,
   ]);
-  return NextResponse.json({ ok: true });
+  return ok(null, "Account updated");
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -19,11 +20,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     "SELECT COUNT(*) AS c FROM transactions WHERE source_account_id = ? OR dest_account_id = ?",
     [id, id]
   );
-  if ((used[0] as any).c > 0)
-    return NextResponse.json(
-      { error: "This account has transactions and cannot be deleted" },
-      { status: 400 }
-    );
+  if ((used[0] as any).c > 0) return fail("This account has transactions and cannot be deleted");
   await pool.query("DELETE FROM accounts WHERE id = ?", [id]);
-  return NextResponse.json({ ok: true });
+  return ok(null, "Account deleted");
 }

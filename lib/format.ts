@@ -39,17 +39,18 @@ export function sanitizeAmount(v: string): string {
   return v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, "").slice(0, 2);
 }
 
-export type SiteLevel = "ok" | "low" | "critical";
+export type SiteLevel = "ok" | "low" | "critical" | "none";
 
 // Burn rate (avg daily over last 14d) → runway days → health level.
-export function siteStatus(balance: number, spent14: number) {
+export function siteStatus(balance: number, spent14: number, received?: number) {
   const burn = spent14 / 14;
   const runway = burn > 0 ? Math.floor(balance / burn) : null;
   let level: SiteLevel = "ok";
-  // Only flag a site that is actively spending (has recent burn).
-  if (burn > 0) {
-    if (balance <= 0) level = "critical";
-    else if (runway !== null && runway <= 7) level = "low";
+  if (balance <= 0) {
+    // Never funded → "No funds"; funded but now empty → "Out of funds". Never "Healthy".
+    level = !received ? "none" : "critical";
+  } else if (burn > 0 && runway !== null && runway <= 7) {
+    level = "low";
   }
   return { burn, runway, level };
 }
@@ -58,6 +59,7 @@ export const LEVEL_LABEL: Record<SiteLevel, string> = {
   ok: "Healthy",
   low: "Running low",
   critical: "Out of funds",
+  none: "No funds",
 };
 
 // Expense categories (site-wise + category-wise visibility)

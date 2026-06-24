@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { pool, query, ready } from "@/lib/db";
 import { RECEIVED_SQL, SPENT_SQL, SPENT_14D_SQL } from "@/lib/queries";
+import { ok, fail } from "@/lib/api";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
      GROUP BY p.id`,
     [id]
   );
-  if (!rows.length) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!rows.length) return fail("Not found", 404);
   const p: any = rows[0];
 
   const byCategory = await query(
@@ -36,15 +37,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     [id]
   );
 
-  return NextResponse.json({
-    ...p,
-    received: Number(p.received),
-    spent: Number(p.spent),
-    spent14: Number(p.spent14),
-    balance: Number(p.received) - Number(p.spent),
-    byCategory: byCategory.map((c: any) => ({ ...c, total: Number(c.total) })),
-    transactions: txns,
-  });
+  return ok(
+    {
+      ...p,
+      received: Number(p.received),
+      spent: Number(p.spent),
+      spent14: Number(p.spent14),
+      balance: Number(p.received) - Number(p.spent),
+      byCategory: byCategory.map((c: any) => ({ ...c, total: Number(c.total) })),
+      transactions: txns,
+    },
+    "Project fetched successfully"
+  );
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -52,12 +56,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params;
   const { name, status } = await req.json();
   await pool.query("UPDATE projects SET name = ?, status = ? WHERE id = ?", [name, status, id]);
-  return NextResponse.json({ ok: true });
+  return ok(null, "Project updated");
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await ready();
   const { id } = await params;
   await pool.query("DELETE FROM projects WHERE id = ?", [id]);
-  return NextResponse.json({ ok: true });
+  return ok(null, "Project deleted");
 }

@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { query, pool, ready } from "@/lib/db";
 import { RECEIVED_SQL, SPENT_SQL } from "@/lib/queries";
+import { ok, fail } from "@/lib/api";
 
 const STATUSES = ["active", "on_hold", "completed"];
 
@@ -15,23 +16,24 @@ export async function GET() {
      GROUP BY p.id
      ORDER BY p.created_at DESC`
   );
-  return NextResponse.json(
+  return ok(
     projects.map((p: any) => ({
       ...p,
       received: Number(p.received),
       spent: Number(p.spent),
       balance: Number(p.received) - Number(p.spent),
-    }))
+    })),
+    "Projects fetched successfully"
   );
 }
 
 export async function POST(req: NextRequest) {
   await ready();
   const { name, status } = await req.json();
-  if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  if (!name) return fail("Name is required");
   const [res]: any = await pool.query("INSERT INTO projects (name, status) VALUES (?, ?)", [
     name,
     STATUSES.includes(status) ? status : "active",
   ]);
-  return NextResponse.json({ id: res.insertId }, { status: 201 });
+  return ok({ id: res.insertId }, "Project created", {}, 201);
 }

@@ -16,7 +16,14 @@ CREATE TABLE IF NOT EXISTS projects (
   name VARCHAR(120) NOT NULL,
   status ENUM('active', 'on_hold', 'completed') NOT NULL DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);  
+);
+
+-- Expense categories: a predefined set is seeded on first run; admins can add more.
+CREATE TABLE IF NOT EXISTS categories (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(40) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE IF NOT EXISTS transactions (
   id INT AUTO_INCREMENT PRIMARY KEY,

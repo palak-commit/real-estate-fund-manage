@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { query, pool, ready } from "@/lib/db";
+import { ok, fail } from "@/lib/api";
 
 const TYPES = ["bank", "cash", "partner"];
 
@@ -7,18 +8,17 @@ export async function GET() {
   const accounts = await query(
     "SELECT * FROM accounts ORDER BY FIELD(account_type,'bank','cash','partner'), name"
   );
-  return NextResponse.json(accounts);
+  return ok(accounts, "Accounts fetched successfully");
 }
 
 export async function POST(req: NextRequest) {
   await ready();
   const { name, account_type, opening_balance } = await req.json();
-  if (!name || !TYPES.includes(account_type))
-    return NextResponse.json({ error: "Name and a valid type are required" }, { status: 400 });
+  if (!name || !TYPES.includes(account_type)) return fail("Name and a valid type are required");
   const opening = Number(opening_balance) || 0;
   const [res]: any = await pool.query(
     "INSERT INTO accounts (name, account_type, opening_balance, current_balance) VALUES (?, ?, ?, ?)",
     [name, account_type, opening, opening]
   );
-  return NextResponse.json({ id: res.insertId }, { status: 201 });
+  return ok({ id: res.insertId }, "Account created", {}, 201);
 }

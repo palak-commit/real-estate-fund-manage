@@ -56,7 +56,7 @@ export default function AddFundsSheet({
       body: JSON.stringify(payload),
     });
     setSaving(false);
-    if (!res.ok) return setErr((await res.json()).error || "Something went wrong");
+    if (!res.ok) return setErr((await res.json()).message || "Something went wrong");
 
     window.dispatchEvent(new CustomEvent("txn:created"));
     toast(`Added ${inr(Number(amount))} to ${account!.name}`, "success");

@@ -20,6 +20,7 @@ type Site = {
 
 type Dash = {
   availableToAllocate: number;
+  totalMoney: number;
   partner: number;
   siteFunds: number;
   todayExpense: number;
@@ -33,11 +34,13 @@ const LEVEL_STYLE: Record<SiteLevel, string> = {
   ok: "bg-success/10 text-success",
   low: "bg-warning/10 text-warning",
   critical: "bg-danger/10 text-danger",
+  none: "bg-muted text-muted-foreground",
 };
 const BAR_STYLE: Record<SiteLevel, string> = {
   ok: "bg-success",
   low: "bg-warning",
   critical: "bg-danger",
+  none: "bg-muted-foreground",
 };
 
 export default function Home() {
@@ -48,7 +51,7 @@ export default function Home() {
   const load = useCallback(() => {
     fetch("/api/dashboard")
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
-      .then(setD)
+      .then((j) => setD(j.data))
       .catch(() => setErr("Could not load data. Make sure the database is running."));
   }, []);
 
@@ -63,19 +66,20 @@ export default function Home() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Command Center</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
 
       {/* Money strip */}
       {!d ? (
         <Skeleton className="h-28 w-full rounded-2xl" />
       ) : (
         <div className="rounded-2xl bg-sidebar p-5 text-white">
-          <p className="text-sm text-white/70">Available to Allocate (Bank + Cash)</p>
-          <p className="mt-1 text-3xl font-bold tracking-tight">{inr(d.availableToAllocate)}</p>
-          <div className="mt-4 grid grid-cols-3 gap-3 border-t border-white/10 pt-4 text-sm">
+          <p className="text-sm text-white/70">Total Capital (Bank + Cash + Sites)</p>
+          <p className="mt-1 text-3xl font-bold tracking-tight">{inr(d.totalMoney)}</p>
+          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-sm sm:grid-cols-4">
+            <Strip label="Available to Allocate" value={inr(d.availableToAllocate)} />
             <Strip label="In Sites" value={inr(d.siteFunds)} />
-            <Strip label="Partner Funds" value={inr(d.partner)} />
             <Strip label="Spent Today" value={inr(d.todayExpense)} />
+            <Strip label="This Month" value={inr(d.monthExpense)} />
           </div>
         </div>
       )}
@@ -124,10 +128,12 @@ export default function Home() {
                     <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
                       <div className={`h-full ${BAR_STYLE[s.level]}`} style={{ width: `${pct}%` }} />
                     </div>
-                    <p className="mt-1.5 text-xs text-muted-foreground">
-                      {pct}% spent
-                      {s.runway !== null && s.balance > 0 && ` · ~${s.runway} days left`}
-                    </p>
+                    <p className="mt-1.5 text-xs text-muted-foreground">{pct}% spent</p>
+                    {s.runway !== null && s.balance > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Funds run out in ~{s.runway} {s.runway === 1 ? "day" : "days"} at current pace
+                      </p>
+                    )}
                   </Link>
 
                   <div className="mt-4 flex gap-2">

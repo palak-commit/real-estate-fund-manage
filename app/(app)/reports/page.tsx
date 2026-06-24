@@ -44,7 +44,7 @@ export default function ReportsPage() {
     const qs = new URLSearchParams();
     if (range.from) qs.set("from", range.from);
     if (range.to) qs.set("to", range.to);
-    fetch(`/api/reports?${qs}`).then((res) => res.json()).then(setR);
+    fetch(`/api/reports?${qs}`).then((res) => res.json()).then((j) => setR(j.data));
   }, [range.from, range.to]);
 
   useEffect(() => {

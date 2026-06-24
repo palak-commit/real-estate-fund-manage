@@ -25,7 +25,7 @@ export default function ProjectsPage() {
   const [form, setForm] = useState({ name: "", status: "active" });
   const [saving, setSaving] = useState(false);
 
-  const load = () => fetch("/api/projects").then((r) => r.json()).then(setProjects);
+  const load = () => fetch("/api/projects").then((r) => r.json()).then((j) => setProjects(j.data));
   useEffect(() => {
     load();
     const h = () => load();
