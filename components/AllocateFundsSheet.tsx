@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { X, ArrowRight } from "lucide-react";
-import { Button, Input, Select } from "@/components/ui";
+import { Button, Input, CustomSelect, CustomDatePicker } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import { inr, todayISO, ACCOUNT_TYPE_LABELS, sanitizeAmount } from "@/lib/format";
 
@@ -115,33 +115,32 @@ export default function AllocateFundsSheet({
         <div className="mt-4 space-y-4">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-muted-foreground">From Account</label>
-            <Select value={sourceId} onChange={(e) => setSourceId(e.target.value)} disabled={accounts.length === 0}>
-              <option value="">Select…</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name} · {ACCOUNT_TYPE_LABELS[a.account_type]} ({inr(a.current_balance)})
-                </option>
-              ))}
-            </Select>
+            <CustomSelect
+              value={sourceId}
+              onChange={(val) => setSourceId(val)}
+              disabled={accounts.length === 0}
+              options={accounts.map((a) => ({
+                label: `${a.name} · ${ACCOUNT_TYPE_LABELS[a.account_type]} (${inr(a.current_balance)})`,
+                value: String(a.id)
+              }))}
+              placeholder="Select…"
+            />
             {accounts.length === 0 && (
               <p className="mt-1 text-xs text-warning">No account has available balance to allocate.</p>
             )}
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-muted-foreground">To Site</label>
-            <Select
+            <CustomSelect
               value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
+              onChange={(val) => setProjectId(val)}
               disabled={!!presetProjectId}
-              className={presetProjectId ? "cursor-not-allowed bg-muted opacity-70" : ""}
-            >
-              <option value="">Select…</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} (balance {inr(p.balance)})
-                </option>
-              ))}
-            </Select>
+              options={projects.map((p) => ({
+                label: `${p.name} (balance ${inr(p.balance)})`,
+                value: String(p.id)
+              }))}
+              placeholder="Select…"
+            />
             {presetProjectId && (
               <p className="mt-1 text-xs text-muted-foreground">Locked to the selected site</p>
             )}

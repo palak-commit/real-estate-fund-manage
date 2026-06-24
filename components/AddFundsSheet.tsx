@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { Button, Input } from "@/components/ui";
+import { Button, Input, CustomDatePicker } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import { inr, todayISO, sanitizeAmount } from "@/lib/format";
 
@@ -92,7 +92,7 @@ export default function AddFundsSheet({
 
         <div className="mt-4">
           <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Date</label>
-          <Input type="date" max={todayISO()} value={date} onChange={(e) => setDate(e.target.value)} />
+          <CustomDatePicker value={date} onChange={(val) => setDate(val)} />
         </div>
 
         <div className="mt-4">

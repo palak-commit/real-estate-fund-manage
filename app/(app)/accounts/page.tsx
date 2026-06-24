@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Pencil, Trash2, Check, X, Plus, RefreshCw } from "lucide-react";
-import { Card, Button, Input, Select, Field, Label, Skeleton, EmptyState } from "@/components/ui";
+import { Card, Button, Input, CustomSelect, Field, Label, Skeleton, EmptyState } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import AddFundsSheet from "@/components/AddFundsSheet";
 import { inr, ACCOUNT_TYPE_LABELS } from "@/lib/format";
@@ -124,13 +124,11 @@ export default function AccountsPage() {
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. HDFC Bank" required />
           </Field>
           <Field label="Type">
-            <Select value={form.account_type} onChange={(e) => setForm({ ...form, account_type: e.target.value })}>
-              {Object.entries(ACCOUNT_TYPE_LABELS).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </Select>
+            <CustomSelect
+              value={form.account_type}
+              onChange={(val) => setForm({ ...form, account_type: val })}
+              options={Object.entries(ACCOUNT_TYPE_LABELS).map(([k, v]) => ({ label: v, value: k }))}
+            />
           </Field>
           <Field label="Opening Balance">
             <Input type="number" step="0.01" value={form.opening_balance} onChange={(e) => setForm({ ...form, opening_balance: e.target.value })} placeholder="0" />
@@ -158,16 +156,11 @@ export default function AccountsPage() {
               {editId === a.id ? (
                 <div className="space-y-3">
                   <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
-                  <Select
+                  <CustomSelect
                     value={editForm.account_type}
-                    onChange={(e) => setEditForm({ ...editForm, account_type: e.target.value })}
-                  >
-                    {Object.entries(ACCOUNT_TYPE_LABELS).map(([k, v]) => (
-                      <option key={k} value={k}>
-                        {v}
-                      </option>
-                    ))}
-                  </Select>
+                    onChange={(val) => setEditForm({ ...editForm, account_type: val })}
+                    options={Object.entries(ACCOUNT_TYPE_LABELS).map(([k, v]) => ({ label: v, value: k }))}
+                  />
                   <div className="flex gap-2">
                     <Button onClick={() => saveEdit(a.id)} className="flex-1">
                       <Check className="h-4 w-4" /> Save
@@ -243,13 +236,11 @@ export default function AccountsPage() {
                       <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
                     </td>
                     <td className="px-4 py-2">
-                      <Select value={editForm.account_type} onChange={(e) => setEditForm({ ...editForm, account_type: e.target.value })}>
-                        {Object.entries(ACCOUNT_TYPE_LABELS).map(([k, v]) => (
-                          <option key={k} value={k}>
-                            {v}
-                          </option>
-                        ))}
-                      </Select>
+                      <CustomSelect
+                        value={editForm.account_type}
+                        onChange={(val) => setEditForm({ ...editForm, account_type: val })}
+                        options={Object.entries(ACCOUNT_TYPE_LABELS).map(([k, v]) => ({ label: v, value: k }))}
+                      />
                     </td>
                     <td className="px-4 py-2 text-right text-muted-foreground">{inr(a.opening_balance)}</td>
                     <td className="px-4 py-2 text-right font-semibold">{inr(a.current_balance)}</td>

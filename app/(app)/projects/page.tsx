@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Trash2, Building2 } from "lucide-react";
-import { Card, Button, Input, Select, Field, Label, Skeleton, EmptyState } from "@/components/ui";
+import { Card, Button, Input, CustomSelect, Field, Label, Skeleton, EmptyState } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import { inr, formatDate } from "@/lib/format";
 
@@ -72,13 +72,11 @@ export default function ProjectsPage() {
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Green City" required />
           </Field>
           <Field label="Status">
-            <Select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-              {Object.entries(STATUS).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
-                </option>
-              ))}
-            </Select>
+            <CustomSelect
+              value={form.status}
+              onChange={(val) => setForm({ ...form, status: val })}
+              options={Object.entries(STATUS).map(([k, v]) => ({ label: v, value: k }))}
+            />
           </Field>
           <div className="flex items-end">
             <Button type="submit" loading={saving} className="w-full">

@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { ReceiptText } from "lucide-react";
-import { Card, Select, Input, EmptyState } from "@/components/ui";
+import { Card, CustomSelect, CustomDatePicker, EmptyState } from "@/components/ui";
 import { TxnRow } from "@/components/TxnRow";
 import { inr, todayISO } from "@/lib/format";
 
@@ -78,41 +78,47 @@ export default function ExpensesPage() {
 
       <div className="flex flex-wrap items-end gap-3">
         <Filter label="Category">
-          <Select value={category} onChange={(e) => setCategory(e.target.value)} className="!w-auto">
-            <option value="">All Categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.name}>
-                {c.name}
-              </option>
-            ))}
-          </Select>
+          <CustomSelect
+            value={category}
+            onChange={(val) => setCategory(val)}
+            options={[
+              { label: "All Categories", value: "" },
+              ...categories.map((c) => ({ label: c.name, value: c.name }))
+            ]}
+            placeholder="All Categories"
+            className="w-40"
+          />
         </Filter>
         <Filter label="Site">
-          <Select value={projectId} onChange={(e) => setProjectId(e.target.value)} className="!w-auto">
-            <option value="">All Sites</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </Select>
+          <CustomSelect
+            value={projectId}
+            onChange={(val) => setProjectId(val)}
+            options={[
+              { label: "All Sites", value: "" },
+              ...projects.map((p) => ({ label: p.name, value: String(p.id) }))
+            ]}
+            placeholder="All Sites"
+            className="w-40"
+          />
         </Filter>
         <Filter label="Paid From">
-          <Select value={account} onChange={(e) => setAccount(e.target.value)} className="!w-auto">
-            <option value="">All Sources</option>
-            <option value="site">Site funds</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </Select>
+          <CustomSelect
+            value={account}
+            onChange={(val) => setAccount(val)}
+            options={[
+              { label: "All Sources", value: "" },
+              { label: "Site funds", value: "site" },
+              ...accounts.map((a) => ({ label: a.name, value: String(a.id) }))
+            ]}
+            placeholder="All Sources"
+            className="w-40"
+          />
         </Filter>
         <Filter label="From">
-          <Input type="date" max={to || todayISO()} value={from} onChange={(e) => setFrom(e.target.value)} className="!w-auto" />
+          <CustomDatePicker value={from} onChange={(val) => setFrom(val)} className="w-40" />
         </Filter>
         <Filter label="To">
-          <Input type="date" max={todayISO()} min={from || undefined} value={to} onChange={(e) => setTo(e.target.value)} className="!w-auto" />
+          <CustomDatePicker value={to} onChange={(val) => setTo(val)} className="w-40" align="right" />
         </Filter>
         {(category || projectId || account || from || to) && (
           <button

@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, Input, Spinner, EmptyState } from "@/components/ui";
+import { Card, CustomDatePicker, Spinner, EmptyState } from "@/components/ui";
 import { inr, CATEGORY_ICON, todayISO } from "@/lib/format";
 
 type Report = {
@@ -71,9 +71,9 @@ export default function ReportsPage() {
         ))}
         {preset === "custom" && (
           <div className="flex items-center gap-2">
-            <Input type="date" value={custom.from} onChange={(e) => setCustom({ ...custom, from: e.target.value })} className="!w-auto" />
+            <CustomDatePicker value={custom.from} onChange={(val) => setCustom({ ...custom, from: val })} className="w-32" />
             <span className="text-muted-foreground">to</span>
-            <Input type="date" value={custom.to} onChange={(e) => setCustom({ ...custom, to: e.target.value })} className="!w-auto" />
+            <CustomDatePicker value={custom.to} onChange={(val) => setCustom({ ...custom, to: val })} className="w-32" align="right" />
           </div>
         )}
       </div>

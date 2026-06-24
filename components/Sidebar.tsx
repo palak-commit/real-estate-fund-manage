@@ -79,7 +79,7 @@ export default function Sidebar() {
           }}
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
         >
-          <Plus className="h-4 w-4" /> New
+          <Plus className="h-4 w-4" /> New Transaction
         </button>
       </div>
 
@@ -96,7 +96,7 @@ export default function Sidebar() {
           </div>
           <div className="min-w-0 flex-1 leading-tight">
             <p className="truncate text-xs font-medium text-white">Admin</p>
-            <p className="truncate text-[11px] text-white/50">avnitnavadiya404@gmail.com</p>
+            <p className="truncate text-[11px] text-white/50">admin@gmail.com</p>
           </div>
           <button
             onClick={logout}

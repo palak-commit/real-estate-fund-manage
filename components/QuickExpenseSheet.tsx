@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { X, ChevronDown } from "lucide-react";
-import { Button, Input, Select } from "@/components/ui";
+import { Button, Input, CustomSelect, CustomDatePicker } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import { inr, todayISO, sanitizeAmount, ACCOUNT_TYPE_LABELS } from "@/lib/format";
 import CategoryPicker from "@/components/CategoryPicker";
@@ -155,39 +155,44 @@ export default function QuickExpenseSheet({
 
         {/* Site */}
         <p className="mb-1.5 mt-4 text-sm font-medium text-muted-foreground">Site</p>
-        <Select
+        <CustomSelect
           value={projectId}
-          onChange={(e) => setProjectId(e.target.value)}
+          onChange={(val) => setProjectId(val)}
           disabled={!!presetProjectId}
-          className={presetProjectId ? "cursor-not-allowed bg-muted opacity-70" : ""}
-        >
-          <option value="">Select site…</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} ({inr(p.balance)} available)
-            </option>
-          ))}
-        </Select>
+          options={projects.map((p) => ({
+            label: `${p.name} (${inr(p.balance)} available)`,
+            value: String(p.id)
+          }))}
+          placeholder="Select site…"
+        />
         {presetProjectId && (
           <p className="mt-1 text-xs text-muted-foreground">Locked to the selected site</p>
         )}
 
         {/* Paid From — site funds or a bank/cash account */}
         <p className="mb-1.5 mt-4 text-sm font-medium text-muted-foreground">Paid From</p>
-        <Select value={payFrom} onChange={(e) => setPayFrom(e.target.value)}>
-          <optgroup label="Site funds">
-            <option value="site">
-              {selectedSite ? `${selectedSite.name} funds (${inr(selectedSite.balance)} available)` : "Site funds"}
-            </option>
-          </optgroup>
-          <optgroup label="Direct from account">
-            {accounts.map((a) => (
-              <option key={a.id} value={`acc:${a.id}`}>
-                {a.name} · {ACCOUNT_TYPE_LABELS[a.account_type]} ({inr(a.current_balance)})
-              </option>
-            ))}
-          </optgroup>
-        </Select>
+        <CustomSelect
+          value={payFrom}
+          onChange={(val) => setPayFrom(val)}
+          options={[
+            {
+              group: "Site funds",
+              items: [
+                {
+                  label: selectedSite ? `${selectedSite.name} funds (${inr(selectedSite.balance)} available)` : "Site funds",
+                  value: "site"
+                }
+              ]
+            },
+            {
+              group: "Direct from account",
+              items: accounts.map((a) => ({
+                label: `${a.name} · ${ACCOUNT_TYPE_LABELS[a.account_type]} (${inr(a.current_balance)})`,
+                value: `acc:${a.id}`
+              }))
+            }
+          ]}
+        />
         <p className="mt-1 text-xs text-muted-foreground">
           {fromSite
             ? "Deducted from the site's allocated funds."
@@ -207,7 +212,7 @@ export default function QuickExpenseSheet({
           <div className="mt-3 space-y-3">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Date</label>
-              <Input type="date" max={todayISO()} value={date} onChange={(e) => setDate(e.target.value)} />
+              <CustomDatePicker value={date} onChange={(val) => setDate(val)} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Paid To</label>

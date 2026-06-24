@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { Button, Input, Select } from "@/components/ui";
+import { Button, Input, CustomSelect, CustomDatePicker } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import { inr, ACCOUNT_TYPE_LABELS, TYPE_LABELS, todayISO, sanitizeAmount } from "@/lib/format";
 import CategoryPicker from "@/components/CategoryPicker";
@@ -132,28 +132,33 @@ export default function TransactionForm({
     onClose();
   }
 
-  const accOpt = (a: Account) => (
-    <option key={a.id} value={a.id}>
-      {a.name} ({inr(a.current_balance)})
-    </option>
-  );
+  const accOpt = (a: Account) => ({
+    label: `${a.name} (${inr(a.current_balance)})`,
+    value: String(a.id),
+  });
   // Accounts only (no sites). `excludeId` hides one account — used so a transfer's
   // destination can't be the same account chosen as the source. `includePartners` adds
   // partner accounts (used for Fund Transfer, where partners can send/receive money).
   const accountOptions = (excludeId?: string, includePartners = false) => {
-    const opt = (a: Account) => (
-      <option key={`a${a.id}`} value={`acc:${a.id}`}>
-        {a.name} ({ACCOUNT_TYPE_LABELS[a.account_type]}) · {inr(a.current_balance)}
-      </option>
-    );
-    return (
-      <>
-        <optgroup label="Accounts">{banks.filter((a) => String(a.id) !== excludeId).map(opt)}</optgroup>
-        {includePartners && partners.length > 0 && (
-          <optgroup label="Partners">{partners.filter((a) => String(a.id) !== excludeId).map(opt)}</optgroup>
-        )}
-      </>
-    );
+    const opt = (a: Account) => ({
+      label: `${a.name} (${ACCOUNT_TYPE_LABELS[a.account_type]}) · ${inr(a.current_balance)}`,
+      value: `acc:${a.id}`,
+    });
+    
+    const opts = [];
+    const filteredBanks = banks.filter((a) => String(a.id) !== excludeId);
+    if (filteredBanks.length > 0) {
+      opts.push({ group: "Accounts", items: filteredBanks.map(opt) });
+    }
+    
+    if (includePartners && partners.length > 0) {
+      const filteredPartners = partners.filter((a) => String(a.id) !== excludeId);
+      if (filteredPartners.length > 0) {
+        opts.push({ group: "Partners", items: filteredPartners.map(opt) });
+      }
+    }
+    
+    return opts;
   };
 
   return (
@@ -197,7 +202,7 @@ export default function TransactionForm({
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Date</label>
-            <Input type="date" max={todayISO()} value={f.txn_date} onChange={(e) => set({ txn_date: e.target.value })} className="!py-3" />
+            <CustomDatePicker value={f.txn_date} onChange={(val) => set({ txn_date: val })} className="!w-full" align="right" />
           </div>
         </div>
 
@@ -212,10 +217,7 @@ export default function TransactionForm({
         <div className="mt-4 space-y-4">
           {f.type === "expense" && (
             <Labeled label="Paid From (account)">
-              <Select value={f.paidFrom} onChange={(e) => set({ paidFrom: e.target.value })}>
-                <option value="">Select…</option>
-                {accountOptions()}
-              </Select>
+              <CustomSelect value={f.paidFrom} onChange={(val) => set({ paidFrom: val })} options={accountOptions()} placeholder="Select…" />
               <p className="mt-1 text-xs text-muted-foreground">
                 To record a site expense, use “Record Expense” instead.
               </p>
@@ -225,26 +227,20 @@ export default function TransactionForm({
           {f.type === "transfer" && (
             <>
               <Labeled label="Source Account">
-                <Select
+                <CustomSelect
                   value={f.source_account_id}
-                  onChange={(e) => {
-                    const src = e.target.value;
-                    // Drop the destination if it's now the same account as the source.
-                    set({ source_account_id: src, dest: f.dest === `acc:${src}` ? "" : f.dest });
+                  onChange={(val) => {
+                    set({ source_account_id: val, dest: f.dest === `acc:${val}` ? "" : f.dest });
                   }}
-                >
-                  <option value="">Select…</option>
-                  <optgroup label="Accounts">{fundedBanks.map(accOpt)}</optgroup>
-                  {fundedPartners.length > 0 && (
-                    <optgroup label="Partners">{fundedPartners.map(accOpt)}</optgroup>
-                  )}
-                </Select>
+                  options={[
+                    { group: "Accounts", items: fundedBanks.map(accOpt) },
+                    ...(fundedPartners.length > 0 ? [{ group: "Partners", items: fundedPartners.map(accOpt) }] : [])
+                  ]}
+                  placeholder="Select…"
+                />
               </Labeled>
               <Labeled label="Destination Account">
-                <Select value={f.dest} onChange={(e) => set({ dest: e.target.value })}>
-                  <option value="">Select…</option>
-                  {accountOptions(f.source_account_id, true)}
-                </Select>
+                <CustomSelect value={f.dest} onChange={(val) => set({ dest: val })} options={accountOptions(f.source_account_id, true)} placeholder="Select…" />
                 <p className="mt-1 text-xs text-muted-foreground">
                   To send money to a site, use “Allocate Funds” instead.
                 </p>
@@ -254,10 +250,7 @@ export default function TransactionForm({
 
           {f.type === "income" && (
             <Labeled label="Received Into (account)">
-              <Select value={f.dest} onChange={(e) => set({ dest: e.target.value })}>
-                <option value="">Select…</option>
-                {accountOptions()}
-              </Select>
+              <CustomSelect value={f.dest} onChange={(val) => set({ dest: val })} options={accountOptions()} placeholder="Select…" />
             </Labeled>
           )}
 
@@ -265,16 +258,10 @@ export default function TransactionForm({
           {f.type === "partner_withdrawal" && (
             <>
               <Labeled label="From Account (bank/cash)">
-                <Select value={f.source_account_id} onChange={(e) => set({ source_account_id: e.target.value })}>
-                  <option value="">Select…</option>
-                  {fundedBanks.map(accOpt)}
-                </Select>
+                <CustomSelect value={f.source_account_id} onChange={(val) => set({ source_account_id: val })} options={fundedBanks.map(accOpt)} placeholder="Select…" />
               </Labeled>
               <Labeled label="Partner">
-                <Select value={f.dest_account_id} onChange={(e) => set({ dest_account_id: e.target.value })}>
-                  <option value="">Select partner…</option>
-                  {partners.map(accOpt)}
-                </Select>
+                <CustomSelect value={f.dest_account_id} onChange={(val) => set({ dest_account_id: val })} options={partners.map(accOpt)} placeholder="Select partner…" />
               </Labeled>
             </>
           )}
