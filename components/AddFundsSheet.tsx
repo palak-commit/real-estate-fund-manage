@@ -18,7 +18,6 @@ export default function AddFundsSheet({
 }) {
   const { toast } = useUI();
   const [amount, setAmount] = useState("");
-  const [from, setFrom] = useState("");
   const [date, setDate] = useState(todayISO());
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -27,7 +26,6 @@ export default function AddFundsSheet({
   useEffect(() => {
     if (!open) return;
     setAmount("");
-    setFrom("");
     setDate(todayISO());
     setNote("");
     setErr("");
@@ -46,7 +44,6 @@ export default function AddFundsSheet({
       amount,
       txn_date: date,
       note,
-      paid_to: from, // "received from"
     };
 
     setSaving(true);
@@ -64,8 +61,14 @@ export default function AddFundsSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 animate-fade-in sm:items-center sm:p-4">
-      <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-card p-5 shadow-xl sm:rounded-2xl">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 animate-fade-in sm:items-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-card p-5 shadow-xl sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="mb-1 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Add Funds to {account.name}</h2>
           <button onClick={onClose} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted">
@@ -84,11 +87,6 @@ export default function AddFundsSheet({
           placeholder="0"
           className="!py-3 !text-3xl !font-bold"
         />
-
-        <div className="mt-4">
-          <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Received From (optional)</label>
-          <Input value={from} onChange={(e) => setFrom(e.target.value)} placeholder="e.g. Flat booking, partner deposit" />
-        </div>
 
         <div className="mt-4">
           <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Date</label>

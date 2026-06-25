@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CustomDatePicker, Spinner, Skeleton, EmptyState } from "@/components/ui";
+import { Card, CustomDatePicker, Skeleton, EmptyState } from "@/components/ui";
 import { inr, todayISO } from "@/lib/format";
 
 type Report = {
@@ -115,7 +115,19 @@ export default function ReportsPage() {
       </div>
 
       {!r ? (
-        <Spinner />
+        <Card className="overflow-hidden">
+          <div className="border-b border-border px-4 py-3">
+            <Skeleton className="h-5 w-28" />
+          </div>
+          <div className="divide-y divide-border">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between px-4 py-3">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+            ))}
+          </div>
+        </Card>
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Site Report */}

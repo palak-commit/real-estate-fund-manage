@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
 import { query, pool, ready } from "@/lib/db";
 import { ok, fail } from "@/lib/api";
-
-const TYPES = ["bank", "cash", "partner"];
+import { accountCreateSchema, zErr } from "@/lib/validation";
 
 export async function GET() {
   const accounts = await query(
@@ -13,12 +12,12 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   await ready();
-  const { name, account_type, opening_balance } = await req.json();
-  if (!name || !TYPES.includes(account_type)) return fail("Name and a valid type are required");
-  const opening = Number(opening_balance) || 0;
+  const parsed = accountCreateSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return fail(zErr(parsed.error));
+  const { name, account_type, opening_balance } = parsed.data;
   const [res]: any = await pool.query(
     "INSERT INTO accounts (name, account_type, opening_balance, current_balance) VALUES (?, ?, ?, ?)",
-    [name, account_type, opening, opening]
+    [name, account_type, opening_balance, opening_balance]
   );
   return ok({ id: res.insertId }, "Account created", {}, 201);
 }

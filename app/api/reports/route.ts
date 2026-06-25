@@ -42,10 +42,10 @@ export async function GET(req: NextRequest) {
 
   // Category report — expenses grouped by category in range
   const categories = await query(
-    `SELECT category, COALESCE(SUM(amount),0) AS total, COUNT(*) AS count
-     FROM transactions t
-     WHERE t.type='expense' AND t.category IS NOT NULL ${and}
-     GROUP BY category ORDER BY total DESC`,
+    `SELECT c.name AS category, COALESCE(SUM(t.amount),0) AS total, COUNT(*) AS count
+     FROM transactions t JOIN categories c ON c.id = t.category_id
+     WHERE t.type='expense' ${and}
+     GROUP BY c.name ORDER BY total DESC`,
     a
   );
 

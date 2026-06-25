@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { query, pool, ready } from "@/lib/db";
 import { ok, fail } from "@/lib/api";
+import { categoryCreateSchema, zErr } from "@/lib/validation";
 
 export async function GET() {
   const rows = await query("SELECT id, name FROM categories ORDER BY name");
@@ -9,10 +10,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   await ready();
-  const { name } = await req.json().catch(() => ({}));
-  const clean = (name || "").trim();
-  if (!clean) return fail("Category name is required");
-  if (clean.length > 40) return fail("Category name is too long (max 40 characters)");
+  const parsed = categoryCreateSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return fail(zErr(parsed.error));
+  const clean = parsed.data.name;
 
   // Case-insensitive duplicate check.
   const existing = await query<{ id: number; name: string }>(

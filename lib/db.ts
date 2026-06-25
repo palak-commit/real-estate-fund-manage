@@ -66,6 +66,72 @@ async function initialize(): Promise<void> {
     const schema = readFileSync(join(process.cwd(), "scripts", "schema.sql"), "utf8");
     await admin.query(schema);
 
+    const hasColumn = async (col: string) => {
+      const [rows]: any = await admin.query(
+        `SELECT 1 FROM information_schema.columns
+          WHERE table_schema = ? AND table_name = 'transactions' AND column_name = ?`,
+        [dbName, col]
+      );
+      return rows.length > 0;
+    };
+
+    // Migrate transactions.category (free text) -> category_id (FK to categories).
+    // Databases created before this change still have the old VARCHAR column.
+    if (await hasColumn("category")) {
+      if (!(await hasColumn("category_id"))) {
+        await admin.query("ALTER TABLE transactions ADD COLUMN category_id INT NULL AFTER amount");
+      }
+      // Make sure every category name actually used exists as a row, then map name -> id.
+      await admin.query(
+        `INSERT IGNORE INTO categories (name)
+           SELECT DISTINCT category FROM transactions
+            WHERE category IS NOT NULL AND TRIM(category) <> ''`
+      );
+      await admin.query(
+        `UPDATE transactions t JOIN categories c ON c.name = t.category
+            SET t.category_id = c.id
+          WHERE t.category_id IS NULL AND t.category IS NOT NULL`
+      );
+      // Data migrated — drop the free-text column (this also drops any index on it).
+      await admin.query("ALTER TABLE transactions DROP COLUMN category");
+    }
+
+    // Ensure performance indexes on transactions. Databases created before these were
+    // added won't get them via CREATE TABLE IF NOT EXISTS, and MySQL has no portable
+    // "ADD INDEX IF NOT EXISTS", so check information_schema and add any that are missing.
+    const wantedIndexes: Record<string, string> = {
+      idx_project_type: "(project_id, type)",
+      idx_date_type: "(txn_date, type)",
+      idx_source: "(source_account_id)",
+      idx_dest: "(dest_account_id)",
+      idx_category: "(category_id)",
+    };
+    const [idxRows]: any = await admin.query(
+      `SELECT DISTINCT index_name FROM information_schema.statistics
+        WHERE table_schema = ? AND table_name = 'transactions'`,
+      [dbName]
+    );
+    const existingIdx = new Set(idxRows.map((r: any) => r.index_name || r.INDEX_NAME));
+    for (const [name, cols] of Object.entries(wantedIndexes)) {
+      if (!existingIdx.has(name)) {
+        await admin.query(`ALTER TABLE transactions ADD INDEX ${name} ${cols}`);
+      }
+    }
+
+    // Ensure the category_id foreign key exists (named so this check is idempotent).
+    const [fkRows]: any = await admin.query(
+      `SELECT 1 FROM information_schema.table_constraints
+        WHERE table_schema = ? AND table_name = 'transactions'
+          AND constraint_name = 'fk_txn_category'`,
+      [dbName]
+    );
+    if (!fkRows.length) {
+      await admin.query(
+        `ALTER TABLE transactions ADD CONSTRAINT fk_txn_category
+           FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL`
+      );
+    }
+
     if (freshDatabase) {
       await admin.query(
         `INSERT INTO accounts (name, account_type, opening_balance, current_balance) VALUES

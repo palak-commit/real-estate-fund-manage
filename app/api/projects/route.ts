@@ -2,8 +2,7 @@ import { NextRequest } from "next/server";
 import { query, pool, ready } from "@/lib/db";
 import { RECEIVED_SQL, SPENT_SQL, SPENT_TOTAL_SQL } from "@/lib/queries";
 import { ok, fail } from "@/lib/api";
-
-const STATUSES = ["active", "on_hold", "completed"];
+import { projectCreateSchema, zErr } from "@/lib/validation";
 
 export async function GET() {
   const projects = await query(
@@ -30,11 +29,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   await ready();
-  const { name, status } = await req.json();
-  if (!name) return fail("Name is required");
-  const [res]: any = await pool.query("INSERT INTO projects (name, status) VALUES (?, ?)", [
-    name,
-    STATUSES.includes(status) ? status : "active",
-  ]);
+  const parsed = projectCreateSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return fail(zErr(parsed.error));
+  const { name, status } = parsed.data;
+  const [res]: any = await pool.query("INSERT INTO projects (name, status) VALUES (?, ?)", [name, status]);
   return ok({ id: res.insertId }, "Project created", {}, 201);
 }

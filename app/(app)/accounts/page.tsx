@@ -86,11 +86,15 @@ export default function AccountsPage() {
   }
 
   async function saveEdit(id: number) {
-    await fetch(`/api/accounts/${id}`, {
+    const res = await fetch(`/api/accounts/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(editForm),
     });
+    if (!res.ok) {
+      toast((await res.json()).message || "Could not update account", "error");
+      return;
+    }
     setEditId(null);
     toast("Account updated", "success");
     load();

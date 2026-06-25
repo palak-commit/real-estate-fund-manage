@@ -94,7 +94,7 @@ export const ACCOUNT_TYPE_LABELS: Record<string, string> = {
 export const TYPE_LABELS: Record<string, string> = {
   transfer: "Fund Transfer",
   expense: "Expense",
-  income: "Income",
+  income: "Funds Added",
   partner_contribution: "Partner Contribution",
   partner_withdrawal: "Partner Withdrawal",
 };

@@ -33,15 +33,21 @@ CREATE TABLE IF NOT EXISTS transactions (
   source_account_id INT NULL,
   dest_account_id INT NULL,
   amount DECIMAL(15,2) NOT NULL,
-  category VARCHAR(40) NULL,
+  category_id INT NULL,
   paid_to VARCHAR(160) NULL,
   note VARCHAR(255) NULL,
   receipt_url VARCHAR(255) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_project (project_id),
-  INDEX idx_date (txn_date),
+  -- Composite indexes cover the hot aggregation paths (dashboard/reports group by
+  -- project+type and filter by date+type); single-column indexes speed account filters.
+  INDEX idx_project_type (project_id, type),
+  INDEX idx_date_type (txn_date, type),
   INDEX idx_type (type),
+  INDEX idx_source (source_account_id),
+  INDEX idx_dest (dest_account_id),
+  INDEX idx_category (category_id),
   FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
   FOREIGN KEY (source_account_id) REFERENCES accounts(id) ON DELETE SET NULL,
-  FOREIGN KEY (dest_account_id) REFERENCES accounts(id) ON DELETE SET NULL
+  FOREIGN KEY (dest_account_id) REFERENCES accounts(id) ON DELETE SET NULL,
+  CONSTRAINT fk_txn_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
 );

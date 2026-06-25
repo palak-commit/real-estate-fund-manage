@@ -42,7 +42,10 @@ export function accountEffects(t: TxnLike): AccountDelta[] {
   return out;
 }
 
-const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+// Money is compared and accumulated in integer paisa to avoid binary float drift —
+// no fuzzy epsilon. `toPaisa` rounds rupees to the nearest paisa; `toRupees` converts back.
+export const toPaisa = (n: number | string) => Math.round(Number(n) * 100);
+export const toRupees = (p: number) => p / 100;
 
 export type BalanceDiff = { id: number; name: string; stored: number; correct: number; delta: number };
 
@@ -59,21 +62,28 @@ export async function recomputeBalances(apply: boolean): Promise<BalanceDiff[]> 
     "SELECT type, amount, source_account_id, dest_account_id FROM transactions"
   );
 
-  const expected = new Map<number, number>();
-  for (const a of accounts) expected.set(a.id, Number(a.opening_balance));
+  // Accumulate everything in integer paisa so the comparison is exact.
+  const expected = new Map<number, number>(); // accountId -> paisa
+  for (const a of accounts) expected.set(a.id, toPaisa(a.opening_balance));
   for (const t of txns) {
     for (const e of accountEffects(t)) {
-      expected.set(e.accountId, (expected.get(e.accountId) ?? 0) + e.delta);
+      expected.set(e.accountId, (expected.get(e.accountId) ?? 0) + toPaisa(e.delta));
     }
   }
 
   const diffs: BalanceDiff[] = accounts
     .map((a) => {
-      const stored = Number(a.current_balance);
-      const correct = round2(expected.get(a.id) ?? 0);
-      return { id: a.id, name: a.name, stored, correct, delta: round2(correct - stored) };
+      const storedP = toPaisa(a.current_balance);
+      const correctP = expected.get(a.id) ?? 0;
+      return {
+        id: a.id,
+        name: a.name,
+        stored: toRupees(storedP),
+        correct: toRupees(correctP),
+        delta: toRupees(correctP - storedP),
+      };
     })
-    .filter((d) => Math.abs(d.delta) > 0.005);
+    .filter((d) => toPaisa(d.stored) !== toPaisa(d.correct));
 
   if (apply && diffs.length) {
     const conn = await pool.getConnection();

@@ -36,12 +36,16 @@ export default function ProjectsPage() {
   async function add(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    await fetch("/api/projects", {
+    const res = await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
     setSaving(false);
+    if (!res.ok) {
+      toast((await res.json()).message || "Could not add site", "error");
+      return;
+    }
     setForm({ name: "", status: "active" });
     toast("Site added", "success");
     load();
@@ -56,7 +60,11 @@ export default function ProjectsPage() {
       danger: true,
     });
     if (!ok) return;
-    await fetch(`/api/projects/${p.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/projects/${p.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      toast((await res.json()).message || "Could not delete site", "error");
+      return;
+    }
     toast("Site deleted", "success");
     load();
   }

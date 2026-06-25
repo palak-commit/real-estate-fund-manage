@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus, ArrowDownToLine, Building2, AlertTriangle, Receipt } from "lucide-react";
-import { Card, Label, Button, Spinner, EmptyState, CustomSelect, CustomDatePicker } from "@/components/ui";
+import { Card, Label, Button, Skeleton, EmptyState, CustomSelect, CustomDatePicker } from "@/components/ui";
 import { useActions } from "@/components/ActionsProvider";
 import { useUI } from "@/components/UIProvider";
 import { inr, formatDate, TYPE_LABELS, siteStatus, LEVEL_LABEL, type SiteLevel } from "@/lib/format";
@@ -124,7 +124,17 @@ export default function ProjectDetail() {
   }
 
   if (notFound) return <p className="text-muted-foreground">Site not found.</p>;
-  if (!p) return <Spinner />;
+  if (!p)
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-32 w-full rounded-xl" />
+        <Card className="overflow-hidden">
+          <ListSkeleton />
+        </Card>
+      </div>
+    );
 
   const { runway, level } = siteStatus(p.balance, Number(p.spent14 || 0), Number(p.received || 0));
   const rangeStart = pg && pg.total > 0 ? (pg.page - 1) * pg.limit + 1 : 0;

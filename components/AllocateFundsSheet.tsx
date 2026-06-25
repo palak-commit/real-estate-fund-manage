@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { X, ArrowRight } from "lucide-react";
 import { Button, Input, CustomSelect, CustomDatePicker } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
-import { inr, todayISO, ACCOUNT_TYPE_LABELS, sanitizeAmount } from "@/lib/format";
+import { inr, todayISO, sanitizeAmount } from "@/lib/format";
 
 type Account = { id: number; name: string; account_type: string; current_balance: number };
 type Project = { id: number; name: string; balance: number };
@@ -41,14 +41,14 @@ export default function AllocateFundsSheet({
     });
     fetch("/api/accounts").then((r) => r.json()).then((j) => {
       const as: Account[] = j.data;
-      // Only accounts that actually have money can fund a site.
-      const banks = as.filter((a) => a.account_type !== "partner" && a.current_balance > 0);
-      setAccounts(banks);
+      // Any account that actually has money (bank, cash or partner) can fund a site.
+      const funded = as.filter((a) => a.current_balance > 0);
+      setAccounts(funded);
       const last = typeof window !== "undefined" ? localStorage.getItem(LAST_SRC_KEY) : null;
       const pick =
-        (last && banks.some((a) => String(a.id) === last) ? last : "") ||
+        (last && funded.some((a) => String(a.id) === last) ? last : "") ||
         // default: account with the highest balance
-        (banks.length ? String([...banks].sort((a, b) => b.current_balance - a.current_balance)[0].id) : "");
+        (funded.length ? String([...funded].sort((a, b) => b.current_balance - a.current_balance)[0].id) : "");
       setSourceId(pick);
     });
   }, [open, presetProjectId]);
@@ -90,8 +90,14 @@ export default function AllocateFundsSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 animate-fade-in sm:items-center sm:p-4">
-      <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-card p-5 shadow-xl sm:rounded-2xl">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 animate-fade-in sm:items-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-card p-5 shadow-xl sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">
             {presetProjectId && project ? `Allocate Funds to ${project.name}` : "Allocate Funds to Site"}
@@ -119,11 +125,25 @@ export default function AllocateFundsSheet({
               value={sourceId}
               onChange={(val) => setSourceId(val)}
               disabled={accounts.length === 0}
-              options={accounts.map((a) => ({
-                label: `${a.name} · ${ACCOUNT_TYPE_LABELS[a.account_type]} (${inr(a.current_balance)})`,
-                value: String(a.id)
-              }))}
-              placeholder="Select…"
+              options={[
+                {
+                  group: "Accounts",
+                  items: accounts
+                    .filter((a) => a.account_type !== "partner")
+                    .map((a) => ({ label: `${a.name} (${inr(a.current_balance)})`, value: String(a.id) })),
+                },
+                ...(accounts.some((a) => a.account_type === "partner")
+                  ? [
+                      {
+                        group: "Partners",
+                        items: accounts
+                          .filter((a) => a.account_type === "partner")
+                          .map((a) => ({ label: `${a.name} (${inr(a.current_balance)})`, value: String(a.id) })),
+                      },
+                    ]
+                  : []),
+              ]}
+              placeholder="Select account…"
             />
             {accounts.length === 0 && (
               <p className="mt-1 text-xs text-warning">No account has available balance to allocate.</p>

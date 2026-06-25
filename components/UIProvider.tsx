@@ -87,8 +87,11 @@ export default function UIProvider({ children }: { children: React.ReactNode }) 
 
       {/* Confirm dialog */}
       {confirmState && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4 animate-fade-in">
-          <div className="w-full max-w-sm rounded-xl bg-card p-6 shadow-xl">
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4 animate-fade-in"
+          onClick={() => closeConfirm(false)}
+        >
+          <div className="w-full max-w-sm rounded-xl bg-card p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start gap-3">
               <div
                 className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${

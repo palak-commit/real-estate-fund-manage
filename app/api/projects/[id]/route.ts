@@ -2,9 +2,11 @@ import { NextRequest } from "next/server";
 import { pool, query, ready } from "@/lib/db";
 import { RECEIVED_SQL, SPENT_SQL, SPENT_TOTAL_SQL, SPENT_14D_SQL } from "@/lib/queries";
 import { ok, fail } from "@/lib/api";
+import { projectUpdateSchema, parseId, zErr } from "@/lib/validation";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const id = parseId((await params).id);
+  if (!id) return fail("Invalid project id", 400);
   const rows = await query(
     `SELECT p.*,
        ${RECEIVED_SQL} AS received,
@@ -22,17 +24,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const p: any = rows[0];
 
   const byCategory = await query(
-    `SELECT category, COALESCE(SUM(amount),0) AS total
-     FROM transactions WHERE project_id = ? AND type = 'expense' AND category IS NOT NULL
-     GROUP BY category ORDER BY total DESC`,
+    `SELECT c.name AS category, COALESCE(SUM(t.amount),0) AS total
+     FROM transactions t JOIN categories c ON c.id = t.category_id
+     WHERE t.project_id = ? AND t.type = 'expense'
+     GROUP BY c.name ORDER BY total DESC`,
     [id]
   );
 
   const txns = await query(
-    `SELECT t.*, sa.name AS source_name, da.name AS dest_name
+    `SELECT t.*, sa.name AS source_name, da.name AS dest_name, c.name AS category
      FROM transactions t
      LEFT JOIN accounts sa ON sa.id = t.source_account_id
      LEFT JOIN accounts da ON da.id = t.dest_account_id
+     LEFT JOIN categories c ON c.id = t.category_id
      WHERE t.project_id = ?
      ORDER BY t.txn_date DESC, t.id DESC LIMIT 100`,
     [id]
@@ -54,15 +58,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await ready();
-  const { id } = await params;
-  const { name, status } = await req.json();
+  const id = parseId((await params).id);
+  if (!id) return fail("Invalid project id", 400);
+  const parsed = projectUpdateSchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return fail(zErr(parsed.error));
+  const { name, status } = parsed.data;
   await pool.query("UPDATE projects SET name = ?, status = ? WHERE id = ?", [name, status, id]);
   return ok(null, "Project updated");
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await ready();
-  const { id } = await params;
+  const id = parseId((await params).id);
+  if (!id) return fail("Invalid project id", 400);
   await pool.query("DELETE FROM projects WHERE id = ?", [id]);
   return ok(null, "Project deleted");
 }
