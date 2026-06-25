@@ -64,11 +64,8 @@ export default function TransactionForm({
   if (!open) return null;
 
   const set = (patch: Partial<typeof f>) => setF((p) => ({ ...p, ...patch }));
-  const banks = accounts.filter((a) => a.account_type !== "partner");
-  const partners = accounts.filter((a) => a.account_type === "partner");
   // Only accounts with money can be a source for transfers / partner withdrawals.
-  const fundedBanks = banks.filter((a) => a.current_balance > 0);
-  const fundedPartners = partners.filter((a) => a.current_balance > 0);
+  const fundedPartners = accounts.filter((a) => a.account_type === "partner" && a.current_balance > 0);
   const fundedAll = accounts.filter((a) => a.current_balance > 0);
 
   // Site Expense: which site, and where it's paid from ("site" funds or "acc:<id>").
@@ -154,30 +151,14 @@ export default function TransactionForm({
     label: `${a.name} (${inr(a.current_balance)})`,
     value: String(a.id),
   });
-  // Accounts only (no sites). `excludeId` hides one account — used so a transfer's
-  // destination can't be the same account chosen as the source. `includePartners` adds
-  // partner accounts (used for Fund Transfer, where partners can send/receive money).
-  const accountOptions = (excludeId?: string, includePartners = false) => {
-    const opt = (a: Account) => ({
-      label: `${a.name} (${ACCOUNT_TYPE_LABELS[a.account_type]}) · ${inr(a.current_balance)}`,
-      value: `acc:${a.id}`,
-    });
-    
-    const opts = [];
-    const filteredBanks = banks.filter((a) => String(a.id) !== excludeId);
-    if (filteredBanks.length > 0) {
-      opts.push({ group: "Accounts", items: filteredBanks.map(opt) });
-    }
-    
-    if (includePartners && partners.length > 0) {
-      const filteredPartners = partners.filter((a) => String(a.id) !== excludeId);
-      if (filteredPartners.length > 0) {
-        opts.push({ group: "Partners", items: filteredPartners.map(opt) });
-      }
-    }
-
-    return opts;
-  };
+  // Group a list of accounts into Bank / Cash / Partner sections (empty groups dropped).
+  const groupByType = (list: Account[], opt: (a: Account) => { label: string; value: string }) =>
+    (["bank", "cash", "partner"] as const)
+      .map((tp) => ({
+        group: ACCOUNT_TYPE_LABELS[tp],
+        items: list.filter((a) => a.account_type === tp).map(opt),
+      }))
+      .filter((g) => g.items.length > 0);
 
   return (
     <div
@@ -268,17 +249,15 @@ export default function TransactionForm({
                         },
                       ],
                     },
-                    ...(fundedAll.length > 0
-                      ? [
-                          {
-                            group: "Direct from account",
-                            items: fundedAll.map((a) => ({
-                              label: `${a.name} · ${ACCOUNT_TYPE_LABELS[a.account_type]} (${inr(a.current_balance)})`,
-                              value: `acc:${a.id}`,
-                            })),
-                          },
-                        ]
-                      : []),
+                    // Direct-from-account, split into Bank / Cash / Partner groups.
+                    ...(["bank", "cash", "partner"] as const)
+                      .map((tp) => ({
+                        group: ACCOUNT_TYPE_LABELS[tp],
+                        items: fundedAll
+                          .filter((a) => a.account_type === tp)
+                          .map((a) => ({ label: `${a.name} (${inr(a.current_balance)})`, value: `acc:${a.id}` })),
+                      }))
+                      .filter((g) => g.items.length > 0),
                   ]}
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -296,10 +275,7 @@ export default function TransactionForm({
                 <CustomSelect
                   value={f.source_account_id}
                   onChange={(val) => set({ source_account_id: val })}
-                  options={[
-                    { group: "Accounts", items: fundedBanks.map(accOpt) },
-                    ...(fundedPartners.length > 0 ? [{ group: "Partners", items: fundedPartners.map(accOpt) }] : []),
-                  ]}
+                  options={groupByType(fundedAll, accOpt)}
                   placeholder="Select account…"
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -328,15 +304,20 @@ export default function TransactionForm({
                   onChange={(val) => {
                     set({ source_account_id: val, dest: f.dest === `acc:${val}` ? "" : f.dest });
                   }}
-                  options={[
-                    { group: "Accounts", items: fundedBanks.map(accOpt) },
-                    ...(fundedPartners.length > 0 ? [{ group: "Partners", items: fundedPartners.map(accOpt) }] : [])
-                  ]}
+                  options={groupByType(fundedAll, accOpt)}
                   placeholder="Select…"
                 />
               </Labeled>
               <Labeled label="Destination Account">
-                <CustomSelect value={f.dest} onChange={(val) => set({ dest: val })} options={accountOptions(f.source_account_id, true)} placeholder="Select…" />
+                <CustomSelect
+                  value={f.dest}
+                  onChange={(val) => set({ dest: val })}
+                  options={groupByType(
+                    accounts.filter((a) => String(a.id) !== f.source_account_id),
+                    (a) => ({ label: `${a.name} (${inr(a.current_balance)})`, value: `acc:${a.id}` })
+                  )}
+                  placeholder="Select…"
+                />
                 <p className="mt-1 text-xs text-muted-foreground">
                   To send money to a site, use “Add Fund” instead.
                 </p>

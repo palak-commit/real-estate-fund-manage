@@ -36,7 +36,20 @@ export function CustomSelect({
   onClear,
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropUp, setDropUp] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Open upward when there isn't enough room below (e.g. a select low inside a modal),
+  // so the options aren't clipped by the modal's scroll area.
+  const toggleOpen = () => {
+    if (disabled) return;
+    if (!isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      setDropUp(spaceBelow < 260 && rect.top > spaceBelow);
+    }
+    setIsOpen((o) => !o);
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -61,7 +74,7 @@ export function CustomSelect({
     <div className={`relative ${className} ${disabled ? "opacity-70 cursor-not-allowed" : ""}`} ref={containerRef}>
       <button
         type="button"
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onClick={toggleOpen}
         disabled={disabled}
         className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed"
       >
@@ -88,7 +101,11 @@ export function CustomSelect({
       </button>
 
       {isOpen && !disabled && (
-        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-border bg-card py-1 shadow-card animate-fade-in">
+        <div
+          className={`absolute z-50 max-h-60 w-full overflow-auto rounded-md border border-border bg-card py-1 shadow-card animate-fade-in ${
+            dropUp ? "bottom-full mb-1" : "mt-1"
+          }`}
+        >
           {options.map((option, idx) => {
             if ("group" in option) {
               return (

@@ -13,6 +13,7 @@ import {
   Plus,
   LogOut,
   Home as HomeIcon,
+  BookOpen,
 } from "lucide-react";
 import { useActions } from "@/components/ActionsProvider";
 
@@ -24,6 +25,7 @@ const PRIMARY = [
 const MANAGE = [
   { href: "/projects", label: "Sites", icon: Building2 },
   { href: "/accounts", label: "Accounts", icon: Landmark },
+  { href: "/guide", label: "User Guide", icon: BookOpen },
 ];
 
 export default function Sidebar() {

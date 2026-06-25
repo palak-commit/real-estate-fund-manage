@@ -18,11 +18,16 @@ export default function CategoryPicker({
 }) {
   const { toast } = useUI();
   const [cats, setCats] = useState<Cat[]>([]);
+  const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const load = () => fetch("/api/categories").then((r) => r.json()).then((j) => setCats(j.data));
+  const load = () =>
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((j) => setCats(j.data))
+      .finally(() => setLoading(false));
   useEffect(() => {
     load();
   }, []);
@@ -71,6 +76,16 @@ export default function CategoryPicker({
     onChange(j.data.name); // auto-select the new category
     setName("");
     setAdding(false);
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="skeleton h-[34px] w-24 rounded-full" />
+        ))}
+      </div>
+    );
   }
 
   return (

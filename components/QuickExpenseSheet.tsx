@@ -192,13 +192,15 @@ export default function QuickExpenseSheet({
                 }
               ]
             },
-            {
-              group: "Direct from account",
-              items: accounts.map((a) => ({
-                label: `${a.name} · ${ACCOUNT_TYPE_LABELS[a.account_type]} (${inr(a.current_balance)})`,
-                value: `acc:${a.id}`
+            // Direct-from-account, split into Bank / Cash / Partner groups.
+            ...(["bank", "cash", "partner"] as const)
+              .map((tp) => ({
+                group: ACCOUNT_TYPE_LABELS[tp],
+                items: accounts
+                  .filter((a) => a.account_type === tp)
+                  .map((a) => ({ label: `${a.name} (${inr(a.current_balance)})`, value: `acc:${a.id}` })),
               }))
-            }
+              .filter((g) => g.items.length > 0)
           ]}
         />
         <p className="mt-1 text-xs text-muted-foreground">

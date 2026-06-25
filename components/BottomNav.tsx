@@ -11,6 +11,7 @@ import {
   Plus,
   MoreHorizontal,
   X,
+  BookOpen,
 } from "lucide-react";
 import { useActions } from "@/components/ActionsProvider";
 
@@ -22,6 +23,7 @@ const RIGHT = [{ href: "/reports", label: "Reports", icon: BarChart3 }];
 const MORE = [
   { href: "/projects", label: "Sites", icon: Building2 },
   { href: "/accounts", label: "Accounts", icon: Landmark },
+  { href: "/guide", label: "Guide", icon: BookOpen },
 ];
 
 export default function BottomNav() {
