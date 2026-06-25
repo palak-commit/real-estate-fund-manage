@@ -1,5 +1,6 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Receipt, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CustomSelect, CustomDatePicker, Button, EmptyState } from "@/components/ui";
 import { TxnRow } from "@/components/TxnRow";
@@ -37,7 +38,9 @@ function ListSkeleton() {
   );
 }
 
-export default function HistoryPage() {
+function HistoryPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast, confirm } = useUI();
   const [txns, setTxns] = useState<any[] | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -46,7 +49,9 @@ export default function HistoryPage() {
   const [type, setType] = useState("");
   const [projectId, setProjectId] = useState("");
   const [category, setCategory] = useState("");
-  const [account, setAccount] = useState("");
+  // Initialise from ?account=<id> on the FIRST render so only one (correct) fetch runs —
+  // avoids a race where an unfiltered fetch overwrites the filtered result.
+  const [account, setAccount] = useState(searchParams.get("account") || "");
   const [paidTo, setPaidTo] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -81,6 +86,12 @@ export default function HistoryPage() {
     fetch("/api/categories").then((r) => r.json()).then((j) => setCategories(j.data));
     fetch("/api/accounts").then((r) => r.json()).then((j) => setAccounts(j.data));
   }, []);
+
+  // Pre-apply an account filter when opened from the Accounts page (?account=<id>).
+  useEffect(() => {
+    const acc = searchParams.get("account");
+    if (acc) setAccount(acc);
+  }, [searchParams]);
 
   const hasFilters = !!(type || projectId || category || account || paidTo || from || to);
   function clearFilters() {
@@ -216,7 +227,12 @@ export default function HistoryPage() {
         ) : (
           <div className="divide-y divide-border">
             {txns.map((t) => (
-              <TxnRow key={t.id} t={t} onDelete={deleteTxn} />
+              <TxnRow
+                key={t.id}
+                t={t}
+                onDelete={deleteTxn}
+                onRowClick={(tx) => router.push(`/projects/${tx.project_id}`)}
+              />
             ))}
           </div>
         )}
@@ -251,6 +267,14 @@ export default function HistoryPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function HistoryPage() {
+  return (
+    <Suspense fallback={null}>
+      <HistoryPageInner />
+    </Suspense>
   );
 }
 

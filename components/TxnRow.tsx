@@ -31,12 +31,27 @@ function flow(t: any): string {
   }
 }
 
-export function TxnRow({ t, onDelete }: { t: any; onDelete?: (t: any) => void }) {
+export function TxnRow({
+  t,
+  onDelete,
+  onRowClick,
+}: {
+  t: any;
+  onDelete?: (t: any) => void;
+  onRowClick?: (t: any) => void;
+}) {
   const sign = signOf(t.type);
   const Icon = t.type === "expense" ? CATEGORY_ICON[t.category] || TYPE_ICON.expense : TYPE_ICON[t.type];
+  // Only rows tied to a site are navigable (click → open that site).
+  const navigable = !!onRowClick && !!t.project_id;
 
   return (
-    <div className="group flex items-center justify-between gap-3 px-4 py-3">
+    <div
+      onClick={navigable ? () => onRowClick!(t) : undefined}
+      className={`group flex items-center justify-between gap-3 px-4 py-3 ${
+        navigable ? "cursor-pointer transition-colors hover:bg-muted/50" : ""
+      }`}
+    >
       <div className="flex min-w-0 items-center gap-3">
         {t.receipt_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -75,7 +90,10 @@ export function TxnRow({ t, onDelete }: { t: any; onDelete?: (t: any) => void })
         </span>
         {onDelete && (
           <button
-            onClick={() => onDelete(t)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(t);
+            }}
             aria-label="Delete transaction"
             className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-danger/10 hover:text-danger"
           >

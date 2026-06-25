@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Pencil, Trash2, Check, X, Plus, RefreshCw } from "lucide-react";
 import { Card, Button, Input, CustomSelect, Field, Label, Skeleton, EmptyState } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
@@ -17,7 +18,9 @@ type Account = {
 const TYPE_COLOR: Record<string, string> = { bank: "blue", cash: "green", partner: "amber" };
 
 export default function AccountsPage() {
+  const router = useRouter();
   const { toast, confirm } = useUI();
+  const openAccount = (id: number) => router.push(`/transactions?account=${id}`);
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [form, setForm] = useState({ name: "", account_type: "bank", opening_balance: "" });
   const [err, setErr] = useState("");
@@ -176,7 +179,10 @@ export default function AccountsPage() {
                 </div>
               ) : (
                 <>
-                  <div className="flex items-start justify-between gap-3">
+                  <div
+                    onClick={() => openAccount(a.id)}
+                    className="flex cursor-pointer items-start justify-between gap-3"
+                  >
                     <div className="min-w-0">
                       <p className="truncate font-medium">{a.name}</p>
                       <div className="mt-1">
@@ -258,7 +264,11 @@ export default function AccountsPage() {
                     </td>
                   </tr>
                 ) : (
-                  <tr key={a.id}>
+                  <tr
+                    key={a.id}
+                    onClick={() => openAccount(a.id)}
+                    className="cursor-pointer transition-colors hover:bg-muted/50"
+                  >
                     <td className="px-4 py-3 font-medium">{a.name}</td>
                     <td className="px-4 py-3">
                       <Label color={TYPE_COLOR[a.account_type]}>{ACCOUNT_TYPE_LABELS[a.account_type]}</Label>
@@ -266,7 +276,7 @@ export default function AccountsPage() {
                     <td className={`px-4 py-3 text-right font-semibold ${a.current_balance < 0 ? "text-danger" : ""}`}>
                       {inr(a.current_balance)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
                         <Button variant="outline" onClick={() => setFundAccount(a)} className="!px-2.5 !py-1.5 text-xs">
                           <Plus className="h-3.5 w-3.5" /> Add Money

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CustomDatePicker, Skeleton, EmptyState } from "@/components/ui";
-import { inr, todayISO } from "@/lib/format";
+import { inr, todayISO, CATEGORY_ICON } from "@/lib/format";
 
 type Report = {
   sites: { id: number; name: string; received: number; spent: number; balance: number }[];
@@ -49,6 +49,7 @@ export default function ReportsPage() {
   const [custom, setCustom] = useState({ from: todayISO(), to: todayISO() });
   const [r, setR] = useState<Report | null>(null);
   const [dash, setDash] = useState<Dash | null>(null);
+  const [tab, setTab] = useState<"site" | "category">("site");
 
   useEffect(() => {
     fetch("/api/dashboard")
@@ -129,12 +130,29 @@ export default function ReportsPage() {
           </div>
         </Card>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Site Report */}
-          <Card className="overflow-hidden lg:col-span-2">
-            <div className="border-b border-border px-4 py-3">
-              <h2 className="font-semibold">Site Report</h2>
-            </div>
+        <Card className="overflow-hidden">
+          {/* Tabs: By Site · By Category */}
+          <div className="flex gap-1 border-b border-border px-2">
+            {([
+              { key: "site", label: "By Site" },
+              { key: "category", label: "By Category" },
+            ] as const).map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-medium transition ${
+                  tab === t.key
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* By Site */}
+          {tab === "site" && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted text-left text-muted-foreground">
@@ -181,9 +199,59 @@ export default function ReportsPage() {
                 )}
               </table>
             </div>
-          </Card>
+          )}
 
-        </div>
+          {/* By Category */}
+          {tab === "category" && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted text-left text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-2.5 font-medium">Category</th>
+                    <th className="px-4 py-2.5 text-right font-medium">Count</th>
+                    <th className="px-4 py-2.5 text-right font-medium">Spent</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {r.categories.map((c) => {
+                    const Icon = CATEGORY_ICON[c.category] || CATEGORY_ICON.Miscellaneous;
+                    return (
+                      <tr key={c.category}>
+                        <td className="px-4 py-2.5 font-medium">
+                          <span className="flex items-center gap-2">
+                            <Icon className="h-4 w-4 text-muted-foreground" /> {c.category}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-right text-muted-foreground">{c.count}</td>
+                        <td className="px-4 py-2.5 text-right text-danger">{inr(c.total)}</td>
+                      </tr>
+                    );
+                  })}
+                  {r.categories.length === 0 && (
+                    <tr>
+                      <td colSpan={3}>
+                        <EmptyState>No expenses in this range.</EmptyState>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+                {r.categories.length > 0 && (
+                  <tfoot className="border-t-2 border-border bg-muted/50">
+                    <tr className="font-semibold">
+                      <td className="px-4 py-2.5">Total</td>
+                      <td className="px-4 py-2.5 text-right text-muted-foreground">
+                        {r.categories.reduce((s, x) => s + x.count, 0)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-danger">
+                        {inr(r.categories.reduce((s, x) => s + x.total, 0))}
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          )}
+        </Card>
       )}
     </div>
   );
