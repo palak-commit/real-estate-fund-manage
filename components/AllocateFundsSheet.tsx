@@ -85,7 +85,7 @@ export default function AllocateFundsSheet({
 
     if (typeof window !== "undefined") localStorage.setItem(LAST_SRC_KEY, sourceId);
     window.dispatchEvent(new CustomEvent("txn:created"));
-    toast(`Allocated ${inr(amt)} to ${project?.name ?? "site"}`, "success");
+    toast(`Added ${inr(amt)} to ${project?.name ?? "site"}`, "success");
     onClose();
   }
 
@@ -100,7 +100,7 @@ export default function AllocateFundsSheet({
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">
-            {presetProjectId && project ? `Allocate Funds to ${project.name}` : "Allocate Funds to Site"}
+            {presetProjectId && project ? `Add Site Fund to ${project.name}` : "Add Site Fund"}
           </h2>
           <button onClick={onClose} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted">
             <X className="h-5 w-5" />
@@ -146,7 +146,7 @@ export default function AllocateFundsSheet({
               placeholder="Select account…"
             />
             {accounts.length === 0 && (
-              <p className="mt-1 text-xs text-warning">No account has available balance to allocate.</p>
+              <p className="mt-1 text-xs text-warning">No account has available balance to add.</p>
             )}
           </div>
           <div>
@@ -201,7 +201,7 @@ export default function AllocateFundsSheet({
         )}
 
         <Button onClick={submit} loading={saving} disabled={overBudget} className="mt-5 w-full !py-3 text-base">
-          Allocate Funds
+          Add Site Fund
         </Button>
       </div>
     </div>

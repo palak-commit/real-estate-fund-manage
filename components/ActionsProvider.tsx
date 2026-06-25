@@ -64,7 +64,7 @@ export default function ActionsProvider({ children }: { children: React.ReactNod
               />
               <ChoiceButton
                 icon={<ArrowDownToLine className="h-5 w-5" />}
-                title="Allocate Funds"
+                title="Add Site Fund"
                 desc="Send money from an account to a site"
                 onClick={() => allocateFunds()}
                 accent="bg-success/10 text-success"
@@ -72,7 +72,7 @@ export default function ActionsProvider({ children }: { children: React.ReactNod
               <ChoiceButton
                 icon={<MoreHorizontal className="h-5 w-5" />}
                 title="Other"
-                desc="Income, partner withdrawal, account transfer"
+                desc="Add money, partner payout, transfer"
                 onClick={openMore}
                 accent="bg-muted text-muted-foreground"
               />

@@ -153,7 +153,7 @@ export default function ProjectDetail() {
         <Label color={STATUS_COLOR[p.status]}>{STATUS_LABEL[p.status]}</Label>
         <div className="ml-auto flex gap-2">
           <Button variant="outline" onClick={() => allocateFunds(Number(id))}>
-            <ArrowDownToLine className="h-4 w-4" /> Add Fund
+            <ArrowDownToLine className="h-4 w-4" /> Add Site Fund
           </Button>
           <Button onClick={() => recordExpense(Number(id))}>
             <Plus className="h-4 w-4" /> Add Expense

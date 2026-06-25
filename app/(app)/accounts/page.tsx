@@ -134,7 +134,7 @@ export default function AccountsPage() {
               options={Object.entries(ACCOUNT_TYPE_LABELS).map(([k, v]) => ({ label: v, value: k }))}
             />
           </Field>
-          <Field label="Opening Balance">
+          <Field label="Balance">
             <Input type="number" step="0.01" value={form.opening_balance} onChange={(e) => setForm({ ...form, opening_balance: e.target.value })} placeholder="0" />
           </Field>
           <div className="flex items-end">
@@ -189,7 +189,7 @@ export default function AccountsPage() {
                   </div>
                   <div className="mt-3 flex gap-2">
                     <Button variant="outline" onClick={() => setFundAccount(a)} className="flex-1 !py-1.5 text-xs">
-                      <Plus className="h-3.5 w-3.5" /> Add Funds
+                      <Plus className="h-3.5 w-3.5" /> Add Money
                     </Button>
                     <Button variant="ghost" onClick={() => startEdit(a)} className="!px-2.5 text-muted-foreground">
                       <Pencil className="h-4 w-4" />
@@ -212,7 +212,6 @@ export default function AccountsPage() {
             <tr>
               <th className="px-4 py-2.5 font-medium">Name</th>
               <th className="px-4 py-2.5 font-medium">Type</th>
-              <th className="px-4 py-2.5 text-right font-medium">Opening</th>
               <th className="px-4 py-2.5 text-right font-medium">Current Balance</th>
               <th className="px-4 py-2.5"></th>
             </tr>
@@ -221,14 +220,14 @@ export default function AccountsPage() {
             {!accounts ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i}>
-                  <td colSpan={5} className="px-4 py-3">
+                  <td colSpan={4} className="px-4 py-3">
                     <Skeleton className="h-5 w-full" />
                   </td>
                 </tr>
               ))
             ) : accounts.length === 0 ? (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={4}>
                   <EmptyState>No accounts yet.</EmptyState>
                 </td>
               </tr>
@@ -246,7 +245,6 @@ export default function AccountsPage() {
                         options={Object.entries(ACCOUNT_TYPE_LABELS).map(([k, v]) => ({ label: v, value: k }))}
                       />
                     </td>
-                    <td className="px-4 py-2 text-right text-muted-foreground">{inr(a.opening_balance)}</td>
                     <td className="px-4 py-2 text-right font-semibold">{inr(a.current_balance)}</td>
                     <td className="px-4 py-2">
                       <div className="flex justify-end gap-1">
@@ -265,14 +263,13 @@ export default function AccountsPage() {
                     <td className="px-4 py-3">
                       <Label color={TYPE_COLOR[a.account_type]}>{ACCOUNT_TYPE_LABELS[a.account_type]}</Label>
                     </td>
-                    <td className="px-4 py-3 text-right text-muted-foreground">{inr(a.opening_balance)}</td>
                     <td className={`px-4 py-3 text-right font-semibold ${a.current_balance < 0 ? "text-danger" : ""}`}>
                       {inr(a.current_balance)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-1">
                         <Button variant="outline" onClick={() => setFundAccount(a)} className="!px-2.5 !py-1.5 text-xs">
-                          <Plus className="h-3.5 w-3.5" /> Add Funds
+                          <Plus className="h-3.5 w-3.5" /> Add Money
                         </Button>
                         <Button variant="ghost" onClick={() => startEdit(a)} className="!px-2.5 text-muted-foreground">
                           <Pencil className="h-4 w-4" />

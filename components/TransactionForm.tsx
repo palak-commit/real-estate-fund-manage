@@ -12,7 +12,7 @@ type Project = { id: number; name: string; balance: number };
 
 const TYPES = ["site_fund", "site_expense", "transfer", "partner_withdrawal"];
 const labelFor = (tp: string) =>
-  tp === "site_expense" ? "Site Expense" : tp === "site_fund" ? "Site Fund" : TYPE_LABELS[tp];
+  tp === "site_expense" ? "Site Expense" : tp === "site_fund" ? "Add Site Fund" : TYPE_LABELS[tp];
 
 function blank() {
   return {
@@ -338,7 +338,7 @@ export default function TransactionForm({
               <Labeled label="Destination Account">
                 <CustomSelect value={f.dest} onChange={(val) => set({ dest: val })} options={accountOptions(f.source_account_id, true)} placeholder="Select…" />
                 <p className="mt-1 text-xs text-muted-foreground">
-                  To send money to a site, use “Allocate Funds” instead.
+                  To send money to a site, use “Add Fund” instead.
                 </p>
               </Labeled>
             </>

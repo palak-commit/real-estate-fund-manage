@@ -70,7 +70,7 @@ export default function AddFundsSheet({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-1 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Add Funds to {account.name}</h2>
+          <h2 className="text-lg font-semibold">Add Money to {account.name}</h2>
           <button onClick={onClose} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted">
             <X className="h-5 w-5" />
           </button>
@@ -101,7 +101,7 @@ export default function AddFundsSheet({
         {err && <p className="mt-3 rounded-lg bg-danger/10 p-2.5 text-sm text-danger">{err}</p>}
 
         <Button onClick={submit} loading={saving} className="mt-5 w-full !py-3 text-base">
-          Add Funds
+          Add Money
         </Button>
       </div>
     </div>

@@ -156,7 +156,7 @@ export async function POST(req: NextRequest) {
       const bal = Number(siteRows[0]?.bal || 0);
       if (toPaisa(bal) < toPaisa(amount)) {
         await conn.rollback();
-        return fail(`Insufficient site funds — only ${inr(bal)} available. Allocate more funds first.`);
+        return fail(`Insufficient site funds — only ${inr(bal)} available. Add funds to the site first.`);
       }
     }
 

@@ -84,7 +84,7 @@ export default function QuickExpenseSheet({
     if (Number(amount) > available)
       return setErr(
         fromSite
-          ? `Insufficient funds — ${sourceName} has only ${inr(available)} available. Allocate more funds first.`
+          ? `Insufficient funds — ${sourceName} has only ${inr(available)} available. Add funds to the site first.`
           : `Insufficient balance — ${sourceName} has only ${inr(available)} available.`
       );
 
