@@ -2,8 +2,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Plus, ArrowDownToLine, Building2, AlertTriangle, Receipt } from "lucide-react";
-import { Card, Label, Button, Skeleton, EmptyState, CustomSelect, CustomDatePicker } from "@/components/ui";
+import { ChevronLeft, ChevronRight, Plus, ArrowDownToLine, Building2, AlertTriangle, Receipt, Pencil, Check, X } from "lucide-react";
+import { Card, Label, Button, Input, Skeleton, EmptyState, CustomSelect, CustomDatePicker } from "@/components/ui";
 import { useActions } from "@/components/ActionsProvider";
 import { useUI } from "@/components/UIProvider";
 import { inr, formatDate, TYPE_LABELS, siteStatus, LEVEL_LABEL, type SiteLevel } from "@/lib/format";
@@ -37,6 +37,8 @@ export default function ProjectDetail() {
   const { toast, confirm } = useUI();
   const [p, setP] = useState<any>(null);
   const [notFound, setNotFound] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", status: "active" });
 
   // Transactions list (same filters as the Transactions page, locked to this site)
   const [txns, setTxns] = useState<any[] | null>(null);
@@ -123,6 +125,26 @@ export default function ProjectDetail() {
     window.dispatchEvent(new CustomEvent("txn:created"));
   }
 
+  function startEdit() {
+    setEditForm({ name: p.name, status: p.status });
+    setEditing(true);
+  }
+
+  async function saveSite() {
+    const res = await fetch(`/api/projects/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editForm),
+    });
+    if (!res.ok) {
+      toast((await res.json()).message || "Could not update site", "error");
+      return;
+    }
+    toast("Site updated", "success");
+    setEditing(false);
+    loadSite();
+  }
+
   if (notFound) return <p className="text-muted-foreground">Site not found.</p>;
   if (!p)
     return (
@@ -147,18 +169,53 @@ export default function ProjectDetail() {
       </Link>
 
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-          <Building2 className="h-6 w-6 text-muted-foreground" /> {p.name}
-        </h1>
-        <Label color={STATUS_COLOR[p.status]}>{STATUS_LABEL[p.status]}</Label>
-        <div className="ml-auto flex gap-2">
-          <Button variant="outline" onClick={() => allocateFunds(Number(id))}>
-            <ArrowDownToLine className="h-4 w-4" /> Add Site Fund
-          </Button>
-          <Button onClick={() => recordExpense(Number(id))}>
-            <Plus className="h-4 w-4" /> Add Expense
-          </Button>
-        </div>
+        {editing ? (
+          <>
+            <Input
+              autoFocus
+              value={editForm.name}
+              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              className="!w-56 !text-lg !font-semibold"
+            />
+            <div className="w-40">
+              <CustomSelect
+                value={editForm.status}
+                onChange={(val) => setEditForm({ ...editForm, status: val })}
+                options={Object.entries(STATUS_LABEL).map(([k, v]) => ({ label: v, value: k }))}
+              />
+            </div>
+            <div className="ml-auto flex gap-2">
+              <Button onClick={saveSite}>
+                <Check className="h-4 w-4" /> Save
+              </Button>
+              <Button variant="outline" onClick={() => setEditing(false)}>
+                <X className="h-4 w-4" /> Cancel
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+              <Building2 className="h-6 w-6 text-muted-foreground" /> {p.name}
+            </h1>
+            <Label color={STATUS_COLOR[p.status]}>{STATUS_LABEL[p.status]}</Label>
+            <button
+              onClick={startEdit}
+              aria-label="Edit site"
+              className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+            <div className="ml-auto flex gap-2">
+              <Button variant="outline" onClick={() => allocateFunds(Number(id))}>
+                <ArrowDownToLine className="h-4 w-4" /> Add Site Fund
+              </Button>
+              <Button onClick={() => recordExpense(Number(id))}>
+                <Plus className="h-4 w-4" /> Add Expense
+              </Button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Balance hero */}

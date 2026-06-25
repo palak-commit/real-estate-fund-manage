@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BarChart3, List } from "lucide-react";
 import { Card, CustomDatePicker, Skeleton, EmptyState } from "@/components/ui";
 import { inr, todayISO, CATEGORY_ICON } from "@/lib/format";
 
@@ -49,6 +50,7 @@ export default function ReportsPage() {
   const [r, setR] = useState<Report | null>(null);
   const [dash, setDash] = useState<Dash | null>(null);
   const [tab, setTab] = useState<"site" | "category">("site");
+  const [view, setView] = useState<"table" | "chart">("table");
 
   useEffect(() => {
     fetch("/api/dashboard")
@@ -149,28 +151,55 @@ export default function ReportsPage() {
         </Card>
       ) : (
         <Card className="overflow-hidden">
-          {/* Tabs: By Site · By Category */}
-          <div className="flex gap-1 border-b border-border px-2">
-            {([
-              { key: "site", label: "By Site" },
-              { key: "category", label: "By Category" },
-            ] as const).map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-medium transition ${
-                  tab === t.key
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+          {/* Tabs: By Site · By Category + Table/Chart toggle */}
+          <div className="flex items-center justify-between border-b border-border px-2">
+            <div className="flex gap-1">
+              {([
+                { key: "site", label: "By Site" },
+                { key: "category", label: "By Category" },
+              ] as const).map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-medium transition ${
+                    tab === t.key
+                      ? "border-primary text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setView((v) => (v === "table" ? "chart" : "table"))}
+              className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+              {view === "table" ? (
+                <>
+                  <BarChart3 className="h-3.5 w-3.5" /> Chart
+                </>
+              ) : (
+                <>
+                  <List className="h-3.5 w-3.5" /> Table
+                </>
+              )}
+            </button>
           </div>
 
+          {/* Chart view (current tab's spend as a pie) */}
+          {view === "chart" && (
+            <PieChart
+              items={
+                tab === "site"
+                  ? r.sites.map((s) => ({ label: s.name, value: s.spent }))
+                  : r.categories.map((c) => ({ label: c.category, value: c.total }))
+              }
+            />
+          )}
+
           {/* By Site */}
-          {tab === "site" && (
+          {view === "table" && tab === "site" && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted text-left text-muted-foreground">
@@ -220,7 +249,7 @@ export default function ReportsPage() {
           )}
 
           {/* By Category */}
-          {tab === "category" && (
+          {view === "table" && tab === "category" && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-muted text-left text-muted-foreground">
@@ -271,6 +300,66 @@ export default function ReportsPage() {
           )}
         </Card>
       )}
+    </div>
+  );
+}
+
+const PIE_COLORS = ["#6366f1", "#22c55e", "#ef4444", "#f59e0b", "#3b82f6", "#a855f7", "#ec4899", "#14b8a6"];
+
+function PieChart({ items }: { items: { label: string; value: number }[] }) {
+  const data = items.filter((i) => i.value > 0);
+  const total = data.reduce((s, i) => s + i.value, 0);
+  if (total <= 0) return <EmptyState>No spending in this range.</EmptyState>;
+
+  const r = 60;
+  const C = 2 * Math.PI * r;
+  let acc = 0;
+  const segments = data.map((it, idx) => {
+    const frac = it.value / total;
+    const len = frac * C;
+    const seg = {
+      ...it,
+      frac,
+      color: PIE_COLORS[idx % PIE_COLORS.length],
+      dash: `${len} ${C - len}`,
+      offset: -acc,
+    };
+    acc += len;
+    return seg;
+  });
+
+  return (
+    <div className="flex flex-col items-center gap-6 p-5 sm:flex-row sm:justify-center sm:gap-10">
+      <svg width="160" height="160" viewBox="0 0 160 160" className="shrink-0">
+        <g transform="rotate(-90 80 80)">
+          {segments.map((s) => (
+            <circle
+              key={s.label}
+              cx="80"
+              cy="80"
+              r={r}
+              fill="none"
+              stroke={s.color}
+              strokeWidth="26"
+              strokeDasharray={s.dash}
+              strokeDashoffset={s.offset}
+            />
+          ))}
+        </g>
+        <text x="80" y="76" textAnchor="middle" className="fill-current text-muted-foreground text-[10px]">Total</text>
+        <text x="80" y="92" textAnchor="middle" className="fill-current text-foreground text-sm font-semibold">{inr(total)}</text>
+      </svg>
+      <div className="space-y-2">
+        {segments.map((s) => (
+          <div key={s.label} className="flex items-center gap-2 text-sm">
+            <span className="h-3 w-3 shrink-0 rounded-sm" style={{ background: s.color }} />
+            <span className="font-medium">{s.label}</span>
+            <span className="text-muted-foreground">
+              {inr(s.value)} · {Math.round(s.frac * 100)}%
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

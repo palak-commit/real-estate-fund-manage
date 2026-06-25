@@ -71,6 +71,21 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   await ready();
   const id = parseId((await params).id);
   if (!id) return fail("Invalid project id", 400);
+
+  // Guard: a site with any transactions holds real money history (funds added, expenses).
+  // Deleting it would orphan that ledger and corrupt the total-money view, so refuse and
+  // tell the owner to clear the site's transactions first.
+  const [dep]: any = await pool.query(
+    "SELECT COUNT(*) AS c FROM transactions WHERE project_id = ?",
+    [id]
+  );
+  const n = Number(dep[0]?.c || 0);
+  if (n > 0) {
+    return fail(
+      `Cannot delete — this site has ${n} ${n === 1 ? "transaction" : "transactions"}. Delete or move those transactions first.`
+    );
+  }
+
   await pool.query("DELETE FROM projects WHERE id = ?", [id]);
   return ok(null, "Project deleted");
 }
