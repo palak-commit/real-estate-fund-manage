@@ -324,7 +324,7 @@ export default function ProjectDetail() {
         </Filter>
         <Filter label="Paid To">
           <div className="w-40">
-            <PaidToPicker value={paidTo} onChange={setPaidTo} placeholder="All Payees" />
+            <PaidToPicker value={paidTo} onChange={setPaidTo} placeholder="All Payees" allowAdd={false} />
           </div>
         </Filter>
         <Filter label="From">
@@ -343,11 +343,18 @@ export default function ProjectDetail() {
         )}
         <div className="ml-auto text-right">
           <p className="text-xs text-muted-foreground">{pg ? `${pg.total} entries` : "—"}</p>
-          {type && pg && pg.total > 0 && (
-            <p className="text-sm font-semibold">
-              {type === "income" ? "Income" : TYPE_LABELS[type]} total: {inr(sumAmount)}
-            </p>
-          )}
+          {pg &&
+            pg.total > 0 &&
+            (() => {
+              // Single-type filter → show its total. Category/Paid To imply expenses-only.
+              const expenseOnly = type === "expense" || (!type && (!!category || !!paidTo));
+              const label = type ? (type === "income" ? "Income" : TYPE_LABELS[type]) : expenseOnly ? "Expense" : null;
+              return label ? (
+                <p className="text-sm font-semibold">
+                  {label} total: {inr(sumAmount)}
+                </p>
+              ) : null;
+            })()}
         </div>
       </div>
 

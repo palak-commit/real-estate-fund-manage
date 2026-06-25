@@ -269,7 +269,7 @@ function HistoryPageInner() {
         </Filter>
         <Filter label="Paid To">
           <div className="w-40">
-            <PaidToPicker value={paidTo} onChange={setPaidTo} placeholder="All Payees" />
+            <PaidToPicker value={paidTo} onChange={setPaidTo} placeholder="All Payees" allowAdd={false} />
           </div>
         </Filter>
         <Filter label="From">
@@ -298,11 +298,19 @@ function HistoryPageInner() {
           </Button>
           <div className="text-right">
             <p className="text-xs text-muted-foreground">{pg ? `${pg.total} entries` : "—"}</p>
-            {type && pg && pg.total > 0 && (
-              <p className="text-sm font-semibold">
-                {TYPE_FILTER_LABEL[type] ?? type} total: {inr(sumAmount)}
-              </p>
-            )}
+            {pg &&
+              pg.total > 0 &&
+              (() => {
+                // Show a total only when the filtered set is a single type, so the sum is
+                // meaningful. Category/Paid To filters imply expenses-only even with no Type.
+                const expenseOnly = type === "expense" || (!type && (!!category || !!paidTo));
+                const label = type ? TYPE_FILTER_LABEL[type] ?? type : expenseOnly ? "Expense" : null;
+                return label ? (
+                  <p className="text-sm font-semibold">
+                    {label} total: {inr(sumAmount)}
+                  </p>
+                ) : null;
+              })()}
           </div>
         </div>
       </div>

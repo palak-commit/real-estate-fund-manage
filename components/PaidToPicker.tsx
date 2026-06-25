@@ -10,10 +10,14 @@ export default function PaidToPicker({
   value,
   onChange,
   placeholder = "e.g. Ramesh Contractor",
+  allowAdd = true,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  // When false (filter usage) the "Add …" option and Enter-to-add are hidden — you can
+  // only pick an existing payee, since filtering can't create one.
+  allowAdd?: boolean;
 }) {
   const [payees, setPayees] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
@@ -92,7 +96,8 @@ export default function PaidToPicker({
               onKeyDown={(e) => {
                 if (e.key === "Enter" && trimmed) {
                   e.preventDefault();
-                  pick(trimmed);
+                  // In filter mode, only accept an existing payee on Enter.
+                  if (allowAdd || exactMatch) pick(allowAdd ? trimmed : payees.find((p) => p.toLowerCase() === lower)!);
                 } else if (e.key === "Escape") {
                   setOpen(false);
                   setSearch("");
@@ -115,8 +120,9 @@ export default function PaidToPicker({
               </button>
             )}
 
-            {/* Add the typed name when it isn't already an exact existing payee. */}
-            {trimmed && !exactMatch && (
+            {/* Add the typed name when it isn't already an exact existing payee.
+                Hidden in filter mode (allowAdd=false) — can't create a payee while filtering. */}
+            {allowAdd && trimmed && !exactMatch && (
               <button
                 type="button"
                 onClick={() => pick(trimmed)}
@@ -125,6 +131,11 @@ export default function PaidToPicker({
                 <Plus className="h-4 w-4" />
                 Add “{trimmed}”
               </button>
+            )}
+
+            {/* Filter mode: typed text matches nothing → tell the user, don't offer to add. */}
+            {!allowAdd && trimmed && filtered.length === 0 && (
+              <div className="px-3 py-2 text-sm text-muted-foreground">No matching payee.</div>
             )}
 
             {filtered.map((p) => (
