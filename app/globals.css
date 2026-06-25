@@ -4,13 +4,12 @@
 
 html {
   -webkit-text-size-adjust: 100%;
-  /* Scale the whole UI ~10% (like browser zoom 110%). Tailwind sizes are rem-based,
-     so text, spacing, widths and icons all grow proportionally. */
-  font-size: 110%;
 }
 
 body {
   @apply bg-background text-foreground antialiased;
+  /* Scale the whole UI to match browser zoom 110% (scales layout, text, px and images). */
+  zoom: 1.1;
 }
 
 /* Skeleton shimmer */

@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CustomDatePicker, Skeleton, EmptyState } from "@/components/ui";
 import { inr, todayISO, CATEGORY_ICON } from "@/lib/format";
@@ -40,13 +40,12 @@ const PRESETS = [
   { key: "week", label: "This Week" },
   { key: "month", label: "This Month" },
   { key: "all", label: "All Time" },
-  { key: "custom", label: "Custom" },
 ];
 
 export default function ReportsPage() {
   const router = useRouter();
   const [preset, setPreset] = useState("month");
-  const [custom, setCustom] = useState({ from: todayISO(), to: todayISO() });
+  const [range, setRange] = useState<{ from: string; to: string }>(() => rangeFor("month"));
   const [r, setR] = useState<Report | null>(null);
   const [dash, setDash] = useState<Dash | null>(null);
   const [tab, setTab] = useState<"site" | "category">("site");
@@ -58,7 +57,15 @@ export default function ReportsPage() {
       .catch(() => {});
   }, []);
 
-  const range = useMemo(() => (preset === "custom" ? custom : rangeFor(preset)), [preset, custom]);
+  // Click a preset → fill the date fields with that range; editing a date → custom range.
+  const pickPreset = (key: string) => {
+    setPreset(key);
+    setRange(rangeFor(key));
+  };
+  const setDate = (which: "from" | "to", val: string) => {
+    setPreset(""); // manual date edit = no active preset
+    setRange((rg) => ({ ...rg, [which]: val }));
+  };
 
   const load = useCallback(() => {
     setR(null);
@@ -98,7 +105,7 @@ export default function ReportsPage() {
         {PRESETS.map((p) => (
           <button
             key={p.key}
-            onClick={() => setPreset(p.key)}
+            onClick={() => pickPreset(p.key)}
             className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition ${
               preset === p.key ? "border-primary bg-primary text-white" : "border-border hover:bg-muted"
             }`}
@@ -106,13 +113,24 @@ export default function ReportsPage() {
             {p.label}
           </button>
         ))}
-        {preset === "custom" && (
-          <div className="flex items-center gap-2">
-            <CustomDatePicker value={custom.from} onChange={(val) => setCustom({ ...custom, from: val })} className="w-32" />
-            <span className="text-muted-foreground">to</span>
-            <CustomDatePicker value={custom.to} onChange={(val) => setCustom({ ...custom, to: val })} className="w-32" align="right" />
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <CustomDatePicker
+            value={range.from}
+            onChange={(val) => setDate("from", val)}
+            onClear={() => setDate("from", "")}
+            maxDate={range.to || undefined}
+            className="w-36"
+          />
+          <span className="text-muted-foreground">to</span>
+          <CustomDatePicker
+            value={range.to}
+            onChange={(val) => setDate("to", val)}
+            onClear={() => setDate("to", "")}
+            minDate={range.from || undefined}
+            className="w-36"
+            align="right"
+          />
+        </div>
       </div>
 
       {!r ? (
