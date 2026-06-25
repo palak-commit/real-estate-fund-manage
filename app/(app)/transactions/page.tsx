@@ -129,6 +129,7 @@ export default function HistoryPage() {
           <CustomSelect
             value={type}
             onChange={(val) => setType(val)}
+            onClear={() => setType("")}
             options={[
               { label: "All Types", value: "" },
               ...Object.entries(TYPE_LABELS)
@@ -143,6 +144,7 @@ export default function HistoryPage() {
           <CustomSelect
             value={projectId}
             onChange={(val) => setProjectId(val)}
+            onClear={() => setProjectId("")}
             options={[
               { label: "All Sites", value: "" },
               ...projects.map((p) => ({ label: p.name, value: String(p.id) }))
@@ -155,6 +157,7 @@ export default function HistoryPage() {
           <CustomSelect
             value={category}
             onChange={(val) => setCategory(val)}
+            onClear={() => setCategory("")}
             options={[
               { label: "All Categories", value: "" },
               ...categories.map((c) => ({ label: c.name, value: c.name }))
@@ -167,6 +170,7 @@ export default function HistoryPage() {
           <CustomSelect
             value={account}
             onChange={(val) => setAccount(val)}
+            onClear={() => setAccount("")}
             options={[
               { label: "All Accounts", value: "" },
               ...accounts.map((a) => ({ label: a.name, value: String(a.id) }))
@@ -181,10 +185,10 @@ export default function HistoryPage() {
           </div>
         </Filter>
         <Filter label="From">
-          <CustomDatePicker value={from} onChange={(val) => setFrom(val)} className="w-40" />
+          <CustomDatePicker value={from} onChange={(val) => setFrom(val)} onClear={() => setFrom("")} maxDate={to || undefined} className="w-40" />
         </Filter>
         <Filter label="To">
-          <CustomDatePicker value={to} onChange={(val) => setTo(val)} className="w-40" align="right" />
+          <CustomDatePicker value={to} onChange={(val) => setTo(val)} onClear={() => setTo("")} minDate={from || undefined} className="w-40" align="right" />
         </Filter>
         {hasFilters && (
           <button

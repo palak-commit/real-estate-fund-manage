@@ -142,7 +142,7 @@ export default function Home() {
 
                   <div className="mt-4 flex gap-2">
                     <Button variant="outline" onClick={() => allocateFunds(s.id)} className="flex-1 !py-1.5 text-xs">
-                      <ArrowDownToLine className="h-3.5 w-3.5" /> Allocate
+                      <ArrowDownToLine className="h-3.5 w-3.5" /> Add Fund
                     </Button>
                     <Button onClick={() => recordExpense(s.id)} className="flex-1 !py-1.5 text-xs">
                       <Plus className="h-3.5 w-3.5" /> Expense

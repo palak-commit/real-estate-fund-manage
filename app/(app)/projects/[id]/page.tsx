@@ -1,12 +1,14 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, Plus, ArrowDownToLine, Building2, AlertTriangle } from "lucide-react";
-import { Card, Label, Button, Spinner, EmptyState } from "@/components/ui";
+import { ChevronLeft, ChevronRight, Plus, ArrowDownToLine, Building2, AlertTriangle, Receipt } from "lucide-react";
+import { Card, Label, Button, Spinner, EmptyState, CustomSelect, CustomDatePicker } from "@/components/ui";
 import { useActions } from "@/components/ActionsProvider";
-import { inr, formatDate, CATEGORY_ICON, siteStatus, LEVEL_LABEL, type SiteLevel } from "@/lib/format";
+import { useUI } from "@/components/UIProvider";
+import { inr, formatDate, TYPE_LABELS, siteStatus, LEVEL_LABEL, type SiteLevel } from "@/lib/format";
 import { TxnRow } from "@/components/TxnRow";
+import PaidToPicker from "@/components/PaidToPicker";
 
 const STATUS_COLOR: Record<string, string> = { active: "green", on_hold: "amber", completed: "blue" };
 const STATUS_LABEL: Record<string, string> = { active: "Active", on_hold: "On Hold", completed: "Completed" };
@@ -17,51 +19,116 @@ const LEVEL_STYLE: Record<SiteLevel, string> = {
   none: "bg-muted text-muted-foreground",
 };
 
+type Account = { id: number; name: string };
+type Category = { id: number; name: string };
+type Pagination = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+};
+const PAGE_SIZE = 15;
+
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const { recordExpense, allocateFunds } = useActions();
+  const { toast, confirm } = useUI();
   const [p, setP] = useState<any>(null);
   const [notFound, setNotFound] = useState(false);
-  const [tab, setTab] = useState<"activity" | "category" | "expenses">("activity");
 
-  const load = useCallback(() => {
+  // Transactions list (same filters as the Transactions page, locked to this site)
+  const [txns, setTxns] = useState<any[] | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [type, setType] = useState("expense");
+  const [category, setCategory] = useState("");
+  const [account, setAccount] = useState("");
+  const [paidTo, setPaidTo] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [page, setPage] = useState(1);
+  const [pg, setPg] = useState<Pagination | null>(null);
+  const [sumAmount, setSumAmount] = useState(0);
+
+  const loadSite = useCallback(() => {
     fetch(`/api/projects/${id}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
       .then((j) => setP(j.data))
       .catch(() => setNotFound(true));
   }, [id]);
 
+  // Reset to page 1 whenever a filter changes.
+  useEffect(() => setPage(1), [type, category, account, paidTo, from, to]);
+
+  const loadTxns = useCallback(() => {
+    setTxns(null);
+    const qs = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(page), project_id: String(id) });
+    if (type) qs.set("type", type);
+    if (category) qs.set("category", category);
+    if (account) qs.set("account", account);
+    if (paidTo) qs.set("paid_to", paidTo);
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
+    fetch(`/api/transactions?${qs}`)
+      .then((r) => r.json())
+      .then((res) => {
+        setTxns(res.data ?? []);
+        setPg(res.pagination ?? null);
+        setSumAmount(res.summary?.amount ?? 0);
+      });
+  }, [id, type, category, account, paidTo, from, to, page]);
+
   useEffect(() => {
-    load();
-    const h = () => load();
+    fetch("/api/categories").then((r) => r.json()).then((j) => setCategories(j.data));
+    fetch("/api/accounts").then((r) => r.json()).then((j) => setAccounts(j.data));
+  }, []);
+
+  useEffect(() => {
+    loadSite();
+    loadTxns();
+    const h = () => {
+      loadSite();
+      loadTxns();
+    };
     window.addEventListener("txn:created", h);
     return () => window.removeEventListener("txn:created", h);
-  }, [load]);
+  }, [loadSite, loadTxns]);
 
-  // Group transactions by day for the timeline
-  const grouped = useMemo(() => {
-    const g: Record<string, any[]> = {};
-    for (const t of p?.transactions || []) {
-      const key = t.txn_date;
-      (g[key] ||= []).push(t);
+  const hasFilters = !!(type || category || account || paidTo || from || to);
+  function clearFilters() {
+    setType("");
+    setCategory("");
+    setAccount("");
+    setPaidTo("");
+    setFrom("");
+    setTo("");
+  }
+
+  async function deleteTxn(t: any) {
+    const okToDelete = await confirm({
+      title: "Delete transaction?",
+      message: `This ${TYPE_LABELS[t.type]?.toLowerCase() || ""} of ${inr(t.amount)} will be removed and balances recalculated.`,
+      confirmText: "Delete",
+      danger: true,
+    });
+    if (!okToDelete) return;
+    const res = await fetch(`/api/transactions/${t.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      toast((await res.json()).message || "Could not delete", "error");
+      return;
     }
-    return Object.entries(g);
-  }, [p]);
-
-  // Expenses only (for the dedicated Expenses section)
-  const expenses = useMemo(
-    () => (p?.transactions || []).filter((t: any) => t.type === "expense"),
-    [p]
-  );
-  const totalExpenses = useMemo(
-    () => expenses.reduce((s: number, t: any) => s + Number(t.amount), 0),
-    [expenses]
-  );
+    toast("Transaction deleted", "success");
+    window.dispatchEvent(new CustomEvent("txn:created"));
+  }
 
   if (notFound) return <p className="text-muted-foreground">Site not found.</p>;
   if (!p) return <Spinner />;
 
   const { runway, level } = siteStatus(p.balance, Number(p.spent14 || 0), Number(p.received || 0));
+  const rangeStart = pg && pg.total > 0 ? (pg.page - 1) * pg.limit + 1 : 0;
+  const rangeEnd = pg ? Math.min(pg.page * pg.limit, pg.total) : 0;
 
   return (
     <div className="space-y-6">
@@ -76,7 +143,7 @@ export default function ProjectDetail() {
         <Label color={STATUS_COLOR[p.status]}>{STATUS_LABEL[p.status]}</Label>
         <div className="ml-auto flex gap-2">
           <Button variant="outline" onClick={() => allocateFunds(Number(id))}>
-            <ArrowDownToLine className="h-4 w-4" /> Allocate
+            <ArrowDownToLine className="h-4 w-4" /> Add Fund
           </Button>
           <Button onClick={() => recordExpense(Number(id))}>
             <Plus className="h-4 w-4" /> Add Expense
@@ -106,93 +173,120 @@ export default function ProjectDetail() {
         </div>
       </Card>
 
-      {/* Tabbed detail: Activity · Spend by Category · Expenses */}
-      <Card className="overflow-hidden">
-        <div className="flex gap-1 border-b border-border px-2">
-          {([
-            { key: "activity", label: "Activity" },
-            { key: "category", label: "Spend by Category" },
-            { key: "expenses", label: `Expenses (${expenses.length})` },
-          ] as const).map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={`-mb-px border-b-2 px-3 py-2.5 text-sm font-medium transition ${
-                tab === t.key
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+      {/* Transactions (same filters as the Transactions page, locked to this site) */}
+      <div className="flex flex-wrap items-end gap-3">
+        <Filter label="Type">
+          <CustomSelect
+            value={type}
+            onChange={(val) => setType(val)}
+            onClear={() => setType("")}
+            options={[
+              { label: "All Types", value: "" },
+              ...Object.entries(TYPE_LABELS)
+                .filter(([k]) => k !== "partner_contribution")
+                .map(([k, v]) => ({ label: v, value: k })),
+            ]}
+            placeholder="All Types"
+            className="w-40"
+          />
+        </Filter>
+        <Filter label="Category">
+          <CustomSelect
+            value={category}
+            onChange={(val) => setCategory(val)}
+            onClear={() => setCategory("")}
+            options={[
+              { label: "All Categories", value: "" },
+              ...categories.map((c) => ({ label: c.name, value: c.name })),
+            ]}
+            placeholder="All Categories"
+            className="w-40"
+          />
+        </Filter>
+        <Filter label="Account">
+          <CustomSelect
+            value={account}
+            onChange={(val) => setAccount(val)}
+            onClear={() => setAccount("")}
+            options={[
+              { label: "All Accounts", value: "" },
+              ...accounts.map((a) => ({ label: a.name, value: String(a.id) })),
+            ]}
+            placeholder="All Accounts"
+            className="w-40"
+          />
+        </Filter>
+        <Filter label="Paid To">
+          <div className="w-40">
+            <PaidToPicker value={paidTo} onChange={setPaidTo} placeholder="All Payees" />
+          </div>
+        </Filter>
+        <Filter label="From">
+          <CustomDatePicker value={from} onChange={(val) => setFrom(val)} onClear={() => setFrom("")} maxDate={to || undefined} className="w-40" />
+        </Filter>
+        <Filter label="To">
+          <CustomDatePicker value={to} onChange={(val) => setTo(val)} onClear={() => setTo("")} minDate={from || undefined} className="w-40" align="right" />
+        </Filter>
+        {hasFilters && (
+          <button
+            onClick={clearFilters}
+            className="h-[42px] rounded-lg border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted"
+          >
+            Clear
+          </button>
+        )}
+        <div className="ml-auto text-right">
+          <p className="text-xs text-muted-foreground">{pg ? `${pg.total} entries` : "—"}</p>
+          {type && pg && pg.total > 0 && (
+            <p className="text-sm font-semibold">
+              {TYPE_LABELS[type]} total: {inr(sumAmount)}
+            </p>
+          )}
         </div>
+      </div>
 
-        {/* Activity */}
-        {tab === "activity" &&
-          (grouped.length === 0 ? (
-            <EmptyState>No activity yet.</EmptyState>
-          ) : (
-            <div className="max-h-[60vh] overflow-y-auto">
-              {grouped.map(([day, items]) => (
-                <div key={day}>
-                  <div className="sticky top-0 bg-muted/70 px-4 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur">
-                    {formatDate(day)}
-                  </div>
-                  <div className="divide-y divide-border">
-                    {items.map((t: any) => (
-                      <TxnRow key={t.id} t={{ ...t, project_name: p.name }} />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))}
-
-        {/* Spend by Category */}
-        {tab === "category" &&
-          (p.byCategory.length === 0 ? (
-            <EmptyState>No expenses yet.</EmptyState>
-          ) : (
-            <div className="space-y-3 p-4">
-              {p.byCategory.map((c: any) => {
-                const Icon = CATEGORY_ICON[c.category] || CATEGORY_ICON.Miscellaneous;
-                const pct = p.spent > 0 ? Math.round((c.total / p.spent) * 100) : 0;
-                return (
-                  <div key={c.category}>
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2">
-                        <Icon className="h-4 w-4 text-muted-foreground" /> {c.category}
-                      </span>
-                      <span className="font-medium">{inr(c.total)}</span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-
-        {/* Expenses */}
-        {tab === "expenses" &&
-          (expenses.length === 0 ? (
-            <EmptyState>No expenses yet.</EmptyState>
-          ) : (
-            <>
-              <div className="flex items-center justify-between border-b border-border px-4 py-2 text-sm text-muted-foreground">
-                <span>{expenses.length} {expenses.length === 1 ? "expense" : "expenses"}</span>
-                <span className="font-semibold text-danger">{inr(totalExpenses)}</span>
-              </div>
-              <div className="max-h-[60vh] divide-y divide-border overflow-y-auto">
-                {expenses.map((t: any) => (
-                  <TxnRow key={t.id} t={{ ...t, project_name: p.name }} />
-                ))}
-              </div>
-            </>
-          ))}
+      <Card className="overflow-hidden">
+        {!txns ? (
+          <ListSkeleton />
+        ) : txns.length === 0 ? (
+          <EmptyState icon={<Receipt className="h-6 w-6" />}>No transactions found.</EmptyState>
+        ) : (
+          <div className="divide-y divide-border">
+            {txns.map((t) => (
+              <TxnRow key={t.id} t={{ ...t, project_name: p.name }} onDelete={deleteTxn} />
+            ))}
+          </div>
+        )}
       </Card>
+
+      {pg && pg.total > 0 && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            Showing {rangeStart}–{rangeEnd} of {pg.total}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              disabled={!pg.hasPrevPage}
+              onClick={() => setPage((pp) => Math.max(1, pp - 1))}
+              className="!py-1.5 text-xs"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" /> Prev
+            </Button>
+            <span className="text-muted-foreground">
+              Page {pg.page} of {pg.totalPages}
+            </span>
+            <Button
+              variant="outline"
+              disabled={!pg.hasNextPage}
+              onClick={() => setPage((pp) => pp + 1)}
+              className="!py-1.5 text-xs"
+            >
+              Next <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -202,6 +296,32 @@ function Mini({ label, value, className = "" }: { label: string; value: string; 
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className={`mt-0.5 font-semibold ${className}`}>{value}</p>
+    </div>
+  );
+}
+
+function Filter({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-medium text-muted-foreground">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function ListSkeleton() {
+  return (
+    <div className="divide-y divide-border">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 px-4 py-3">
+          <div className="skeleton h-10 w-10 rounded-lg" />
+          <div className="flex-1 space-y-2">
+            <div className="skeleton h-3 w-1/3" />
+            <div className="skeleton h-3 w-1/2" />
+          </div>
+          <div className="skeleton h-4 w-16" />
+        </div>
+      ))}
     </div>
   );
 }

@@ -7,9 +7,11 @@ interface CalendarProps {
   value?: Date;
   onChange?: (date: Date) => void;
   className?: string;
+  min?: Date; // earliest selectable day (inclusive)
+  max?: Date; // latest selectable day (inclusive)
 }
 
-export function Calendar({ value, onChange, className = "" }: CalendarProps) {
+export function Calendar({ value, onChange, className = "", min, max }: CalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(value || new Date());
 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
@@ -31,6 +33,14 @@ export function Calendar({ value, onChange, className = "" }: CalendarProps) {
       d1.getFullYear() === d2.getFullYear();
   };
 
+  const dayValue = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const isDisabled = (date: Date) => {
+    const d = dayValue(date);
+    if (min && d < dayValue(min)) return true;
+    if (max && d > dayValue(max)) return true;
+    return false;
+  };
+
   const days = [];
   for (let i = 0; i < firstDayOfMonth; i++) {
     days.push(<div key={`empty-${i}`} className="h-8 w-8" />);
@@ -40,14 +50,18 @@ export function Calendar({ value, onChange, className = "" }: CalendarProps) {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i);
     const isSelected = value ? isSameDay(date, value) : false;
     const isToday = isSameDay(date, today);
+    const disabled = isDisabled(date);
 
     days.push(
       <button
         key={i}
         type="button"
-        onClick={() => onChange && onChange(date)}
+        disabled={disabled}
+        onClick={() => !disabled && onChange && onChange(date)}
         className={`flex h-8 w-8 items-center justify-center rounded-full text-sm transition-colors ${
-          isSelected
+          disabled
+            ? "cursor-not-allowed text-muted-foreground/40"
+            : isSelected
             ? "bg-primary text-primary-foreground font-medium"
             : isToday
             ? "bg-muted text-foreground font-medium"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, ReactNode } from "react";
-import { ChevronDown, Check } from "lucide-react";
+import { ChevronDown, Check, X } from "lucide-react";
 
 export interface Option {
   label: string;
@@ -22,6 +22,8 @@ interface CustomSelectProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  // When provided, a × button appears while a value is selected to clear the filter.
+  onClear?: () => void;
 }
 
 export function CustomSelect({
@@ -31,6 +33,7 @@ export function CustomSelect({
   placeholder = "Select an option",
   className = "",
   disabled = false,
+  onClear,
 }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -65,7 +68,23 @@ export function CustomSelect({
         <span className={selectedOption ? "" : "text-muted-foreground"}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        {onClear && value && !disabled ? (
+          <span
+            role="button"
+            tabIndex={-1}
+            aria-label="Clear"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClear();
+              setIsOpen(false);
+            }}
+            className="rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </span>
+        ) : (
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+        )}
       </button>
 
       {isOpen && !disabled && (

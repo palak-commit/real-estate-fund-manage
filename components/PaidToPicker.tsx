@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Check, Plus, Search } from "lucide-react";
+import { ChevronDown, Check, Plus, Search, X } from "lucide-react";
 
 // Searchable "Paid To" combobox. Loads previously-used payees from the DB and lets
 // the admin pick an existing one or type a brand-new name. New names aren't stored
@@ -61,7 +61,24 @@ export default function PaidToPicker({
         <span className={value ? "text-foreground" : "text-muted-foreground"}>
           {value || placeholder}
         </span>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        {value ? (
+          <span
+            role="button"
+            tabIndex={-1}
+            aria-label="Clear"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange("");
+              setOpen(false);
+              setSearch("");
+            }}
+            className="rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </span>
+        ) : (
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        )}
       </button>
 
       {open && (

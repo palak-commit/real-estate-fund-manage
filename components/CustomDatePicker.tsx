@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, X } from "lucide-react";
 import { Calendar } from "./Calendar";
 
 interface CustomDatePickerProps {
@@ -9,9 +9,13 @@ interface CustomDatePickerProps {
   onChange: (value: string) => void;
   className?: string;
   align?: "left" | "right";
+  // When provided, a × button appears while a date is selected to clear the filter.
+  onClear?: () => void;
+  minDate?: string; // YYYY-MM-DD — disable days before this
+  maxDate?: string; // YYYY-MM-DD — disable days after this
 }
 
-export function CustomDatePicker({ value, onChange, className = "", align = "left" }: CustomDatePickerProps) {
+export function CustomDatePicker({ value, onChange, className = "", align = "left", onClear, minDate, maxDate }: CustomDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -48,12 +52,33 @@ export function CustomDatePicker({ value, onChange, className = "", align = "lef
         className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
       >
         <span>{formattedDisplay}</span>
-        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+        {onClear && value ? (
+          <span
+            role="button"
+            tabIndex={-1}
+            aria-label="Clear"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClear();
+              setIsOpen(false);
+            }}
+            className="rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </span>
+        ) : (
+          <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+        )}
       </button>
 
       {isOpen && (
         <div className={`absolute z-50 mt-1 animate-fade-in ${align === "right" ? "right-0" : "left-0"}`}>
-          <Calendar value={dateObj} onChange={handleDateChange} />
+          <Calendar
+            value={dateObj}
+            onChange={handleDateChange}
+            min={minDate ? new Date(minDate + "T12:00:00") : undefined}
+            max={maxDate ? new Date(maxDate + "T12:00:00") : undefined}
+          />
         </div>
       )}
     </div>

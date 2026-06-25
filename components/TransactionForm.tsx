@@ -10,12 +10,13 @@ import PaidToPicker from "@/components/PaidToPicker";
 type Account = { id: number; name: string; account_type: string; current_balance: number };
 type Project = { id: number; name: string; balance: number };
 
-const TYPES = ["site_expense", "expense", "transfer", "partner_withdrawal"];
-const labelFor = (tp: string) => (tp === "site_expense" ? "Site Expense" : TYPE_LABELS[tp]);
+const TYPES = ["site_fund", "site_expense", "transfer", "partner_withdrawal"];
+const labelFor = (tp: string) =>
+  tp === "site_expense" ? "Site Expense" : tp === "site_fund" ? "Site Fund" : TYPE_LABELS[tp];
 
 function blank() {
   return {
-    type: "site_expense",
+    type: "site_fund",
     txn_date: todayISO(),
     amount: "",
     category: "",
@@ -77,15 +78,11 @@ export default function TransactionForm({
   // Money-out limit: a money-out source can't be exceeded.
   const amt = Number(f.amount) || 0;
   const sourceAcctId =
-    f.type === "expense"
-      ? f.paidFrom.startsWith("acc:")
-        ? f.paidFrom.slice(4)
-        : ""
-      : f.type === "site_expense"
+    f.type === "site_expense"
       ? siteExpenseFrom.startsWith("acc:")
         ? siteExpenseFrom.slice(4)
         : ""
-      : f.type === "transfer" || f.type === "partner_withdrawal"
+      : f.type === "transfer" || f.type === "partner_withdrawal" || f.type === "site_fund"
       ? f.source_account_id
       : "";
   const sourceAcct = sourceAcctId ? accounts.find((a) => String(a.id) === sourceAcctId) : undefined;
@@ -115,11 +112,11 @@ export default function TransactionForm({
       payload.category = f.category;
       payload.project_id = f.project_id;
       payload.source_account_id = siteExpenseFrom === "site" ? "" : siteExpenseFrom.slice(4);
-    } else if (f.type === "expense") {
-      const d = decode(f.paidFrom);
-      payload.category = f.category;
-      payload.source_account_id = d.dest_account_id;
-      payload.project_id = d.project_id;
+    } else if (f.type === "site_fund") {
+      // Allocate money from an account into a site's funds (a transfer to the site).
+      payload.type = "transfer";
+      payload.source_account_id = f.source_account_id;
+      payload.project_id = f.project_id;
     } else if (f.type === "transfer" || f.type === "income") {
       const d = decode(f.dest);
       payload.source_account_id = f.type === "transfer" ? f.source_account_id : "";
@@ -131,8 +128,10 @@ export default function TransactionForm({
     }
 
     if (!payload.amount || Number(payload.amount) <= 0) return setErr("Enter a valid amount");
-    if ((f.type === "expense" || f.type === "site_expense") && !f.category) return setErr("Select a category");
+    if (f.type === "site_expense" && !f.category) return setErr("Select a category");
     if (f.type === "site_expense" && !f.project_id) return setErr("Select a site");
+    if (f.type === "site_fund" && !f.source_account_id) return setErr("Select a source account");
+    if (f.type === "site_fund" && !f.project_id) return setErr("Select a site");
     if (overSiteFunds && selectedSite)
       return setErr(`Insufficient site funds — ${selectedSite.name} has only ${inr(selectedSite.balance)} available`);
     if (sourceAcct && amt > sourceAcct.current_balance)
@@ -177,18 +176,6 @@ export default function TransactionForm({
       }
     }
 
-    return opts;
-  };
-
-  // Expense source: any FUNDED account (bank, cash or partner) with a balance > 0.
-  const fundedSourceOptions = () => {
-    const opt = (a: Account) => ({
-      label: `${a.name} (${ACCOUNT_TYPE_LABELS[a.account_type]}) · ${inr(a.current_balance)}`,
-      value: `acc:${a.id}`,
-    });
-    const opts: any[] = [];
-    if (fundedBanks.length > 0) opts.push({ group: "Accounts", items: fundedBanks.map(opt) });
-    if (fundedPartners.length > 0) opts.push({ group: "Partners", items: fundedPartners.map(opt) });
     return opts;
   };
 
@@ -238,7 +225,7 @@ export default function TransactionForm({
         </div>
 
         {/* Category chips */}
-        {(f.type === "expense" || f.type === "site_expense") && (
+        {f.type === "site_expense" && (
           <div className="mt-4">
             <p className="mb-1.5 text-sm font-medium text-muted-foreground">Category</p>
             <CategoryPicker value={f.category} onChange={(c) => set({ category: c })} />
@@ -297,13 +284,34 @@ export default function TransactionForm({
             </>
           )}
 
-          {f.type === "expense" && (
-            <Labeled label="Paid From (account)">
-              <CustomSelect value={f.paidFrom} onChange={(val) => set({ paidFrom: val })} options={fundedSourceOptions()} placeholder="Select…" />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Not tied to a site. For a site expense, use the “Site Expense” tab.
-              </p>
-            </Labeled>
+          {f.type === "site_fund" && (
+            <>
+              <Labeled label="From Account">
+                <CustomSelect
+                  value={f.source_account_id}
+                  onChange={(val) => set({ source_account_id: val })}
+                  options={[
+                    { group: "Accounts", items: fundedBanks.map(accOpt) },
+                    ...(fundedPartners.length > 0 ? [{ group: "Partners", items: fundedPartners.map(accOpt) }] : []),
+                  ]}
+                  placeholder="Select account…"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Money is moved from this account into the site’s funds.
+                </p>
+              </Labeled>
+              <Labeled label="To Site">
+                <CustomSelect
+                  value={f.project_id}
+                  onChange={(val) => set({ project_id: val })}
+                  options={projects.map((p) => ({
+                    label: `${p.name} (balance ${inr(p.balance)})`,
+                    value: String(p.id),
+                  }))}
+                  placeholder="Select site…"
+                />
+              </Labeled>
+            </>
           )}
 
           {f.type === "transfer" && (
@@ -337,7 +345,7 @@ export default function TransactionForm({
             </Labeled>
           )}
 
-          {(f.type === "expense" || f.type === "site_expense") && (
+          {f.type === "site_expense" && (
             <Labeled label="Paid To (optional)">
               <PaidToPicker value={f.paid_to} onChange={(val) => set({ paid_to: val })} />
             </Labeled>

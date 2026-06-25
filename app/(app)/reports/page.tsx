@@ -1,12 +1,23 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, CustomDatePicker, Spinner, EmptyState } from "@/components/ui";
-import { inr, CATEGORY_ICON, todayISO } from "@/lib/format";
+import { useRouter } from "next/navigation";
+import { Card, CustomDatePicker, Spinner, Skeleton, EmptyState } from "@/components/ui";
+import { inr, todayISO } from "@/lib/format";
 
 type Report = {
   sites: { id: number; name: string; received: number; spent: number; balance: number }[];
   categories: { category: string; total: number; count: number }[];
   partners: { id: number; name: string; contributed: number; withdrawn: number; outstanding: number }[];
+};
+
+type Dash = {
+  totalMoney: number;
+  bank: number;
+  cash: number;
+  partner: number;
+  siteFunds: number;
+  todayExpense: number;
+  monthExpense: number;
 };
 
 function rangeFor(preset: string): { from: string; to: string } {
@@ -33,9 +44,18 @@ const PRESETS = [
 ];
 
 export default function ReportsPage() {
+  const router = useRouter();
   const [preset, setPreset] = useState("month");
   const [custom, setCustom] = useState({ from: todayISO(), to: todayISO() });
   const [r, setR] = useState<Report | null>(null);
+  const [dash, setDash] = useState<Dash | null>(null);
+
+  useEffect(() => {
+    fetch("/api/dashboard")
+      .then((res) => res.json())
+      .then((j) => setDash(j.data))
+      .catch(() => {});
+  }, []);
 
   const range = useMemo(() => (preset === "custom" ? custom : rangeFor(preset)), [preset, custom]);
 
@@ -51,11 +71,27 @@ export default function ReportsPage() {
     load();
   }, [load]);
 
-  const catTotal = r?.categories.reduce((s, c) => s + c.total, 0) || 0;
-
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
+
+      {/* Money strip (same as Dashboard) */}
+      {!dash ? (
+        <Skeleton className="h-28 w-full rounded-2xl" />
+      ) : (
+        <div className="rounded-2xl bg-sidebar p-5 text-white">
+          <p className="text-sm text-white/70">Total Capital (Bank + Cash + Partner)</p>
+          <p className="mt-1 text-3xl font-bold tracking-tight">{inr(dash.totalMoney)}</p>
+          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-sm sm:grid-cols-4">
+            <Strip label="Bank" value={inr(dash.bank)} />
+            <Strip label="Cash" value={inr(dash.cash)} />
+            <Strip label="Partner Funds" value={inr(dash.partner)} />
+            <Strip label="In Sites" value={inr(dash.siteFunds)} />
+            <Strip label="Spent Today" value={inr(dash.todayExpense)} />
+            <Strip label="This Month" value={inr(dash.monthExpense)} />
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2">
         {PRESETS.map((p) => (
@@ -92,16 +128,18 @@ export default function ReportsPage() {
                 <thead className="bg-muted text-left text-muted-foreground">
                   <tr>
                     <th className="px-4 py-2.5 font-medium">Site</th>
-                    <th className="px-4 py-2.5 text-right font-medium">Received</th>
                     <th className="px-4 py-2.5 text-right font-medium">Spent</th>
                     <th className="px-4 py-2.5 text-right font-medium">Balance</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {r.sites.map((s) => (
-                    <tr key={s.id}>
+                    <tr
+                      key={s.id}
+                      onClick={() => router.push(`/projects/${s.id}`)}
+                      className="cursor-pointer transition-colors hover:bg-muted/50"
+                    >
                       <td className="px-4 py-2.5 font-medium">{s.name}</td>
-                      <td className="px-4 py-2.5 text-right text-success">{inr(s.received)}</td>
                       <td className="px-4 py-2.5 text-right text-danger">{inr(s.spent)}</td>
                       <td className={`px-4 py-2.5 text-right font-semibold ${s.balance < 0 ? "text-danger" : ""}`}>
                         {inr(s.balance)}
@@ -110,67 +148,40 @@ export default function ReportsPage() {
                   ))}
                   {r.sites.length === 0 && (
                     <tr>
-                      <td colSpan={4}>
+                      <td colSpan={3}>
                         <EmptyState>No data for this range.</EmptyState>
                       </td>
                     </tr>
                   )}
                 </tbody>
+                {r.sites.length > 0 && (
+                  <tfoot className="border-t-2 border-border bg-muted/50">
+                    <tr className="font-semibold">
+                      <td className="px-4 py-2.5">Total</td>
+                      <td className="px-4 py-2.5 text-right text-danger">
+                        {inr(r.sites.reduce((s, x) => s + x.spent, 0))}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        {inr(r.sites.reduce((s, x) => s + x.balance, 0))}
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           </Card>
 
-          {/* Category Report */}
-          <Card className="overflow-hidden">
-            <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <h2 className="font-semibold">Category Report</h2>
-              <span className="text-sm font-semibold">{inr(catTotal)}</span>
-            </div>
-            {r.categories.length === 0 ? (
-              <EmptyState>No expenses in this range.</EmptyState>
-            ) : (
-              <div className="divide-y divide-border">
-                {r.categories.map((c) => {
-                  const Icon = CATEGORY_ICON[c.category] || CATEGORY_ICON.Miscellaneous;
-                  return (
-                    <div key={c.category} className="flex items-center justify-between px-4 py-3">
-                      <span className="flex items-center gap-2 text-sm">
-                        <Icon className="h-4 w-4 text-muted-foreground" /> {c.category}
-                        <span className="text-xs text-muted-foreground">({c.count})</span>
-                      </span>
-                      <span className="font-semibold">{inr(c.total)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
-
-          {/* Partner Report */}
-          <Card className="overflow-hidden">
-            <div className="border-b border-border px-4 py-3">
-              <h2 className="font-semibold">Partner Report</h2>
-            </div>
-            {r.partners.length === 0 ? (
-              <EmptyState>No partners yet.</EmptyState>
-            ) : (
-              <div className="divide-y divide-border">
-                {r.partners.map((p) => (
-                  <div key={p.id} className="px-4 py-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{p.name}</span>
-                      <span className="font-bold">{inr(p.outstanding)}</span>
-                    </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Contributed {inr(p.contributed)} · Withdrawn {inr(p.withdrawn)} · Outstanding (total)
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
         </div>
       )}
+    </div>
+  );
+}
+
+function Strip({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-white/60">{label}</p>
+      <p className="mt-0.5 font-semibold">{value}</p>
     </div>
   );
 }

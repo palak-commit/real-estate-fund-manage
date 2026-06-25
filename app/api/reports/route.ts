@@ -23,11 +23,17 @@ export async function GET(req: NextRequest) {
 
   // Site report — received vs spent in range. Uses the SAME shared SQL as the Dashboard
   // (lib/queries) so site balances are identical on every screen.
+  // `received`/`spent` are within the selected date range. `current_balance` is the
+  // site's all-time balance (received − site-fund expenses across ALL dates), so the
+  // Balance column always shows the real current balance regardless of the filter.
   const sites = await query(
     `SELECT p.id, p.name, p.status,
        ${RECEIVED_SQL} AS received,
        ${SPENT_TOTAL_SQL} AS spent,
-       ${SPENT_SQL} AS spent_site
+       ${SPENT_SQL} AS spent_site,
+       (SELECT COALESCE(SUM(CASE WHEN t2.type IN ('transfer','income') AND t2.dest_account_id IS NULL THEN t2.amount END), 0)
+             - COALESCE(SUM(CASE WHEN t2.type = 'expense' AND t2.source_account_id IS NULL THEN t2.amount END), 0)
+          FROM transactions t2 WHERE t2.project_id = p.id) AS current_balance
      FROM projects p
      LEFT JOIN transactions t ON t.project_id = p.id ${df.length ? "AND " + df.join(" AND ") : ""}
      GROUP BY p.id ORDER BY p.name`,
@@ -61,8 +67,8 @@ export async function GET(req: NextRequest) {
     sites: sites.map((s: any) => ({
       ...s,
       received: Number(s.received),
-      spent: Number(s.spent), // total spend (site funds + direct bank)
-      balance: Number(s.received) - Number(s.spent_site), // balance uses site funds only
+      spent: Number(s.spent), // total spend (site funds + direct bank) in range
+      balance: Number(s.current_balance), // current all-time balance (ignores date filter)
     })),
     categories: categories.map((c: any) => ({ ...c, total: Number(c.total), count: Number(c.count) })),
     partners: partners.map((p: any) => ({
