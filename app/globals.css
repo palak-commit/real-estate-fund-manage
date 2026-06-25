@@ -4,6 +4,9 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  /* Scale the whole UI ~10% (like browser zoom 110%). Tailwind sizes are rem-based,
+     so text, spacing, widths and icons all grow proportionally. */
+  font-size: 110%;
 }
 
 body {
