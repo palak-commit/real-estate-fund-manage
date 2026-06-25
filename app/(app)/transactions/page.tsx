@@ -1,7 +1,7 @@
 "use client";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Receipt, ChevronLeft, ChevronRight } from "lucide-react";
+import { Receipt, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { Card, CustomSelect, CustomDatePicker, Button, EmptyState } from "@/components/ui";
 import { TxnRow } from "@/components/TxnRow";
 import PaidToPicker from "@/components/PaidToPicker";
@@ -58,6 +58,18 @@ function HistoryPageInner() {
   const [page, setPage] = useState(1);
   const [pg, setPg] = useState<Pagination | null>(null);
   const [sumAmount, setSumAmount] = useState(0);
+  const [exporting, setExporting] = useState(false);
+
+  // Shared filter params for both the list fetch and the export.
+  const applyFilters = (qs: URLSearchParams) => {
+    if (type) qs.set("type", type);
+    if (projectId) qs.set("project_id", projectId);
+    if (category) qs.set("category", category);
+    if (account) qs.set("account", account);
+    if (paidTo) qs.set("paid_to", paidTo);
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
+  };
 
   // Reset to page 1 whenever a filter changes.
   useEffect(() => setPage(1), [type, projectId, category, account, paidTo, from, to]);
@@ -126,6 +138,57 @@ function HistoryPageInner() {
     }
     toast("Transaction deleted", "success");
     window.dispatchEvent(new CustomEvent("txn:created"));
+  }
+
+  // Export ALL transactions matching the current filters (across pages) to a CSV
+  // that opens cleanly in Excel.
+  async function exportCsv() {
+    setExporting(true);
+    try {
+      const all: any[] = [];
+      let p = 1;
+      // Pull every matching page (API caps limit at 200).
+      while (true) {
+        const qs = new URLSearchParams({ limit: "200", page: String(p) });
+        applyFilters(qs);
+        const res = await fetch(`/api/transactions?${qs}`).then((r) => r.json());
+        all.push(...(res.data ?? []));
+        if (!res.pagination?.hasNextPage) break;
+        p++;
+      }
+
+      const headers = ["Date", "Type", "Category", "Site", "Source", "Destination", "Paid To", "Amount", "Note"];
+      const esc = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+      const lines = all.map((t) =>
+        [
+          t.txn_date,
+          TYPE_LABELS[t.type] || t.type,
+          t.category || "",
+          t.project_name || "",
+          t.source_name || (t.type === "expense" && !t.source_account_id ? "Site funds" : ""),
+          t.dest_name || "",
+          t.paid_to || "",
+          Number(t.amount),
+          t.note || "",
+        ]
+          .map(esc)
+          .join(",")
+      );
+      // BOM so Excel reads UTF-8 (₹, names) correctly.
+      const csv = "﻿" + [headers.map(esc).join(","), ...lines].join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `transactions-${todayISO()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast(`Exported ${all.length} transaction${all.length === 1 ? "" : "s"}`, "success");
+    } catch {
+      toast("Could not export", "error");
+    } finally {
+      setExporting(false);
+    }
   }
 
   const rangeStart = pg && pg.total > 0 ? (pg.page - 1) * pg.limit + 1 : 0;
@@ -209,13 +272,24 @@ function HistoryPageInner() {
             Clear
           </button>
         )}
-        <div className="ml-auto text-right">
-          <p className="text-xs text-muted-foreground">{pg ? `${pg.total} entries` : "—"}</p>
-          {type && pg && pg.total > 0 && (
-            <p className="text-sm font-semibold">
-              {TYPE_LABELS[type]} total: {inr(sumAmount)}
-            </p>
-          )}
+        <div className="ml-auto flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={exportCsv}
+            loading={exporting}
+            disabled={!pg || pg.total === 0}
+            className="!py-1.5 text-xs"
+          >
+            <Download className="h-3.5 w-3.5" /> Export
+          </Button>
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">{pg ? `${pg.total} entries` : "—"}</p>
+            {type && pg && pg.total > 0 && (
+              <p className="text-sm font-semibold">
+                {TYPE_LABELS[type]} total: {inr(sumAmount)}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
