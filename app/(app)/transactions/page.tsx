@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Receipt, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CustomSelect, CustomDatePicker, Button, EmptyState } from "@/components/ui";
 import { TxnRow } from "@/components/TxnRow";
+import PaidToPicker from "@/components/PaidToPicker";
 import { useUI } from "@/components/UIProvider";
 import { TYPE_LABELS, inr, todayISO } from "@/lib/format";
 
@@ -46,6 +47,7 @@ export default function HistoryPage() {
   const [projectId, setProjectId] = useState("");
   const [category, setCategory] = useState("");
   const [account, setAccount] = useState("");
+  const [paidTo, setPaidTo] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
@@ -53,7 +55,7 @@ export default function HistoryPage() {
   const [sumAmount, setSumAmount] = useState(0);
 
   // Reset to page 1 whenever a filter changes.
-  useEffect(() => setPage(1), [type, projectId, category, account, from, to]);
+  useEffect(() => setPage(1), [type, projectId, category, account, paidTo, from, to]);
 
   const load = useCallback(() => {
     setTxns(null);
@@ -62,6 +64,7 @@ export default function HistoryPage() {
     if (projectId) qs.set("project_id", projectId);
     if (category) qs.set("category", category);
     if (account) qs.set("account", account);
+    if (paidTo) qs.set("paid_to", paidTo);
     if (from) qs.set("from", from);
     if (to) qs.set("to", to);
     fetch(`/api/transactions?${qs}`)
@@ -71,7 +74,7 @@ export default function HistoryPage() {
         setPg(res.pagination ?? null);
         setSumAmount(res.summary?.amount ?? 0);
       });
-  }, [type, projectId, category, account, from, to, page]);
+  }, [type, projectId, category, account, paidTo, from, to, page]);
 
   useEffect(() => {
     fetch("/api/projects").then((r) => r.json()).then((j) => setProjects(j.data));
@@ -79,12 +82,13 @@ export default function HistoryPage() {
     fetch("/api/accounts").then((r) => r.json()).then((j) => setAccounts(j.data));
   }, []);
 
-  const hasFilters = !!(type || projectId || category || account || from || to);
+  const hasFilters = !!(type || projectId || category || account || paidTo || from || to);
   function clearFilters() {
     setType("");
     setProjectId("");
     setCategory("");
     setAccount("");
+    setPaidTo("");
     setFrom("");
     setTo("");
   }
@@ -127,7 +131,9 @@ export default function HistoryPage() {
             onChange={(val) => setType(val)}
             options={[
               { label: "All Types", value: "" },
-              ...Object.entries(TYPE_LABELS).map(([k, v]) => ({ label: v, value: k }))
+              ...Object.entries(TYPE_LABELS)
+                .filter(([k]) => k !== "partner_contribution")
+                .map(([k, v]) => ({ label: v, value: k }))
             ]}
             placeholder="All Types"
             className="w-40"
@@ -168,6 +174,11 @@ export default function HistoryPage() {
             placeholder="All Accounts"
             className="w-40"
           />
+        </Filter>
+        <Filter label="Paid To">
+          <div className="w-40">
+            <PaidToPicker value={paidTo} onChange={setPaidTo} placeholder="All Payees" />
+          </div>
         </Filter>
         <Filter label="From">
           <CustomDatePicker value={from} onChange={(val) => setFrom(val)} className="w-40" />

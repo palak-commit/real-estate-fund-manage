@@ -35,6 +35,10 @@ export async function GET(req: NextRequest) {
     where.push("t.category = ?");
     args.push(searchParams.get("category"));
   }
+  if (searchParams.get("paid_to")) {
+    where.push("t.paid_to = ?");
+    args.push(searchParams.get("paid_to"));
+  }
   if (searchParams.get("account")) {
     // Matches the account as either source or destination.
     where.push("(t.source_account_id = ? OR t.dest_account_id = ?)");

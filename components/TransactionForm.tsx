@@ -5,6 +5,7 @@ import { Button, Input, CustomSelect, CustomDatePicker } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import { inr, ACCOUNT_TYPE_LABELS, TYPE_LABELS, todayISO, sanitizeAmount } from "@/lib/format";
 import CategoryPicker from "@/components/CategoryPicker";
+import PaidToPicker from "@/components/PaidToPicker";
 
 type Account = { id: number; name: string; account_type: string; current_balance: number };
 type Project = { id: number; name: string; balance: number };
@@ -124,9 +125,6 @@ export default function TransactionForm({
       payload.source_account_id = f.type === "transfer" ? f.source_account_id : "";
       payload.dest_account_id = d.dest_account_id;
       payload.project_id = d.project_id;
-    } else if (f.type === "partner_contribution") {
-      payload.source_account_id = f.source_account_id;
-      payload.dest_account_id = f.dest_account_id;
     } else if (f.type === "partner_withdrawal") {
       payload.source_account_id = f.source_account_id;
       payload.dest_account_id = f.dest_account_id;
@@ -339,13 +337,11 @@ export default function TransactionForm({
             </Labeled>
           )}
 
-          <Labeled label="Paid To (optional)">
-            <Input
-              value={f.paid_to}
-              onChange={(e) => set({ paid_to: e.target.value })}
-              placeholder="e.g. Ramesh Contractor"
-            />
-          </Labeled>
+          {(f.type === "expense" || f.type === "site_expense") && (
+            <Labeled label="Paid To (optional)">
+              <PaidToPicker value={f.paid_to} onChange={(val) => set({ paid_to: val })} />
+            </Labeled>
+          )}
         </div>
 
         {/* Note */}

@@ -5,6 +5,7 @@ import { Button, Input, CustomSelect, CustomDatePicker } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import { inr, todayISO, sanitizeAmount, ACCOUNT_TYPE_LABELS } from "@/lib/format";
 import CategoryPicker from "@/components/CategoryPicker";
+import PaidToPicker from "@/components/PaidToPicker";
 
 type Project = { id: number; name: string; balance: number };
 type Account = { id: number; name: string; account_type: string; current_balance: number };
@@ -217,7 +218,7 @@ export default function QuickExpenseSheet({
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Paid To</label>
-              <Input value={paidTo} onChange={(e) => setPaidTo(e.target.value)} placeholder="e.g. Ramesh Contractor" />
+              <PaidToPicker value={paidTo} onChange={setPaidTo} />
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Note</label>

@@ -72,7 +72,7 @@ export default function ActionsProvider({ children }: { children: React.ReactNod
               <ChoiceButton
                 icon={<MoreHorizontal className="h-5 w-5" />}
                 title="Other"
-                desc="Income, partner contribution / withdrawal, account transfer"
+                desc="Income, partner withdrawal, account transfer"
                 onClick={openMore}
                 accent="bg-muted text-muted-foreground"
               />
