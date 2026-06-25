@@ -4,6 +4,7 @@ import { accountEffects, toPaisa } from "@/lib/ledger";
 import { inr } from "@/lib/format";
 import { ok, fail } from "@/lib/api";
 import { parseId } from "@/lib/validation";
+import { logActivity, describeTxn, txnDetail } from "@/lib/activity";
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await ready();
@@ -83,7 +84,34 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       );
     }
 
+    // Resolve names before the row is gone, for a readable activity detail line.
+    const [nm]: any = await conn.query(
+      `SELECT (SELECT name FROM accounts WHERE id = ?) AS source_name,
+              (SELECT name FROM accounts WHERE id = ?) AS dest_name,
+              (SELECT name FROM projects WHERE id = ?) AS project_name`,
+      [txn.source_account_id, txn.dest_account_id, txn.project_id]
+    );
+    const detail = txnDetail({
+      type: txn.type,
+      source_name: nm[0]?.source_name,
+      dest_name: nm[0]?.dest_name,
+      project_name: nm[0]?.project_name,
+    });
+
     await conn.query("DELETE FROM transactions WHERE id = ?", [id]);
+
+    await logActivity(
+      {
+        action: "deleted",
+        entity: "transaction",
+        entityId: id,
+        title: `${describeTxn(txn.type, { hasProject: txn.project_id != null, hasDest: txn.dest_account_id != null })} deleted`,
+        amount: Number(txn.amount),
+        meta: { type: txn.type, detail },
+      },
+      conn
+    );
+
     await conn.commit();
     return ok(null, "Transaction deleted");
   } catch (e) {

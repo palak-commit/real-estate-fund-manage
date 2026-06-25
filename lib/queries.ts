@@ -5,6 +5,13 @@ export const RECEIVED_SQL = `
   COALESCE(SUM(CASE WHEN t.type IN ('transfer','income') AND t.dest_account_id IS NULL
     THEN t.amount END), 0)`;
 
+// Money EARNED from a site (a plot sale, rent, etc.) — income tagged to the site that
+// landed in a real account. This is revenue, NOT allocated funds (those have no dest
+// account and count as "received"). Profit = this income − total spent on the site.
+export const INCOME_SQL = `
+  COALESCE(SUM(CASE WHEN t.type = 'income' AND t.dest_account_id IS NOT NULL
+    THEN t.amount END), 0)`;
+
 // Only expenses paid FROM site funds (no source account) reduce a site's BALANCE.
 // Expenses paid directly from a bank/cash account are tagged to the site for reporting
 // but leave the bank account, not the site's allocated funds.

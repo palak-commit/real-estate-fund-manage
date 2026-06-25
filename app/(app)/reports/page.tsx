@@ -3,23 +3,26 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BarChart3, List } from "lucide-react";
 import { Card, CustomDatePicker, Skeleton, EmptyState } from "@/components/ui";
-import { inr, todayISO, CATEGORY_ICON } from "@/lib/format";
+import { inr, todayISO, CATEGORY_ICON, PROFIT_HINT } from "@/lib/format";
+import MoneyStrip, { type MoneyStripData } from "@/components/MoneyStrip";
 
 type Report = {
-  sites: { id: number; name: string; received: number; spent: number; balance: number }[];
+  sites: {
+    id: number;
+    name: string;
+    received: number;
+    income: number;
+    spent: number;
+    spent_site: number;
+    spent_direct: number;
+    balance: number;
+    profit: number;
+  }[];
   categories: { category: string; total: number; count: number }[];
   partners: { id: number; name: string; contributed: number; withdrawn: number; outstanding: number }[];
 };
 
-type Dash = {
-  totalMoney: number;
-  bank: number;
-  cash: number;
-  partner: number;
-  siteFunds: number;
-  todayExpense: number;
-  monthExpense: number;
-};
+type Dash = MoneyStripData;
 
 function rangeFor(preset: string): { from: string; to: string } {
   const now = new Date();
@@ -85,23 +88,8 @@ export default function ReportsPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight">Reports</h1>
 
-      {/* Money strip (same as Dashboard) */}
-      {!dash ? (
-        <Skeleton className="h-28 w-full rounded-2xl" />
-      ) : (
-        <div className="rounded-2xl bg-sidebar p-5 text-white">
-          <p className="text-sm text-white/70">Total Capital (Bank + Cash + Partner)</p>
-          <p className="mt-1 text-3xl font-bold tracking-tight">{inr(dash.totalMoney)}</p>
-          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-sm sm:grid-cols-4">
-            <Strip label="Bank" value={inr(dash.bank)} />
-            <Strip label="Cash" value={inr(dash.cash)} />
-            <Strip label="Partner Funds" value={inr(dash.partner)} />
-            <Strip label="In Sites" value={inr(dash.siteFunds)} />
-            <Strip label="Spent Today" value={inr(dash.todayExpense)} />
-            <Strip label="This Month" value={inr(dash.monthExpense)} />
-          </div>
-        </div>
-      )}
+      {/* Money strip (shared with the Dashboard) */}
+      {!dash ? <Skeleton className="h-28 w-full rounded-2xl" /> : <MoneyStrip d={dash} />}
 
       <div className="flex flex-wrap items-center gap-2">
         {PRESETS.map((p) => (
@@ -205,8 +193,13 @@ export default function ReportsPage() {
                 <thead className="bg-muted text-left text-muted-foreground">
                   <tr>
                     <th className="px-4 py-2.5 font-medium">Site</th>
-                    <th className="px-4 py-2.5 text-right font-medium">Spent</th>
-                    <th className="px-4 py-2.5 text-right font-medium">Balance</th>
+                    <th className="px-4 py-2.5 text-right font-medium">Revenue</th>
+                    <th className="px-4 py-2.5 text-right font-medium">Spent · Site funds</th>
+                    <th className="px-4 py-2.5 text-right font-medium">Spent · Direct</th>
+                    <th className="px-4 py-2.5 text-right font-medium" title={PROFIT_HINT}>
+                      Profit / Loss
+                    </th>
+                    <th className="px-4 py-2.5 text-right font-medium">Site Balance</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -217,7 +210,13 @@ export default function ReportsPage() {
                       className="cursor-pointer transition-colors hover:bg-muted/50"
                     >
                       <td className="px-4 py-2.5 font-medium">{s.name}</td>
-                      <td className="px-4 py-2.5 text-right text-danger">{inr(s.spent)}</td>
+                      <td className="px-4 py-2.5 text-right text-success">{inr(s.income)}</td>
+                      <td className="px-4 py-2.5 text-right text-danger">{inr(s.spent_site)}</td>
+                      <td className="px-4 py-2.5 text-right text-danger">{inr(s.spent_direct)}</td>
+                      <td className={`px-4 py-2.5 text-right font-medium ${s.profit < 0 ? "text-danger" : "text-success"}`}>
+                        {s.profit < 0 ? "-" : "+"}
+                        {inr(Math.abs(s.profit))}
+                      </td>
                       <td className={`px-4 py-2.5 text-right font-semibold ${s.balance < 0 ? "text-danger" : ""}`}>
                         {inr(s.balance)}
                       </td>
@@ -225,7 +224,7 @@ export default function ReportsPage() {
                   ))}
                   {r.sites.length === 0 && (
                     <tr>
-                      <td colSpan={3}>
+                      <td colSpan={6}>
                         <EmptyState>No data for this range.</EmptyState>
                       </td>
                     </tr>
@@ -235,9 +234,24 @@ export default function ReportsPage() {
                   <tfoot className="border-t-2 border-border bg-muted/50">
                     <tr className="font-semibold">
                       <td className="px-4 py-2.5">Total</td>
-                      <td className="px-4 py-2.5 text-right text-danger">
-                        {inr(r.sites.reduce((s, x) => s + x.spent, 0))}
+                      <td className="px-4 py-2.5 text-right text-success">
+                        {inr(r.sites.reduce((s, x) => s + x.income, 0))}
                       </td>
+                      <td className="px-4 py-2.5 text-right text-danger">
+                        {inr(r.sites.reduce((s, x) => s + x.spent_site, 0))}
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-danger">
+                        {inr(r.sites.reduce((s, x) => s + x.spent_direct, 0))}
+                      </td>
+                      {(() => {
+                        const totalProfit = r.sites.reduce((s, x) => s + x.profit, 0);
+                        return (
+                          <td className={`px-4 py-2.5 text-right ${totalProfit < 0 ? "text-danger" : "text-success"}`}>
+                            {totalProfit < 0 ? "-" : "+"}
+                            {inr(Math.abs(totalProfit))}
+                          </td>
+                        );
+                      })()}
                       <td className="px-4 py-2.5 text-right">
                         {inr(r.sites.reduce((s, x) => s + x.balance, 0))}
                       </td>
@@ -364,11 +378,3 @@ function PieChart({ items }: { items: { label: string; value: number }[] }) {
   );
 }
 
-function Strip({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs text-white/60">{label}</p>
-      <p className="mt-0.5 font-semibold">{value}</p>
-    </div>
-  );
-}

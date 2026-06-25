@@ -2,21 +2,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Plus, ArrowDownToLine, Building2, AlertTriangle, Receipt, Pencil, Check, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, ArrowDownToLine, TrendingUp, Building2, AlertTriangle, Receipt, Pencil, Check, X } from "lucide-react";
 import { Card, Label, Button, Input, Skeleton, EmptyState, CustomSelect, CustomDatePicker } from "@/components/ui";
 import { useActions } from "@/components/ActionsProvider";
 import { useUI } from "@/components/UIProvider";
-import { inr, formatDate, TYPE_LABELS, siteStatus, LEVEL_LABEL, type SiteLevel } from "@/lib/format";
+import { inr, formatDate, TYPE_LABELS, profitStatus, PROFIT_LABEL, PROFIT_HINT, type ProfitLevel } from "@/lib/format";
 import { TxnRow } from "@/components/TxnRow";
 import PaidToPicker from "@/components/PaidToPicker";
 
 const STATUS_COLOR: Record<string, string> = { active: "green", on_hold: "amber", completed: "blue" };
 const STATUS_LABEL: Record<string, string> = { active: "Active", on_hold: "On Hold", completed: "Completed" };
-const LEVEL_STYLE: Record<SiteLevel, string> = {
-  ok: "bg-success/10 text-success",
-  low: "bg-warning/10 text-warning",
-  critical: "bg-danger/10 text-danger",
-  none: "bg-muted text-muted-foreground",
+const PROFIT_STYLE: Record<ProfitLevel, string> = {
+  profit: "bg-success/10 text-success",
+  loss: "bg-danger/10 text-danger",
+  even: "bg-muted text-muted-foreground",
 };
 
 type Account = { id: number; name: string };
@@ -33,7 +32,7 @@ const PAGE_SIZE = 15;
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
-  const { recordExpense, allocateFunds } = useActions();
+  const { recordExpense, allocateFunds, recordIncome } = useActions();
   const { toast, confirm } = useUI();
   const [p, setP] = useState<any>(null);
   const [notFound, setNotFound] = useState(false);
@@ -158,7 +157,9 @@ export default function ProjectDetail() {
       </div>
     );
 
-  const { runway, level } = siteStatus(p.balance, Number(p.spent14 || 0), Number(p.received || 0));
+  // Profit = income earned − ALL money spent on the site (site funds + direct).
+  const { profit, level: pLevel } = profitStatus(Number(p.income || 0), Number(p.spent || 0));
+  const hasActivity = Number(p.income || 0) > 0 || Number(p.spent || 0) > 0;
   const rangeStart = pg && pg.total > 0 ? (pg.page - 1) * pg.limit + 1 : 0;
   const rangeEnd = pg ? Math.min(pg.page * pg.limit, pg.total) : 0;
 
@@ -199,6 +200,14 @@ export default function ProjectDetail() {
               <Building2 className="h-6 w-6 text-muted-foreground" /> {p.name}
             </h1>
             <Label color={STATUS_COLOR[p.status]}>{STATUS_LABEL[p.status]}</Label>
+            {hasActivity && (
+              <span
+                title={PROFIT_HINT}
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-medium ${PROFIT_STYLE[pLevel]}`}
+              >
+                {PROFIT_LABEL[pLevel]} · {inr(Math.abs(profit))}
+              </span>
+            )}
             <button
               onClick={startEdit}
               aria-label="Edit site"
@@ -213,6 +222,9 @@ export default function ProjectDetail() {
               <Button onClick={() => recordExpense(Number(id))}>
                 <Plus className="h-4 w-4" /> Add Expense
               </Button>
+              <Button variant="outline" onClick={() => recordIncome(Number(id))}>
+                <TrendingUp className="h-4 w-4" /> Add Income
+              </Button>
             </div>
           </>
         )}
@@ -222,20 +234,46 @@ export default function ProjectDetail() {
       <Card className="p-5">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-sm text-muted-foreground">Current Balance</p>
+            <p className="text-sm text-muted-foreground">Site Fund</p>
             <p className={`mt-1 text-3xl font-bold ${p.balance < 0 ? "text-danger" : "text-foreground"}`}>
               {inr(p.balance)}
             </p>
           </div>
-          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-medium ${LEVEL_STYLE[level]}`}>
-            {level !== "ok" && <AlertTriangle className="h-3.5 w-3.5" />}
-            {LEVEL_LABEL[level]}
-            {runway !== null && p.balance > 0 && ` · ~${runway} days left`}
+          <span 
+            title={PROFIT_HINT}
+            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-medium ${PROFIT_STYLE[pLevel]}`}
+          >
+            {pLevel === "loss" && <AlertTriangle className="h-3.5 w-3.5" />}
+            {PROFIT_LABEL[pLevel]}
+            {hasActivity && ` · ${inr(Math.abs(profit))}`}
           </span>
         </div>
-        <div className="mt-4 grid grid-cols-3 gap-4 border-t border-border pt-4 text-sm">
-          <Mini label="Received" value={inr(p.received)} className="text-success" />
-          <Mini label="Spent" value={inr(p.spent)} className="text-danger" />
+        <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4 text-sm sm:grid-cols-3">
+          <Mini label="Received" value={inr(p.received)} className="text-success" hint="Funds allocated into this site" />
+          <Mini
+            label="Revenue"
+            value={inr(p.income)}
+            className="text-success"
+            hint="Money earned from this site (sale, rent, etc.) deposited to an account"
+          />
+          <Mini
+            label="Profit"
+            value={inr(p.profit)}
+            className={p.profit < 0 ? "text-danger" : "text-success"}
+            hint={PROFIT_HINT}
+          />
+          <Mini
+            label="Spent · Site funds"
+            value={inr(p.spent_site)}
+            className="text-danger"
+            hint="Paid from the site’s allocated funds — lowers the balance"
+          />
+          <Mini
+            label="Spent · Direct"
+            value={inr(p.spent_direct)}
+            className="text-danger"
+            hint="Paid straight from a bank/cash account — tagged to this site"
+          />
           <Mini label="Last Activity" value={p.last_txn_date ? formatDate(p.last_txn_date) : "—"} />
         </div>
       </Card>
@@ -249,9 +287,10 @@ export default function ProjectDetail() {
             onClear={() => setType("")}
             options={[
               { label: "All Types", value: "" },
-              ...Object.entries(TYPE_LABELS)
-                .filter(([k]) => k !== "partner_contribution")
-                .map(([k, v]) => ({ label: v, value: k })),
+              { label: "Transfer", value: "transfer" },
+              { label: "Expense", value: "expense" },
+              { label: "Income", value: "income" },
+              { label: "Partner Payout", value: "partner_withdrawal" },
             ]}
             placeholder="All Types"
             className="w-40"
@@ -306,7 +345,7 @@ export default function ProjectDetail() {
           <p className="text-xs text-muted-foreground">{pg ? `${pg.total} entries` : "—"}</p>
           {type && pg && pg.total > 0 && (
             <p className="text-sm font-semibold">
-              {TYPE_LABELS[type]} total: {inr(sumAmount)}
+              {type === "income" ? "Income" : TYPE_LABELS[type]} total: {inr(sumAmount)}
             </p>
           )}
         </div>
@@ -358,10 +397,22 @@ export default function ProjectDetail() {
   );
 }
 
-function Mini({ label, value, className = "" }: { label: string; value: string; className?: string }) {
+function Mini({
+  label,
+  value,
+  className = "",
+  hint,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+  hint?: string;
+}) {
   return (
     <div>
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-xs text-muted-foreground" title={hint}>
+        {label}
+      </p>
       <p className={`mt-0.5 font-semibold ${className}`}>{value}</p>
     </div>
   );

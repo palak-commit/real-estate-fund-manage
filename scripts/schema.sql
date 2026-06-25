@@ -25,6 +25,20 @@ CREATE TABLE IF NOT EXISTS categories (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Append-only audit trail: every create/update/delete across the app is recorded here
+-- so the owner can see a single chronological "Activity" feed of everything that happened.
+CREATE TABLE IF NOT EXISTS activity_log (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  action ENUM('created','updated','deleted','recompute') NOT NULL,
+  entity ENUM('transaction','account','site','category','system') NOT NULL,
+  entity_id INT NULL,
+  title VARCHAR(255) NOT NULL,
+  amount DECIMAL(15,2) NULL,
+  meta JSON NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_activity_created (created_at)
+);
+
 CREATE TABLE IF NOT EXISTS transactions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   type ENUM('transfer','expense','income','partner_contribution','partner_withdrawal') NOT NULL,

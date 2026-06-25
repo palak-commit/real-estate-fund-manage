@@ -5,6 +5,7 @@ import { accountEffects, toPaisa } from "@/lib/ledger";
 import { inr } from "@/lib/format";
 import { ok, fail } from "@/lib/api";
 import { txnCreateSchema, zErr } from "@/lib/validation";
+import { logActivity, describeTxn, txnDetail } from "@/lib/activity";
 
 const SELECT = `
   SELECT t.*,
@@ -29,8 +30,17 @@ export async function GET(req: NextRequest) {
     args.push(searchParams.get("project_id"));
   }
   if (searchParams.get("type")) {
-    where.push("t.type = ?");
-    args.push(searchParams.get("type"));
+    const t = searchParams.get("type")!;
+    // `income` and `funds_added` are the same DB type, split by whether a site is tagged:
+    // income earned FROM a site (has project_id) vs plain outside money added to an account.
+    if (t === "income") {
+      where.push("t.type = 'income' AND t.project_id IS NOT NULL");
+    } else if (t === "funds_added") {
+      where.push("t.type = 'income' AND t.project_id IS NULL");
+    } else {
+      where.push("t.type = ?");
+      args.push(t);
+    }
   }
   if (searchParams.get("category")) {
     where.push("c.name = ?");
@@ -175,6 +185,34 @@ export async function POST(req: NextRequest) {
         e.accountId,
       ]);
     }
+
+    // Resolve the account/site names so the activity feed can show a readable detail line.
+    const [nm]: any = await conn.query(
+      `SELECT (SELECT name FROM accounts WHERE id = ?) AS source_name,
+              (SELECT name FROM accounts WHERE id = ?) AS dest_name,
+              (SELECT name FROM projects WHERE id = ?) AS project_name`,
+      [S, D, P]
+    );
+    const detail = txnDetail({
+      type,
+      source_name: nm[0]?.source_name,
+      dest_name: nm[0]?.dest_name,
+      project_name: nm[0]?.project_name,
+      category: b.category || null,
+      paid_to: b.paid_to || null,
+    });
+
+    await logActivity(
+      {
+        action: "created",
+        entity: "transaction",
+        entityId: res.insertId,
+        title: describeTxn(type, { hasProject: !!P, hasDest: !!D }),
+        amount,
+        meta: { type, detail, note: b.note || null, paid_to: b.paid_to || null },
+      },
+      conn
+    );
 
     await conn.commit();
     return ok({ id: res.insertId }, "Transaction saved", {}, 201);

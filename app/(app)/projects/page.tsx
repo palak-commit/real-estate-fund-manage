@@ -4,15 +4,17 @@ import Link from "next/link";
 import { Trash2, Building2 } from "lucide-react";
 import { Card, Button, Input, CustomSelect, Field, Label, Skeleton, EmptyState } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
-import { inr, formatDate } from "@/lib/format";
+import { inr, formatDate, PROFIT_HINT } from "@/lib/format";
 
 type Project = {
   id: number;
   name: string;
   status: string;
   received: number;
+  income: number;
   spent: number;
   balance: number;
+  profit: number;
   last_txn_date: string | null;
 };
 
@@ -115,11 +117,23 @@ export default function ProjectsPage() {
                 </div>
                 <div className="mt-4 space-y-2 text-sm">
                   <Row label="Received" value={inr(p.received)} className="text-success" />
+                  <Row label="Revenue" value={inr(p.income)} className="text-success" />
                   <Row label="Spent" value={inr(p.spent)} className="text-danger" />
                   <div className="flex justify-between border-t border-border pt-2">
                     <span className="font-medium">Balance</span>
                     <span className={`font-bold ${p.balance < 0 ? "text-danger" : ""}`}>{inr(p.balance)}</span>
                   </div>
+                  {(p.income > 0 || p.spent > 0) && (
+                    <div className="flex justify-between">
+                      <span className="font-medium" title={PROFIT_HINT}>
+                        Profit / Loss
+                      </span>
+                      <span className={`font-bold ${p.profit < 0 ? "text-danger" : "text-success"}`}>
+                        {p.profit < 0 ? "-" : "+"}
+                        {inr(Math.abs(p.profit))}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="mt-3 flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">

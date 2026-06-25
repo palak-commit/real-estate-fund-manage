@@ -9,6 +9,7 @@ type Ctx = {
   openMenu: () => void;
   recordExpense: (projectId?: number) => void;
   allocateFunds: (projectId?: number) => void;
+  recordIncome: (projectId?: number) => void;
   openMore: () => void;
 };
 
@@ -24,6 +25,7 @@ export default function ActionsProvider({ children }: { children: React.ReactNod
   const [menu, setMenu] = useState(false);
   const [expense, setExpense] = useState<{ open: boolean; pid?: number }>({ open: false });
   const [allocate, setAllocate] = useState<{ open: boolean; pid?: number }>({ open: false });
+  const [income, setIncome] = useState<{ open: boolean; pid?: number }>({ open: false });
   const [more, setMore] = useState(false);
 
   const openMenu = useCallback(() => setMenu(true), []);
@@ -35,13 +37,17 @@ export default function ActionsProvider({ children }: { children: React.ReactNod
     setMenu(false);
     setAllocate({ open: true, pid });
   }, []);
+  const recordIncome = useCallback((pid?: number) => {
+    setMenu(false);
+    setIncome({ open: true, pid });
+  }, []);
   const openMore = useCallback(() => {
     setMenu(false);
     setMore(true);
   }, []);
 
   return (
-    <ActionsCtx.Provider value={{ openMenu, recordExpense, allocateFunds, openMore }}>
+    <ActionsCtx.Provider value={{ openMenu, recordExpense, allocateFunds, recordIncome, openMore }}>
       {children}
 
       {/* Chooser menu */}
@@ -83,6 +89,11 @@ export default function ActionsProvider({ children }: { children: React.ReactNod
 
       <QuickExpenseSheet open={expense.open} onClose={() => setExpense({ open: false })} presetProjectId={expense.pid} />
       <AllocateFundsSheet open={allocate.open} onClose={() => setAllocate({ open: false })} presetProjectId={allocate.pid} />
+      <TransactionForm
+        open={income.open}
+        onClose={() => setIncome({ open: false })}
+        preset={income.open ? { type: "income", projectId: income.pid } : undefined}
+      />
       <TransactionForm open={more} onClose={() => setMore(false)} />
     </ActionsCtx.Provider>
   );

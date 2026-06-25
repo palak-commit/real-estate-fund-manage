@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { query, pool, ready } from "@/lib/db";
 import { ok, fail } from "@/lib/api";
 import { categoryCreateSchema, zErr } from "@/lib/validation";
+import { logActivity } from "@/lib/activity";
 
 export async function GET() {
   const rows = await query("SELECT id, name FROM categories ORDER BY name");
@@ -22,5 +23,6 @@ export async function POST(req: NextRequest) {
   if (existing.length) return fail("That category already exists");
 
   const [res]: any = await pool.query("INSERT INTO categories (name) VALUES (?)", [clean]);
+  await logActivity({ action: "created", entity: "category", entityId: res.insertId, title: `Category "${clean}" added` });
   return ok({ id: res.insertId, name: clean }, "Category added", {}, 201);
 }

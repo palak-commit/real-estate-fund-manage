@@ -1,21 +1,24 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, ArrowDownToLine, Building2, AlertTriangle, ChevronRight, Wallet } from "lucide-react";
+import { Plus, ArrowDownToLine, Building2, ChevronRight, Wallet } from "lucide-react";
 import { Card, Skeleton, EmptyState, Button } from "@/components/ui";
 import { useActions } from "@/components/ActionsProvider";
-import { inr, LEVEL_LABEL, type SiteLevel } from "@/lib/format";
+import { inr, PROFIT_LABEL, PROFIT_HINT, type ProfitLevel } from "@/lib/format";
 import { TxnRow } from "@/components/TxnRow";
+import MoneyStrip from "@/components/MoneyStrip";
 
 type Site = {
   id: number;
   name: string;
   received: number;
+  income: number;
   spent: number;
   balance: number;
+  profit: number;
+  profitLevel: ProfitLevel;
   burn: number;
   runway: number | null;
-  level: SiteLevel;
 };
 
 type Dash = {
@@ -28,21 +31,22 @@ type Dash = {
   todayExpense: number;
   monthExpense: number;
   activeSites: number;
+  totalProfit: number;
   sites: Site[];
   recent: any[];
 };
 
-const LEVEL_STYLE: Record<SiteLevel, string> = {
-  ok: "bg-success/10 text-success",
-  low: "bg-warning/10 text-warning",
-  critical: "bg-danger/10 text-danger",
-  none: "bg-muted text-muted-foreground",
+const PROFIT_STYLE: Record<ProfitLevel, string> = {
+  profit: "bg-success/10 text-success",
+  loss: "bg-danger/10 text-danger",
+  even: "bg-muted text-muted-foreground",
 };
-const BAR_STYLE: Record<SiteLevel, string> = {
-  ok: "bg-success",
-  low: "bg-warning",
-  critical: "bg-danger",
-  none: "bg-muted-foreground",
+// Progress bar color tracks profitability: green while spend is within income, red once
+// spend has overtaken income (a loss).
+const PROFIT_BAR: Record<ProfitLevel, string> = {
+  profit: "bg-success",
+  loss: "bg-danger",
+  even: "bg-success",
 };
 
 export default function Home() {
@@ -71,22 +75,7 @@ export default function Home() {
       <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
 
       {/* Money strip */}
-      {!d ? (
-        <Skeleton className="h-28 w-full rounded-2xl" />
-      ) : (
-        <div className="rounded-2xl bg-sidebar p-5 text-white">
-          <p className="text-sm text-white/70">Total Capital (Bank + Cash + Partner)</p>
-          <p className="mt-1 text-3xl font-bold tracking-tight">{inr(d.totalMoney)}</p>
-          <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-sm sm:grid-cols-4">
-            <Strip label="Bank" value={inr(d.bank)} />
-            <Strip label="Cash" value={inr(d.cash)} />
-            <Strip label="Partner Funds" value={inr(d.partner)} />
-            <Strip label="In Sites" value={inr(d.siteFunds)} />
-            <Strip label="Spent Today" value={inr(d.todayExpense)} />
-            <Strip label="This Month" value={inr(d.monthExpense)} />
-          </div>
-        </div>
-      )}
+      {!d ? <Skeleton className="h-28 w-full rounded-2xl" /> : <MoneyStrip d={d} />}
 
       {/* Sites */}
       <div>
@@ -110,18 +99,25 @@ export default function Home() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {d.sites.map((s) => {
-              const pct = s.received > 0 ? Math.min(100, Math.round((s.spent / s.received) * 100)) : 0;
+              // % of income spent: how much of what the site earned has been spent (all spend).
+              // No income yet → 100% if anything was spent (pure loss), else 0%.
+              const pct =
+                s.income > 0 ? Math.min(100, Math.round((s.spent / s.income) * 100)) : s.spent > 0 ? 100 : 0;
               return (
                 <Card key={s.id} className="flex flex-col p-4">
                   <Link href={`/projects/${s.id}`} className="flex-1">
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between gap-2">
                       <h3 className="flex items-center gap-2 font-semibold">
                         <Building2 className="h-4 w-4 text-muted-foreground" /> {s.name}
                       </h3>
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${LEVEL_STYLE[s.level]}`}>
-                        {s.level !== "ok" && <AlertTriangle className="h-3 w-3" />}
-                        {LEVEL_LABEL[s.level]}
-                      </span>
+                      {(s.income > 0 || s.spent > 0) && (
+                        <span
+                          title={PROFIT_HINT}
+                          className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${PROFIT_STYLE[s.profitLevel]}`}
+                        >
+                          {PROFIT_LABEL[s.profitLevel]} · {inr(Math.abs(s.profit))}
+                        </span>
+                      )}
                     </div>
 
                     <p className={`mt-3 text-2xl font-bold ${s.balance < 0 ? "text-danger" : "text-foreground"}`}>
@@ -130,14 +126,13 @@ export default function Home() {
                     <p className="text-xs text-muted-foreground">available balance</p>
 
                     <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className={`h-full ${BAR_STYLE[s.level]}`} style={{ width: `${pct}%` }} />
+                      <div className={`h-full ${PROFIT_BAR[s.profitLevel]}`} style={{ width: `${pct}%` }} />
                     </div>
-                    <p className="mt-1.5 text-xs text-muted-foreground">{pct}% spent</p>
-                    {s.runway !== null && s.balance > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        Funds run out in ~{s.runway} {s.runway === 1 ? "day" : "days"} at current pace
-                      </p>
-                    )}
+
+                    {/* % of income spent, shown below the progress bar */}
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {s.income > 0 ? `${pct}% of income spent` : "No income yet"}
+                    </p>
                   </Link>
 
                   <div className="mt-4 flex gap-2">
@@ -189,11 +184,3 @@ export default function Home() {
   );
 }
 
-function Strip({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs text-white/60">{label}</p>
-      <p className="mt-0.5 font-semibold">{value}</p>
-    </div>
-  );
-}

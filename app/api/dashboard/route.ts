@@ -1,6 +1,6 @@
 import { query } from "@/lib/db";
-import { RECEIVED_SQL, SPENT_SQL, SPENT_TOTAL_SQL, SPENT_14D_SQL } from "@/lib/queries";
-import { siteStatus } from "@/lib/format";
+import { RECEIVED_SQL, SPENT_SQL, SPENT_TOTAL_SQL, SPENT_14D_SQL, INCOME_SQL } from "@/lib/queries";
+import { siteStatus, profitStatus } from "@/lib/format";
 import { ok } from "@/lib/api";
 
 export async function GET() {
@@ -30,10 +30,22 @@ export async function GET() {
     "SELECT COUNT(*) AS c FROM projects WHERE status='active'"
   );
 
+  // Overall profit/loss = the literal SUM of per-site profit across ALL sites (including
+  // completed). Uses the SAME shared SQL fragments as the per-site figures, so the total can
+  // never diverge from the per-site profits shown on cards/detail/reports.
+  // Per-site profit = site income earned − ALL money spent on the site (site funds + direct).
+  const profitRows = await query<{ income: number; spent: number }>(
+    `SELECT ${INCOME_SQL} AS income, ${SPENT_TOTAL_SQL} AS spent
+     FROM projects p LEFT JOIN transactions t ON t.project_id = p.id
+     GROUP BY p.id`
+  );
+  const totalProfit = profitRows.reduce((s, r) => s + (Number(r.income) - Number(r.spent)), 0);
+
   // Per-site summary (with burn / runway)
   const sites = await query(
     `SELECT p.id, p.name, p.status,
        ${RECEIVED_SQL} AS received,
+       ${INCOME_SQL} AS income,
        ${SPENT_TOTAL_SQL} AS spent,
        ${SPENT_SQL} AS spent_site,
        ${SPENT_14D_SQL} AS spent14
@@ -62,16 +74,22 @@ export async function GET() {
     todayExpense: Number(today[0]?.t || 0),
     monthExpense: Number(month[0]?.t || 0),
     activeSites: Number(activeSites[0]?.c || 0),
+    totalProfit,
     sites: sites.map((s: any) => {
       // Balance reflects only allocated site funds; "spent" shows total spend on the site.
       const balance = Number(s.received) - Number(s.spent_site);
+      // Profit = income earned − ALL money spent on the site (site funds + direct).
+      const { profit, level: profitLevel } = profitStatus(Number(s.income), Number(s.spent));
       return {
         id: s.id,
         name: s.name,
         status: s.status,
         received: Number(s.received),
+        income: Number(s.income),
         spent: Number(s.spent),
         balance,
+        profit,
+        profitLevel,
         ...siteStatus(balance, Number(s.spent14), Number(s.received)),
       };
     }),

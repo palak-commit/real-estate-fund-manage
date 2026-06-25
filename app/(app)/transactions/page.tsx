@@ -21,6 +21,25 @@ type Pagination = {
 };
 const PAGE_SIZE = 15;
 
+// Type filter options. `income` / `funds_added` both map to the income DB type but are
+// split by whether a site is tagged (see the transactions API). Labels for the summary
+// line live in TYPE_FILTER_LABEL below.
+const TYPE_FILTER_OPTIONS = [
+  { label: "All Types", value: "" },
+  { label: "Transfer", value: "transfer" },
+  { label: "Expense", value: "expense" },
+  { label: "Funds Added", value: "funds_added" },
+  { label: "Income", value: "income" },
+  { label: "Partner Payout", value: "partner_withdrawal" },
+];
+const TYPE_FILTER_LABEL: Record<string, string> = {
+  transfer: "Transfer",
+  expense: "Expense",
+  funds_added: "Funds Added",
+  income: "Income",
+  partner_withdrawal: "Partner Payout",
+};
+
 function ListSkeleton() {
   return (
     <div className="divide-y divide-border">
@@ -204,12 +223,7 @@ function HistoryPageInner() {
             value={type}
             onChange={(val) => setType(val)}
             onClear={() => setType("")}
-            options={[
-              { label: "All Types", value: "" },
-              ...Object.entries(TYPE_LABELS)
-                .filter(([k]) => k !== "partner_contribution")
-                .map(([k, v]) => ({ label: v, value: k }))
-            ]}
+            options={TYPE_FILTER_OPTIONS}
             placeholder="All Types"
             className="w-40"
           />
@@ -286,7 +300,7 @@ function HistoryPageInner() {
             <p className="text-xs text-muted-foreground">{pg ? `${pg.total} entries` : "—"}</p>
             {type && pg && pg.total > 0 && (
               <p className="text-sm font-semibold">
-                {TYPE_LABELS[type]} total: {inr(sumAmount)}
+                {TYPE_FILTER_LABEL[type] ?? type} total: {inr(sumAmount)}
               </p>
             )}
           </div>
@@ -305,7 +319,9 @@ function HistoryPageInner() {
                 key={t.id}
                 t={t}
                 onDelete={deleteTxn}
-                onRowClick={(tx) => router.push(`/projects/${tx.project_id}`)}
+                onRowClick={(tx) =>
+                  tx.project_id ? router.push(`/projects/${tx.project_id}`) : router.push("/accounts")
+                }
               />
             ))}
           </div>

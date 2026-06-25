@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
 import { pool, query, ready } from "@/lib/db";
-import { RECEIVED_SQL, SPENT_SQL, SPENT_TOTAL_SQL, SPENT_14D_SQL } from "@/lib/queries";
+import { RECEIVED_SQL, SPENT_SQL, SPENT_TOTAL_SQL, SPENT_14D_SQL, INCOME_SQL } from "@/lib/queries";
 import { ok, fail } from "@/lib/api";
 import { projectUpdateSchema, parseId, zErr } from "@/lib/validation";
+import { logActivity } from "@/lib/activity";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const id = parseId((await params).id);
@@ -10,6 +11,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const rows = await query(
     `SELECT p.*,
        ${RECEIVED_SQL} AS received,
+       ${INCOME_SQL} AS income,
        ${SPENT_TOTAL_SQL} AS spent,
        ${SPENT_SQL} AS spent_site,
        ${SPENT_14D_SQL} AS spent14,
@@ -42,13 +44,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     [id]
   );
 
+  const spentSite = Number(p.spent_site); // paid FROM site funds (reduces balance)
+  const spentTotal = Number(p.spent); // site funds + direct-from-account
   return ok(
     {
       ...p,
       received: Number(p.received),
-      spent: Number(p.spent), // total spend (site funds + direct bank)
+      income: Number(p.income), // money earned from the site (revenue)
+      spent: spentTotal, // total spend (site funds + direct bank)
+      spent_site: spentSite, // paid from the site's own allocated funds
+      spent_direct: spentTotal - spentSite, // paid straight from a bank/cash account
+      // Profit = income earned − ALL money spent on the site (site funds + direct).
+      profit: Number(p.income) - spentTotal,
       spent14: Number(p.spent14),
-      balance: Number(p.received) - Number(p.spent_site), // balance uses site funds only
+      balance: Number(p.received) - spentSite, // balance uses site funds only
       byCategory: byCategory.map((c: any) => ({ ...c, total: Number(c.total) })),
       transactions: txns,
     },
@@ -64,6 +73,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!parsed.success) return fail(zErr(parsed.error));
   const { name, status } = parsed.data;
   await pool.query("UPDATE projects SET name = ?, status = ? WHERE id = ?", [name, status, id]);
+  await logActivity({ action: "updated", entity: "site", entityId: id, title: `Site "${name}" updated`, meta: { status } });
   return ok(null, "Project updated");
 }
 
@@ -86,6 +96,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     );
   }
 
+  const proj = await query<{ name: string }>("SELECT name FROM projects WHERE id = ?", [id]);
   await pool.query("DELETE FROM projects WHERE id = ?", [id]);
+  await logActivity({ action: "deleted", entity: "site", entityId: id, title: `Site "${proj[0]?.name ?? id}" deleted` });
   return ok(null, "Project deleted");
 }

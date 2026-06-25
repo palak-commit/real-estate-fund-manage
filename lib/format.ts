@@ -49,7 +49,7 @@ export function siteStatus(balance: number, spent14: number, received?: number) 
   if (balance <= 0) {
     // Never funded → "No funds"; funded but now empty → "Out of funds". Never "Healthy".
     level = !received ? "none" : "critical";
-  } else if (burn > 0 && runway !== null && runway <= 7) {
+  } else if (burn > 0 && runway !== null && runway <= 10) {
     level = "low";
   }
   return { burn, runway, level };
@@ -61,6 +61,27 @@ export const LEVEL_LABEL: Record<SiteLevel, string> = {
   critical: "Out of funds",
   none: "No funds",
 };
+
+// A site's profit: income EARNED minus ALL money spent on it (both site-fund spend and
+// direct-from-account spend). True overall profitability.
+export type ProfitLevel = "profit" | "loss" | "even";
+export function profitStatus(income: number, spent: number) {
+  const profit = income - spent;
+  let level: ProfitLevel = "even";
+  if (profit > 0) level = "profit";
+  else if (profit < 0) level = "loss";
+  return { profit, level };
+}
+
+export const PROFIT_LABEL: Record<ProfitLevel, string> = {
+  profit: "In profit",
+  loss: "In loss",
+  even: "Break even",
+};
+
+// One-line explanation shown as a tooltip on every profit badge.
+// Profit = Revenue (income earned from the site) − Expense (all money spent on it).
+export const PROFIT_HINT = "Profit = Revenue (income earned) − Expense (all money spent on the site).";
 
 // Expense categories (site-wise + category-wise visibility)
 export const CATEGORIES = [

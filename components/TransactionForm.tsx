@@ -10,9 +10,9 @@ import PaidToPicker from "@/components/PaidToPicker";
 type Account = { id: number; name: string; account_type: string; current_balance: number };
 type Project = { id: number; name: string; balance: number };
 
-const TYPES = ["site_fund", "site_expense", "transfer", "partner_withdrawal"];
+const TYPES = ["site_fund", "site_expense", "transfer", "partner_withdrawal", "income"];
 const labelFor = (tp: string) =>
-  tp === "site_expense" ? "Site Expense" : tp === "site_fund" ? "Add Site Fund" : TYPE_LABELS[tp];
+  tp === "site_expense" ? "Site Expense" : tp === "site_fund" ? "Add Site Fund" : tp === "income" ? "Income" : TYPE_LABELS[tp];
 
 function blank() {
   return {
@@ -114,9 +114,15 @@ export default function TransactionForm({
       payload.type = "transfer";
       payload.source_account_id = f.source_account_id;
       payload.project_id = f.project_id;
-    } else if (f.type === "transfer" || f.type === "income") {
+    } else if (f.type === "income") {
+      // Money coming in FROM a site (origin tag) INTO an account. The account actually
+      // receives the cash; the site is just recorded as where the income came from.
+      payload.source_account_id = "";
+      payload.dest_account_id = f.dest_account_id;
+      payload.project_id = f.project_id;
+    } else if (f.type === "transfer") {
       const d = decode(f.dest);
-      payload.source_account_id = f.type === "transfer" ? f.source_account_id : "";
+      payload.source_account_id = f.source_account_id;
       payload.dest_account_id = d.dest_account_id;
       payload.project_id = d.project_id;
     } else if (f.type === "partner_withdrawal") {
@@ -129,6 +135,8 @@ export default function TransactionForm({
     if (f.type === "site_expense" && !f.project_id) return setErr("Select a site");
     if (f.type === "site_fund" && !f.source_account_id) return setErr("Select a source account");
     if (f.type === "site_fund" && !f.project_id) return setErr("Select a site");
+    if (f.type === "income" && !f.project_id) return setErr("Select a site");
+    if (f.type === "income" && !f.dest_account_id) return setErr("Select an account");
     if (overSiteFunds && selectedSite)
       return setErr(`Insufficient site funds — ${selectedSite.name} has only ${inr(selectedSite.balance)} available`);
     if (sourceAcct && amt > sourceAcct.current_balance)
@@ -320,6 +328,31 @@ export default function TransactionForm({
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
                   To send money to a site, use “Add Fund” instead.
+                </p>
+              </Labeled>
+            </>
+          )}
+
+          {f.type === "income" && (
+            <>
+              <Labeled label="From">
+                <CustomSelect
+                  value={f.project_id}
+                  onChange={(val) => set({ project_id: val })}
+                  options={projects.map((p) => ({ label: p.name, value: String(p.id) }))}
+                  placeholder="Select site…"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">The site this income came from.</p>
+              </Labeled>
+              <Labeled label="To">
+                <CustomSelect
+                  value={f.dest_account_id}
+                  onChange={(val) => set({ dest_account_id: val })}
+                  options={groupByType(accounts, accOpt)}
+                  placeholder="Select account…"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  The account that receives the money (bank, cash, or partner).
                 </p>
               </Labeled>
             </>

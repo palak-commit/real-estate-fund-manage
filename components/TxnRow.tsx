@@ -3,6 +3,13 @@ import { Trash2 } from "lucide-react";
 import { Label } from "@/components/ui";
 import { inr, formatDate, CATEGORY_ICON, TYPE_LABELS, TYPE_COLOR, TYPE_ICON } from "@/lib/format";
 
+// Income split: money earned FROM a site (tagged with a project) reads as "Income";
+// plain outside money added to an account (no site) keeps the "Funds Added" label.
+function typeLabel(t: any): string {
+  if (t.type === "income" && t.project_id) return "Income";
+  return TYPE_LABELS[t.type];
+}
+
 // Sign: money leaving the business (expense, withdrawal) is negative.
 function signOf(type: string) {
   if (type === "expense" || type === "partner_withdrawal") return -1;
@@ -20,8 +27,11 @@ function flow(t: any): string {
       const paidFrom = t.source_name ? t.source_name : "Site funds";
       return `Paid from ${paidFrom}${t.paid_to ? ` → ${t.paid_to}` : ""}`;
     }
-    case "income":
-      return `${t.paid_to ? `${t.paid_to} → ` : ""}${dest || "?"}`;
+    case "income": {
+      // Income tied to a site lands "To" an account; plain Funds Added goes "In" an account.
+      const prefix = t.project_id ? "To" : "In";
+      return `${prefix} ${t.dest_name || t.project_name || "?"}${t.paid_to ? ` · from ${t.paid_to}` : ""}`;
+    }
     case "partner_contribution":
       return `${t.source_name || "Partner"} → ${t.dest_name || "?"}`;
     case "partner_withdrawal":
@@ -42,8 +52,10 @@ export function TxnRow({
 }) {
   const sign = signOf(t.type);
   const Icon = t.type === "expense" ? CATEGORY_ICON[t.category] || TYPE_ICON.expense : TYPE_ICON[t.type];
-  // Only rows tied to a site are navigable (click → open that site).
-  const navigable = !!onRowClick && !!t.project_id;
+  // Navigable rows: tied to a site (→ open that site) OR plain Funds Added into an account
+  // (→ open that account's ledger). The parent's onRowClick decides where to go.
+  const isFundsAdded = t.type === "income" && !t.project_id && !!t.dest_account_id;
+  const navigable = !!onRowClick && (!!t.project_id || isFundsAdded);
 
   return (
     <div
@@ -64,9 +76,9 @@ export function TxnRow({
         <div className="min-w-0 space-y-0.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium text-foreground">
-              {t.type === "expense" ? t.category || "Expense" : TYPE_LABELS[t.type]}
+              {t.type === "expense" ? t.category || "Expense" : typeLabel(t)}
             </span>
-            <Label color={TYPE_COLOR[t.type]}>{TYPE_LABELS[t.type]}</Label>
+            <Label color={TYPE_COLOR[t.type]}>{typeLabel(t)}</Label>
             {t.type === "expense" && t.project_name && <Label color="indigo">{t.project_name}</Label>}
             {t.type !== "expense" && t.project_name && t.dest_name && (
               <Label color="indigo">{t.project_name}</Label>

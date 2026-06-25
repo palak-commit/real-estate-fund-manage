@@ -8,6 +8,7 @@ import {
   Building2,
   Landmark,
   Receipt,
+  Activity,
   Plus,
   MoreHorizontal,
   X,
@@ -21,6 +22,7 @@ const LEFT = [
 ];
 const RIGHT = [{ href: "/reports", label: "Reports", icon: BarChart3 }];
 const MORE = [
+  { href: "/activity", label: "Activity", icon: Activity },
   { href: "/projects", label: "Sites", icon: Building2 },
   { href: "/accounts", label: "Accounts", icon: Landmark },
   { href: "/guide", label: "Guide", icon: BookOpen },

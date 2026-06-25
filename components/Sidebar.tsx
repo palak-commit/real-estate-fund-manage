@@ -8,6 +8,7 @@ import {
   BarChart3,
   Building2,
   Landmark,
+  Activity,
   Menu,
   X,
   Plus,
@@ -20,6 +21,7 @@ import { useActions } from "@/components/ActionsProvider";
 const PRIMARY = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/transactions", label: "Transactions", icon: Receipt },
+  { href: "/activity", label: "Activity", icon: Activity },
   { href: "/reports", label: "Reports", icon: BarChart3 },
 ];
 const MANAGE = [
