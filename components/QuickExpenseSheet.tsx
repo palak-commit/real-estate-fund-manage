@@ -25,7 +25,7 @@ export default function QuickExpenseSheet({
   const [projects, setProjects] = useState<Project[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
+  const [categoryId, setCategoryId] = useState<number | "">("");
   const [projectId, setProjectId] = useState("");
   // "site" = pay from the site's allocated funds; "acc:<id>" = pay directly from a bank/cash account.
   const [payFrom, setPayFrom] = useState("site");
@@ -40,7 +40,7 @@ export default function QuickExpenseSheet({
   useEffect(() => {
     if (!open) return;
     setAmount("");
-    setCategory("");
+    setCategoryId("");
     setPayFrom("site");
     setDate(todayISO());
     setPaidTo("");
@@ -78,7 +78,7 @@ export default function QuickExpenseSheet({
   async function submit(addAnother: boolean) {
     setErr("");
     if (!amount || Number(amount) <= 0) return setErr("Enter a valid amount");
-    if (!category) return setErr("Select a category");
+    if (!categoryId) return setErr("Select a sub-category");
     if (!projectId) return setErr("Select a site");
     if (!fromSite && !sourceAccount) return setErr("Select where the money is paid from");
     if (Number(amount) > available)
@@ -96,7 +96,7 @@ export default function QuickExpenseSheet({
         type: "expense",
         project_id: projectId,
         source_account_id: fromSite ? "" : String(sourceAccount!.id),
-        category,
+        category_id: categoryId,
         amount,
         txn_date: date,
         paid_to: paidTo,
@@ -112,7 +112,7 @@ export default function QuickExpenseSheet({
 
     if (addAnother) {
       setAmount("");
-      setCategory("");
+      setCategoryId("");
       setPaidTo("");
       setNote("");
       amountRef.current?.focus();
@@ -159,7 +159,7 @@ export default function QuickExpenseSheet({
 
         {/* Category chips */}
         <p className="mb-1.5 mt-4 text-sm font-medium text-muted-foreground">Category</p>
-        <CategoryPicker value={category} onChange={setCategory} />
+        <CategoryPicker value={categoryId} onChange={setCategoryId} />
 
         {/* Site */}
         <p className="mb-1.5 mt-4 text-sm font-medium text-muted-foreground">Site</p>

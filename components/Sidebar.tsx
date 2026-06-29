@@ -15,12 +15,16 @@ import {
   LogOut,
   Home as HomeIcon,
   BookOpen,
+  Banknote,
+  Wallet,
 } from "lucide-react";
 import { useActions } from "@/components/ActionsProvider";
 
 const PRIMARY = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/transactions", label: "Transactions", icon: Receipt },
+  { href: "/bank", label: "Bank", icon: Banknote },
+  { href: "/cashbook", label: "Cashbook", icon: Wallet },
   { href: "/activity", label: "Activity", icon: Activity },
   { href: "/reports", label: "Reports", icon: BarChart3 },
 ];

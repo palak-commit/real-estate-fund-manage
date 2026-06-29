@@ -26,19 +26,24 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const p: any = rows[0];
 
   const byCategory = await query(
-    `SELECT c.name AS category, COALESCE(SUM(t.amount),0) AS total
-     FROM transactions t JOIN categories c ON c.id = t.category_id
+    `SELECT c.name AS category, COALESCE(h.name, c.name) AS head,
+            COALESCE(SUM(t.amount),0) AS total
+     FROM transactions t
+     JOIN categories c ON c.id = t.category_id
+     LEFT JOIN categories h ON h.id = c.parent_id
      WHERE t.project_id = ? AND t.type = 'expense'
-     GROUP BY c.name ORDER BY total DESC`,
+     GROUP BY c.id ORDER BY total DESC`,
     [id]
   );
 
   const txns = await query(
-    `SELECT t.*, sa.name AS source_name, da.name AS dest_name, c.name AS category
+    `SELECT t.*, sa.name AS source_name, da.name AS dest_name,
+            c.name AS category, pc.name AS category_head
      FROM transactions t
      LEFT JOIN accounts sa ON sa.id = t.source_account_id
      LEFT JOIN accounts da ON da.id = t.dest_account_id
      LEFT JOIN categories c ON c.id = t.category_id
+     LEFT JOIN categories pc ON pc.id = c.parent_id
      WHERE t.project_id = ?
      ORDER BY t.txn_date DESC, t.id DESC LIMIT 100`,
     [id]

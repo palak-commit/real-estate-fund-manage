@@ -2,16 +2,33 @@ import mysql from "mysql2/promise";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-// Predefined expense categories seeded on first run.
-const DEFAULT_CATEGORIES = [
-  "Labour",
-  "JCB",
-  "Diesel",
-  "Material",
-  "Legal",
-  "Government",
-  "Contractor",
-  "Miscellaneous",
+// Predefined expense categories seeded on first run, as a two-level Head -> Sub-Head
+// tree (mirrors the Excel workbook). Heads with a single line of activity still get one
+// sub-head so every expense can be tagged at the (required) sub-head level.
+const SEED_CATEGORY_TREE: { head: string; subs: string[] }[] = [
+  { head: "Material", subs: ["HDPE Pipe", "DI Pipe", "GI Pipe", "House Connection & Fitting", "Steel", "Cement", "Kapchi", "Reti", "Inta", "Colour", "Water Tanker", "Other Material", "Parchuran Material", "Shuttering Saman", "Pump", "Cable", "Neeri"] },
+  { head: "Labour Exp.", subs: ["Mistri", "Majur"] },
+  { head: "Machinery Rent", subs: ["JCB Rent", "Roller Rent"] },
+  { head: "Salary", subs: ["Office Staff"] },
+  { head: "Sub-Contract", subs: ["Pipeline Laying", "Excavation"] },
+  { head: "Fuel Exp.", subs: ["Diesel", "Petrol"] },
+  { head: "Transportation Exp.", subs: ["Transportation"] },
+  { head: "Site Exp.", subs: ["Site Expense"] },
+  { head: "Survey Design & Report Exp.", subs: ["Survey Design & Report"] },
+  { head: "Vevar RA-Bill", subs: ["Vevar RA-Bill"] },
+  { head: "Travelling Exp.", subs: ["Travelling"] },
+  { head: "Commission Exp.", subs: ["Commission"] },
+  { head: "Godown Rent", subs: ["Godown Rent"] },
+  { head: "Vehical Exp.", subs: ["Vehicle"] },
+  { head: "Room Exp.", subs: ["Room"] },
+  { head: "Printing & Stationary", subs: ["Printing & Stationary"] },
+  { head: "Repairing & Maintenance", subs: ["Repairing & Maintenance"] },
+  { head: "Stand Post Exp.", subs: ["Stand Post"] },
+  { head: "Other Exp.", subs: ["Other"] },
+  { head: "Deposite", subs: ["Deposite"] },
+  { head: "Fixed Asset", subs: ["Fixed Asset"] },
+  { head: "Legal", subs: ["Legal"] },
+  { head: "Government", subs: ["Government"] },
 ];
 
 declare global {
@@ -132,6 +149,53 @@ async function initialize(): Promise<void> {
       );
     }
 
+    // Migrate categories (flat, global-unique name) -> two-level Head/Sub-Head tree.
+    // Databases created before this change have a single VARCHAR(40) UNIQUE column.
+    const [nameCol]: any = await admin.query(
+      `SELECT character_maximum_length AS len FROM information_schema.columns
+        WHERE table_schema = ? AND table_name = 'categories' AND column_name = 'name'`,
+      [dbName]
+    );
+    if (Number(nameCol[0]?.len || 0) < 80) {
+      await admin.query("ALTER TABLE categories MODIFY COLUMN name VARCHAR(80) NOT NULL");
+    }
+    const catHasColumn = async (col: string) => {
+      const [r]: any = await admin.query(
+        `SELECT 1 FROM information_schema.columns
+          WHERE table_schema = ? AND table_name = 'categories' AND column_name = ?`,
+        [dbName, col]
+      );
+      return r.length > 0;
+    };
+    if (!(await catHasColumn("parent_id"))) {
+      await admin.query("ALTER TABLE categories ADD COLUMN parent_id INT NULL AFTER name");
+    }
+    const [catIdxRows]: any = await admin.query(
+      `SELECT DISTINCT index_name FROM information_schema.statistics
+        WHERE table_schema = ? AND table_name = 'categories'`,
+      [dbName]
+    );
+    const catIdx = new Set(catIdxRows.map((r: any) => r.index_name || r.INDEX_NAME));
+    // The old global UNIQUE(name) (auto-named `name`) must go — names are now unique per head.
+    if (catIdx.has("name")) await admin.query("ALTER TABLE categories DROP INDEX `name`");
+    if (!catIdx.has("uq_cat_parent_name")) {
+      await admin.query("ALTER TABLE categories ADD UNIQUE KEY uq_cat_parent_name (parent_id, name)");
+    }
+    if (!catIdx.has("idx_cat_parent")) {
+      await admin.query("ALTER TABLE categories ADD INDEX idx_cat_parent (parent_id)");
+    }
+    const [catFk]: any = await admin.query(
+      `SELECT 1 FROM information_schema.table_constraints
+        WHERE table_schema = ? AND table_name = 'categories' AND constraint_name = 'fk_cat_parent'`,
+      [dbName]
+    );
+    if (!catFk.length) {
+      await admin.query(
+        `ALTER TABLE categories ADD CONSTRAINT fk_cat_parent
+           FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE CASCADE`
+      );
+    }
+
     if (freshDatabase) {
       await admin.query(
         `INSERT INTO accounts (name, account_type, opening_balance, current_balance) VALUES
@@ -149,15 +213,43 @@ async function initialize(): Promise<void> {
       );
     }
 
-    // Seed the predefined categories whenever the table is empty (reference data, not
-    // user transactions) — so existing databases also get the default set on next start.
+    // Seed the predefined Head/Sub-Head tree whenever the table is empty (reference data,
+    // not user transactions) — so existing databases also get the default set on next start.
     const [catRows]: any = await admin.query("SELECT COUNT(*) AS c FROM categories");
     if (Number(catRows[0]?.c || 0) === 0) {
-      await admin.query(
-        `INSERT IGNORE INTO categories (name) VALUES ${DEFAULT_CATEGORIES.map(() => "(?)").join(",")}`,
-        DEFAULT_CATEGORIES
-      );
+      for (const node of SEED_CATEGORY_TREE) {
+        const [hr]: any = await admin.query("INSERT INTO categories (name, parent_id) VALUES (?, NULL)", [node.head]);
+        const headId = hr.insertId;
+        if (node.subs.length) {
+          await admin.query(
+            `INSERT INTO categories (name, parent_id) VALUES ${node.subs.map(() => "(?, ?)").join(",")}`,
+            node.subs.flatMap((s) => [s, headId])
+          );
+        }
+      }
     }
+
+    // Sub-head is required, but pre-migration data had flat categories (now heads) with
+    // expenses tagged directly to the head. (1) Make sure every head that an expense
+    // points to has at least one sub-head — give childless heads a same-named one.
+    const [childlessHeads]: any = await admin.query(
+      `SELECT h.id, h.name FROM categories h
+        WHERE h.parent_id IS NULL
+          AND NOT EXISTS (SELECT 1 FROM categories c WHERE c.parent_id = h.id)`
+    );
+    for (const h of childlessHeads) {
+      await admin.query("INSERT INTO categories (name, parent_id) VALUES (?, ?)", [h.name, h.id]);
+    }
+    // (2) Re-point ANY expense still tagged to a head down onto that head's first sub-head.
+    // Covers legacy rows regardless of how the head got its sub-head. Idempotent: once no
+    // expense points to a head, this matches nothing on subsequent starts.
+    await admin.query(
+      `UPDATE transactions t
+         JOIN categories head ON head.id = t.category_id AND head.parent_id IS NULL
+         JOIN categories sub ON sub.id = (SELECT MIN(c.id) FROM categories c WHERE c.parent_id = head.id)
+         SET t.category_id = sub.id
+       WHERE t.type = 'expense'`
+    );
   } finally {
     await admin.end();
   }

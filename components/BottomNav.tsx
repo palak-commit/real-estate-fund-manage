@@ -13,6 +13,8 @@ import {
   MoreHorizontal,
   X,
   BookOpen,
+  Banknote,
+  Wallet,
 } from "lucide-react";
 import { useActions } from "@/components/ActionsProvider";
 
@@ -22,6 +24,8 @@ const LEFT = [
 ];
 const RIGHT = [{ href: "/reports", label: "Reports", icon: BarChart3 }];
 const MORE = [
+  { href: "/bank", label: "Bank", icon: Banknote },
+  { href: "/cashbook", label: "Cashbook", icon: Wallet },
   { href: "/activity", label: "Activity", icon: Activity },
   { href: "/projects", label: "Sites", icon: Building2 },
   { href: "/accounts", label: "Accounts", icon: Landmark },

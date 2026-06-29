@@ -18,11 +18,20 @@ CREATE TABLE IF NOT EXISTS projects (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Expense categories: a predefined set is seeded on first run; admins can add more.
+-- Expense categories, TWO LEVELS: Head (parent_id IS NULL) -> Sub-Head (parent_id set).
+-- Mirrors the Excel workbook's "Head / Sub-Head" structure. A predefined tree is seeded
+-- on first run; admins can add more heads/sub-heads. Transactions tag the Sub-Head (leaf);
+-- the Head is always derived via parent_id, so head totals roll up from their sub-heads.
 CREATE TABLE IF NOT EXISTS categories (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(40) NOT NULL UNIQUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  name VARCHAR(80) NOT NULL,
+  parent_id INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  -- Sub-head names are unique within their head (parent_id is non-NULL); head-name
+  -- uniqueness is enforced in the API (NULLs are distinct in a UNIQUE index).
+  UNIQUE KEY uq_cat_parent_name (parent_id, name),
+  INDEX idx_cat_parent (parent_id),
+  CONSTRAINT fk_cat_parent FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE CASCADE
 );
 
 -- Append-only audit trail: every create/update/delete across the app is recorded here

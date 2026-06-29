@@ -27,7 +27,9 @@ export const projectUpdateSchema = z.object({
 });
 
 export const categoryCreateSchema = z.object({
-  name: z.string().trim().min(1, "Category name is required").max(40, "Category name is too long (max 40 characters)"),
+  name: z.string().trim().min(1, "Category name is required").max(80, "Category name is too long (max 80 characters)"),
+  // Omitted/null = a top-level Head; a positive id = a Sub-Head under that head.
+  parent_id: z.coerce.number().int().positive().nullish(),
 });
 
 // Shape/type guard for transactions. Relational rules (which account/site is required

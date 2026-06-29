@@ -41,12 +41,16 @@ export async function GET(req: NextRequest) {
     a
   );
 
-  // Category report — expenses grouped by category in range
+  // Category report — expenses grouped by Sub-Head, with its parent Head, in range.
+  // `head` lets the UI roll sub-heads up into Head totals (the Excel summary view).
   const categories = await query(
-    `SELECT c.name AS category, COALESCE(SUM(t.amount),0) AS total, COUNT(*) AS count
-     FROM transactions t JOIN categories c ON c.id = t.category_id
+    `SELECT c.name AS category, COALESCE(h.name, c.name) AS head,
+            COALESCE(SUM(t.amount),0) AS total, COUNT(*) AS count
+     FROM transactions t
+     JOIN categories c ON c.id = t.category_id
+     LEFT JOIN categories h ON h.id = c.parent_id
      WHERE t.type='expense' ${and}
-     GROUP BY c.name ORDER BY total DESC`,
+     GROUP BY c.id ORDER BY total DESC`,
     a
   );
 

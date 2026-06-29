@@ -51,7 +51,16 @@ export function TxnRow({
   onRowClick?: (t: any) => void;
 }) {
   const sign = signOf(t.type);
-  const Icon = t.type === "expense" ? CATEGORY_ICON[t.category] || TYPE_ICON.expense : TYPE_ICON[t.type];
+  // Expense title shows the full "Head › Sub-category" path (collapsing to one when the
+  // head and sub-head share a name, e.g. single-line heads). Icon is keyed by the Head.
+  const catLabel =
+    t.category_head && t.category && t.category_head !== t.category
+      ? `${t.category_head} › ${t.category}`
+      : t.category || t.category_head || "Expense";
+  const Icon =
+    t.type === "expense"
+      ? CATEGORY_ICON[t.category_head] || CATEGORY_ICON[t.category] || TYPE_ICON.expense
+      : TYPE_ICON[t.type];
   // Navigable rows: tied to a site (→ open that site) OR plain Funds Added into an account
   // (→ open that account's ledger). The parent's onRowClick decides where to go.
   const isFundsAdded = t.type === "income" && !t.project_id && !!t.dest_account_id;
@@ -76,7 +85,7 @@ export function TxnRow({
         <div className="min-w-0 space-y-0.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium text-foreground">
-              {t.type === "expense" ? t.category || "Expense" : typeLabel(t)}
+              {t.type === "expense" ? catLabel : typeLabel(t)}
             </span>
             <Label color={TYPE_COLOR[t.type]}>{typeLabel(t)}</Label>
             {t.type === "expense" && t.project_name && <Label color="indigo">{t.project_name}</Label>}

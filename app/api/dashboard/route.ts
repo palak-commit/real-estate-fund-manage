@@ -56,11 +56,14 @@ export async function GET() {
 
   // Recent transactions
   const recent = await query(
-    `SELECT t.*, sa.name AS source_name, da.name AS dest_name, p.name AS project_name
+    `SELECT t.*, sa.name AS source_name, da.name AS dest_name, p.name AS project_name,
+            c.name AS category, pc.name AS category_head
      FROM transactions t
      LEFT JOIN accounts sa ON sa.id = t.source_account_id
      LEFT JOIN accounts da ON da.id = t.dest_account_id
      LEFT JOIN projects p ON p.id = t.project_id
+     LEFT JOIN categories c ON c.id = t.category_id
+     LEFT JOIN categories pc ON pc.id = c.parent_id
      ORDER BY t.txn_date DESC, t.id DESC LIMIT 10`
   );
 

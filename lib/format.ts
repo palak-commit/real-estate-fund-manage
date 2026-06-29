@@ -95,13 +95,23 @@ export const CATEGORIES = [
   "Miscellaneous",
 ] as const;
 
+// Icons are keyed by Head name (the top level of the category tree). Unknown heads fall
+// back to a generic tag icon in the picker.
 export const CATEGORY_ICON: Record<string, LucideIcon> = {
+  Material: Boxes,
+  "Labour Exp.": HardHat,
+  "Machinery Rent": Truck,
+  Salary: HandCoins,
+  "Sub-Contract": Wrench,
+  "Fuel Exp.": Fuel,
+  "Transportation Exp.": Truck,
+  Legal: Scale,
+  Government: Landmark,
+  "Other Exp.": Package,
+  // Legacy flat-category keys kept so pre-migration data still shows an icon.
   Labour: HardHat,
   JCB: Truck,
   Diesel: Fuel,
-  Material: Boxes,
-  Legal: Scale,
-  Government: Landmark,
   Contractor: Wrench,
   Miscellaneous: Package,
 };

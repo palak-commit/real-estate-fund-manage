@@ -10,7 +10,7 @@ import { TYPE_LABELS, inr, todayISO } from "@/lib/format";
 
 type Project = { id: number; name: string };
 type Account = { id: number; name: string; account_type: string };
-type Category = { id: number; name: string };
+type Category = { id: number; name: string; subheads: { id: number; name: string }[] };
 type Pagination = {
   page: number;
   limit: number;
@@ -67,7 +67,8 @@ function HistoryPageInner() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [type, setType] = useState("");
   const [projectId, setProjectId] = useState("");
-  const [category, setCategory] = useState("");
+  const [head, setHead] = useState(""); // category Head (top level)
+  const [category, setCategory] = useState(""); // Sub-Head (leaf), only within the chosen head
   // Initialise from ?account=<id> on the FIRST render so only one (correct) fetch runs —
   // avoids a race where an unfiltered fetch overwrites the filtered result.
   const [account, setAccount] = useState(searchParams.get("account") || "");
@@ -83,6 +84,7 @@ function HistoryPageInner() {
   const applyFilters = (qs: URLSearchParams) => {
     if (type) qs.set("type", type);
     if (projectId) qs.set("project_id", projectId);
+    if (head) qs.set("head", head);
     if (category) qs.set("category", category);
     if (account) qs.set("account", account);
     if (paidTo) qs.set("paid_to", paidTo);
@@ -91,18 +93,12 @@ function HistoryPageInner() {
   };
 
   // Reset to page 1 whenever a filter changes.
-  useEffect(() => setPage(1), [type, projectId, category, account, paidTo, from, to]);
+  useEffect(() => setPage(1), [type, projectId, head, category, account, paidTo, from, to]);
 
   const load = useCallback(() => {
     setTxns(null);
     const qs = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(page) });
-    if (type) qs.set("type", type);
-    if (projectId) qs.set("project_id", projectId);
-    if (category) qs.set("category", category);
-    if (account) qs.set("account", account);
-    if (paidTo) qs.set("paid_to", paidTo);
-    if (from) qs.set("from", from);
-    if (to) qs.set("to", to);
+    applyFilters(qs);
     fetch(`/api/transactions?${qs}`)
       .then((r) => r.json())
       .then((res) => {
@@ -110,7 +106,8 @@ function HistoryPageInner() {
         setPg(res.pagination ?? null);
         setSumAmount(res.summary?.amount ?? 0);
       });
-  }, [type, projectId, category, account, paidTo, from, to, page]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, projectId, head, category, account, paidTo, from, to, page]);
 
   useEffect(() => {
     fetch("/api/projects").then((r) => r.json()).then((j) => setProjects(j.data));
@@ -124,16 +121,20 @@ function HistoryPageInner() {
     if (acc) setAccount(acc);
   }, [searchParams]);
 
-  const hasFilters = !!(type || projectId || category || account || paidTo || from || to);
+  const hasFilters = !!(type || projectId || head || category || account || paidTo || from || to);
   function clearFilters() {
     setType("");
     setProjectId("");
+    setHead("");
     setCategory("");
     setAccount("");
     setPaidTo("");
     setFrom("");
     setTo("");
   }
+
+  // Sub-heads of the currently-selected Head (for the cascading Sub-category filter).
+  const selectedHead = categories.find((h) => h.name === head);
 
   useEffect(() => {
     load();
@@ -243,15 +244,35 @@ function HistoryPageInner() {
         </Filter>
         <Filter label="Category">
           <CustomSelect
-            value={category}
-            onChange={(val) => setCategory(val)}
-            onClear={() => setCategory("")}
+            value={head}
+            onChange={(val) => {
+              setHead(val);
+              setCategory(""); // reset sub-category when the head changes
+            }}
+            onClear={() => {
+              setHead("");
+              setCategory("");
+            }}
             options={[
               { label: "All Categories", value: "" },
-              ...categories.map((c) => ({ label: c.name, value: c.name }))
+              ...categories.map((h) => ({ label: h.name, value: h.name })),
             ]}
             placeholder="All Categories"
             className="w-40"
+          />
+        </Filter>
+        <Filter label="Sub-category">
+          <CustomSelect
+            value={category}
+            onChange={(val) => setCategory(val)}
+            onClear={() => setCategory("")}
+            disabled={!selectedHead}
+            options={[
+              { label: "All Sub-categories", value: "" },
+              ...(selectedHead?.subheads ?? []).map((s) => ({ label: s.name, value: s.name })),
+            ]}
+            placeholder={selectedHead ? "All Sub-categories" : "Select a category first"}
+            className="w-44"
           />
         </Filter>
         <Filter label="Account">

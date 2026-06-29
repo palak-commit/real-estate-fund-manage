@@ -106,7 +106,7 @@ export default function TransactionForm({
 
     if (f.type === "site_expense") {
       payload.type = "expense";
-      payload.category = f.category;
+      payload.category_id = f.category; // holds the selected Sub-Head (leaf) id
       payload.project_id = f.project_id;
       payload.source_account_id = siteExpenseFrom === "site" ? "" : siteExpenseFrom.slice(4);
     } else if (f.type === "site_fund") {
@@ -131,7 +131,7 @@ export default function TransactionForm({
     }
 
     if (!payload.amount || Number(payload.amount) <= 0) return setErr("Enter a valid amount");
-    if (f.type === "site_expense" && !f.category) return setErr("Select a category");
+    if (f.type === "site_expense" && !f.category) return setErr("Select a sub-category");
     if (f.type === "site_expense" && !f.project_id) return setErr("Select a site");
     if (f.type === "site_fund" && !f.source_account_id) return setErr("Select a source account");
     if (f.type === "site_fund" && !f.project_id) return setErr("Select a site");
@@ -223,7 +223,7 @@ export default function TransactionForm({
         {f.type === "site_expense" && (
           <div className="mt-4">
             <p className="mb-1.5 text-sm font-medium text-muted-foreground">Category</p>
-            <CategoryPicker value={f.category} onChange={(c) => set({ category: c })} />
+            <CategoryPicker value={f.category} onChange={(id) => set({ category: String(id) })} />
           </div>
         )}
 

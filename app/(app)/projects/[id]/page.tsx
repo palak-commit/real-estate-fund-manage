@@ -19,7 +19,7 @@ const PROFIT_STYLE: Record<ProfitLevel, string> = {
 };
 
 type Account = { id: number; name: string };
-type Category = { id: number; name: string };
+type Category = { id: number; name: string; subheads: { id: number; name: string }[] };
 type Pagination = {
   page: number;
   limit: number;
@@ -303,7 +303,9 @@ export default function ProjectDetail() {
             onClear={() => setCategory("")}
             options={[
               { label: "All Categories", value: "" },
-              ...categories.map((c) => ({ label: c.name, value: c.name })),
+              ...categories
+                .filter((h) => h.subheads.length > 0)
+                .map((h) => ({ group: h.name, items: h.subheads.map((s) => ({ label: s.name, value: s.name })) })),
             ]}
             placeholder="All Categories"
             className="w-40"
