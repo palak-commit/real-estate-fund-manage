@@ -133,7 +133,7 @@ export default function TransactionForm({
     }
 
     if (!payload.amount || Number(payload.amount) <= 0) return setErr("Enter a valid amount");
-    if (f.type === "site_expense" && !f.category) return setErr("Select a sub-category");
+    if (f.type === "site_expense" && !f.category) return setErr("Select a category (Head)");
     if (f.type === "site_expense" && !f.project_id) return setErr("Select a site");
     if (f.type === "site_fund" && !f.source_account_id) return setErr("Select a source account");
     if (f.type === "site_fund" && !f.project_id) return setErr("Select a site");
@@ -176,7 +176,7 @@ export default function TransactionForm({
       onClick={onClose}
     >
       <div
-        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-card p-5 shadow-xl sm:rounded-2xl"
+        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-card p-5 shadow-xl sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
@@ -204,7 +204,10 @@ export default function TransactionForm({
         {/* Amount + Date */}
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-2">
-            <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Amount</label>
+            <label className="mb-1.5 block text-sm font-medium text-muted-foreground">
+              Amount
+              <Req />
+            </label>
             <Input
               autoFocus
               type="text"
@@ -216,7 +219,10 @@ export default function TransactionForm({
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Date</label>
+            <label className="mb-1.5 block text-sm font-medium text-muted-foreground">
+              Date
+              <Req />
+            </label>
             <CustomDatePicker value={f.txn_date} onChange={(val) => set({ txn_date: val })} className="!w-full" align="right" />
           </div>
         </div>
@@ -224,15 +230,18 @@ export default function TransactionForm({
         {/* Category chips */}
         {f.type === "site_expense" && (
           <div className="mt-4">
-            <p className="mb-1.5 text-sm font-medium text-muted-foreground">Category</p>
+            <p className="mb-1.5 text-sm font-medium text-muted-foreground">
+              Head
+              <Req />
+            </p>
             <CategoryPicker value={f.category} onChange={(id) => set({ category: String(id) })} />
           </div>
         )}
 
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {f.type === "site_expense" && (
             <>
-              <Labeled label="Site">
+              <Labeled label="Site" required>
                 <CustomSelect
                   value={f.project_id}
                   onChange={(val) => set({ project_id: val })}
@@ -243,7 +252,7 @@ export default function TransactionForm({
                   placeholder="Select site…"
                 />
               </Labeled>
-              <Labeled label="Paid From">
+              <Labeled label="Paid From" required>
                 <CustomSelect
                   value={siteExpenseFrom}
                   onChange={(val) => set({ paidFrom: val })}
@@ -281,7 +290,7 @@ export default function TransactionForm({
 
           {f.type === "site_fund" && (
             <>
-              <Labeled label="From Account">
+              <Labeled label="From Account" required>
                 <CustomSelect
                   value={f.source_account_id}
                   onChange={(val) => set({ source_account_id: val })}
@@ -292,7 +301,7 @@ export default function TransactionForm({
                   Money is moved from this account into the site’s funds.
                 </p>
               </Labeled>
-              <Labeled label="To Site">
+              <Labeled label="To Site" required>
                 <CustomSelect
                   value={f.project_id}
                   onChange={(val) => set({ project_id: val })}
@@ -308,7 +317,7 @@ export default function TransactionForm({
 
           {f.type === "transfer" && (
             <>
-              <Labeled label="Source Account">
+              <Labeled label="Source Account" required>
                 <CustomSelect
                   value={f.source_account_id}
                   onChange={(val) => {
@@ -318,7 +327,7 @@ export default function TransactionForm({
                   placeholder="Select…"
                 />
               </Labeled>
-              <Labeled label="Destination Account">
+              <Labeled label="Destination Account" required>
                 <CustomSelect
                   value={f.dest}
                   onChange={(val) => set({ dest: val })}
@@ -337,7 +346,7 @@ export default function TransactionForm({
 
           {f.type === "income" && (
             <>
-              <Labeled label="From">
+              <Labeled label="From" required>
                 <CustomSelect
                   value={f.project_id}
                   onChange={(val) => set({ project_id: val })}
@@ -346,7 +355,7 @@ export default function TransactionForm({
                 />
                 <p className="mt-1 text-xs text-muted-foreground">The site this income came from.</p>
               </Labeled>
-              <Labeled label="To">
+              <Labeled label="To" required>
                 <CustomSelect
                   value={f.dest_account_id}
                   onChange={(val) => set({ dest_account_id: val })}
@@ -361,14 +370,14 @@ export default function TransactionForm({
           )}
 
           {f.type === "partner_withdrawal" && (
-            <Labeled label="Partner">
+            <Labeled label="Partner" required className="sm:col-span-2">
               <CustomSelect value={f.source_account_id} onChange={(val) => set({ source_account_id: val })} options={fundedPartners.map(accOpt)} placeholder="Select partner…" />
               <p className="mt-1 text-xs text-muted-foreground">Money is taken out of this partner’s account.</p>
             </Labeled>
           )}
 
           {f.type === "site_expense" && (
-            <Labeled label="Paid To (optional)">
+            <Labeled label="Paid To (optional)" className="sm:col-span-2">
               <PaidToPicker value={f.paid_to} onChange={(val) => set({ paid_to: val })} />
             </Labeled>
           )}
@@ -396,10 +405,28 @@ export default function TransactionForm({
   );
 }
 
-function Labeled({ label, children }: { label: string; children: React.ReactNode }) {
+// A small red asterisk marking a required field.
+function Req() {
+  return <span className="text-danger"> *</span>;
+}
+
+function Labeled({
+  label,
+  required,
+  className,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div>
-      <label className="mb-1.5 block text-sm font-medium text-muted-foreground">{label}</label>
+    <div className={className}>
+      <label className="mb-1.5 block text-sm font-medium text-muted-foreground">
+        {label}
+        {required && <Req />}
+      </label>
       {children}
     </div>
   );

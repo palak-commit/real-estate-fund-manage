@@ -12,8 +12,8 @@ const SELECT = `
     sa.name AS source_name, sa.account_type AS source_type,
     da.name AS dest_name, da.account_type AS dest_type,
     p.name AS project_name,
-    c.name AS category,
-    pc.name AS category_head
+    CASE WHEN c.parent_id IS NOT NULL THEN c.name END AS category,
+    COALESCE(pc.name, c.name) AS category_head
   FROM transactions t
   LEFT JOIN accounts sa ON sa.id = t.source_account_id
   LEFT JOIN accounts da ON da.id = t.dest_account_id
@@ -130,8 +130,9 @@ export async function POST(req: NextRequest) {
     if (!D && !P) return fail("Destination account or project is required");
     if (D && D === S) return fail("Source and destination must be different");
   } else if (type === "expense") {
-    // Expenses are tagged to a Sub-Head (leaf). Prefer category_id; fall back to a name
-    // lookup for legacy callers. The chosen category must be a sub-head, never a bare head.
+    // Expenses are tagged to a Head, optionally narrowed to one of its Sub-Heads (Type of
+    // Head). Prefer category_id; fall back to a name lookup for legacy callers. The category
+    // can be a Head (head-only) or a Sub-Head — the Type of Head is optional.
     let cat: { id: number; name: string; parent_id: number | null } | undefined;
     if (b.category_id) {
       const rows = await query<{ id: number; name: string; parent_id: number | null }>(
@@ -141,7 +142,7 @@ export async function POST(req: NextRequest) {
       cat = rows[0];
     } else if (b.category) {
       const rows = await query<{ id: number; name: string; parent_id: number | null }>(
-        "SELECT id, name, parent_id FROM categories WHERE name = ? AND parent_id IS NOT NULL LIMIT 1",
+        "SELECT id, name, parent_id FROM categories WHERE name = ? LIMIT 1",
         [b.category]
       );
       cat = rows[0];
@@ -149,7 +150,6 @@ export async function POST(req: NextRequest) {
       return fail("Category is required");
     }
     if (!cat) return fail("Unknown category");
-    if (cat.parent_id == null) return fail("Select a sub-category");
     categoryId = cat.id;
     categoryName = cat.name;
     if (!P && !S) return fail("Project (site) or account is required");

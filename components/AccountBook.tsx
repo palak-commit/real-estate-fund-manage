@@ -1,7 +1,8 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Trash2 } from "lucide-react";
+import { X, Trash2, Info } from "lucide-react";
+import Link from "next/link";
 import { Card, Button, CustomSelect, CustomDatePicker, EmptyState } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import { inr, formatDate } from "@/lib/format";
@@ -32,8 +33,16 @@ type Book = {
 // Bank / Cashbook are PAYMENT registers (the Excel "BANK" / "CASHBOOK" sheets): the
 // expenses paid out of the selected account, categorised by Head / Sub-Head, with a
 // Net Payment total. (Money coming IN is shown on the Dashboard / account ledger.)
-export default function AccountBook({ accountType, title }: { accountType: "bank" | "cash"; title: string }) {
+export default function AccountBook({
+  accountType,
+  title,
+}: {
+  accountType: "bank" | "cash" | "partner";
+  title: string;
+}) {
   const isBank = accountType === "bank";
+  // Noun used in picker labels / empty state ("Bank account", "All cash accounts", …).
+  const typeNoun = accountType === "bank" ? "Bank" : accountType === "cash" ? "Cash" : "Partner";
   const router = useRouter();
   const { toast, confirm } = useUI();
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -172,19 +181,29 @@ export default function AccountBook({ accountType, title }: { accountType: "bank
         </div>
       </div>
 
+      {/* Info Note about how to add data */}
+      <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">
+        <Info className="mt-0.5 h-4 w-4 flex-none text-primary" />
+        <div className="text-muted-foreground">
+          <span className="font-semibold text-foreground">How this works: </span>
+          Data appears here automatically when you add a <span className="font-semibold text-foreground">Site Expense</span> or <span className="font-semibold text-foreground">Add Site Fund</span> and select a {typeNoun.toLowerCase()} account as the source. 
+          {" "}<Link href="/guide#bank-cashbook" className="font-semibold text-primary hover:underline">Read the guide →</Link>
+        </div>
+      </div>
+
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
-          <p className="text-xs font-medium text-muted-foreground">{isBank ? "Bank account" : "Cash account"}</p>
+          <p className="text-xs font-medium text-muted-foreground">{typeNoun} account</p>
           <CustomSelect
             value={accountId}
             onChange={setAccountId}
             onClear={() => setAccountId("")}
             options={[
-              { label: isBank ? "All bank accounts" : "All cash accounts", value: "" },
+              { label: `All ${typeNoun.toLowerCase()} accounts`, value: "" },
               ...accounts.map((a) => ({ label: `${a.name} (${inr(a.current_balance)})`, value: String(a.id) })),
             ]}
-            placeholder={isBank ? "All bank accounts" : "All cash accounts"}
+            placeholder={`All ${typeNoun.toLowerCase()} accounts`}
             className="w-56"
           />
         </div>
@@ -300,7 +319,7 @@ export default function AccountBook({ accountType, title }: { accountType: "bank
                     <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold">{inr(r.credit)}</td>
                     <td className="whitespace-nowrap px-3 py-2.5">{r.type === "transfer" ? "Site Fund" : r.category_head || "—"}</td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
-                      {r.category && r.category !== r.category_head ? r.category : "—"}
+                      {r.type === "transfer" ? "—" : r.category || "—"}
                     </td>
                     <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
                       <Button variant="danger" onClick={() => del(r)} className="!px-2 !py-1.5">

@@ -18,6 +18,9 @@ import {
   RefreshCw,
   Languages,
   TrendingUp,
+  Book,
+  ClipboardList,
+  ActivitySquare,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -31,6 +34,9 @@ const getTOC = (lang: Lang) => [
   { id: "transaction-types", label: t(lang, "Transaction Types", "ટ્રાન્ઝેક્શન ના પ્રકાર") },
   { id: "category-paidto",   label: t(lang, "Category & Paid To", "કેટેગરી અને પેઇડ ટુ (Paid To)") },
   { id: "add-money",         label: t(lang, "Add Money", "પૈસા ઉમેરો (Add Money)") },
+  { id: "bank-cashbook",     label: t(lang, "Bank, Cashbook & Partner", "બેંક, કેશબુક અને પાર્ટનર (Registers)") },
+  { id: "ra-receipts",       label: t(lang, "Receipt of RA", "RA બિલ રસીદ (Receipt of RA)") },
+  { id: "activity-log",      label: t(lang, "Activity Log", "એક્ટિવિટી લોગ (Activity Log)") },
   { id: "recheck-balances",  label: t(lang, "Recheck Balances", "Recheck Balances (બેલેન્સ ચેક કરો)") },
 ];
 
@@ -854,6 +860,162 @@ export default function GuidePage() {
             </p>
           </div>
 
+        </Card>
+      </section>
+
+      {/* ── Bank, Cashbook & Partner ── */}
+      <section id="bank-cashbook">
+        <h2 className="mb-1 text-base font-semibold text-foreground">
+          {t(lang, "Bank, Cashbook & Partner Registers", "બેંક, કેશબુક અને પાર્ટનર રજિસ્ટર")}
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {lang === "en" ? (
+            <>
+              The <Link href="/bank" className="font-semibold text-primary hover:underline">Bank</Link>, <Link href="/cashbook" className="font-semibold text-primary hover:underline">Cashbook</Link>, and <Link href="/partner" className="font-semibold text-primary hover:underline">Partner</Link> pages give you a familiar ledger view of money paid out, just like your Excel sheets.
+            </>
+          ) : (
+            <>
+              <Link href="/bank" className="font-semibold text-primary hover:underline">Bank</Link>, <Link href="/cashbook" className="font-semibold text-primary hover:underline">Cashbook</Link>, અને <Link href="/partner" className="font-semibold text-primary hover:underline">Partner</Link> પેજ તમને ખર્ચેલા પૈસાનો હિસાબ બતાવે છે, બિલકુલ તમારી Excel શીટની જેમ.
+            </>
+          )}
+        </p>
+
+        <Card className="p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-primary/10">
+              <Book className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{t(lang, "How data appears here", "અહીં એન્ટ્રી ક્યાંથી આવે છે?")}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
+                {lang === "en" ? (
+                  <>
+                    When you add a <span className="font-semibold">Site Expense</span> and select a Bank account in "Paid From", it automatically shows up in the <span className="font-semibold">Bank</span> register. If you select a Cash account, it appears in the <span className="font-semibold">Cashbook</span>, and if you select a Partner account, it appears in the <span className="font-semibold">Partner</span> register. Also, whenever you use <span className="font-semibold">Add Site Fund</span> to send money from a Bank, Cash, or Partner account to a site, that entry is also recorded in its respective register.
+                  </>
+                ) : (
+                  <>
+                    જ્યારે તમે કોઈ <span className="font-semibold">Site Expense (સાઇટનો ખર્ચ)</span> ઉમેરો છો અને "Paid From" માં જો તમે બેંક એકાઉન્ટ પસંદ કરશો, તો તે એન્ટ્રી સીધી <span className="font-semibold">Bank</span> રજિસ્ટરમાં દેખાશે. જો તમે Cash એકાઉન્ટ પસંદ કરશો, તો તે <span className="font-semibold">Cashbook</span> માં દેખાશે, અને જો તમે Partner એકાઉન્ટ પસંદ કરશો, તો તે <span className="font-semibold">Partner</span> રજિસ્ટરમાં દેખાશે. આ ઉપરાંત, જ્યારે તમે <span className="font-semibold">Add Site Fund</span> નો ઉપયોગ કરીને બેંક, કેશ, કે પાર્ટનર એકાઉન્ટમાંથી કોઈ સાઇટમાં ફંડ મોકલો છો, ત્યારે તે પણ તેના સંબંધિત રજિસ્ટરમાં દેખાશે.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <Info className="mt-0.5 h-4 w-4 flex-none text-primary" />
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {lang === "en" ? (
+                <>
+                  <span className="font-semibold text-foreground">Tip: </span>
+                  You can use the filters at the top to search by Account, Date, Party Name (Paid To), Site, or Head (Category).
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold text-foreground">ટીપ: </span>
+                  તમે ઉપર આપેલા ફિલ્ટરથી એકાઉન્ટ, તારીખ, પાર્ટી (Paid To), સાઇટ, અથવા હેડ (Category) મુજબ સર્ચ કરી શકો છો.
+                </>
+              )}
+            </p>
+          </div>
+        </Card>
+      </section>
+
+      {/* ── Receipt of RA ── */}
+      <section id="ra-receipts">
+        <h2 className="mb-1 text-base font-semibold text-foreground">
+          {t(lang, "Receipt of RA", "RA બિલ રસીદ (Receipt of RA)")}
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {lang === "en" ? (
+            <>
+              The <Link href="/ra-receipts" className="font-semibold text-primary hover:underline">Receipt of RA</Link> page tracks Running Account bills and their deductions (GST, TDS, etc.).
+            </>
+          ) : (
+            <>
+              <Link href="/ra-receipts" className="font-semibold text-primary hover:underline">Receipt of RA</Link> પેજ તમારા Running Account ના બિલો અને તેની કપાત (GST, TDS, વગેરે) ટ્રેક કરે છે.
+            </>
+          )}
+        </p>
+        
+        <Card className="p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-info/10">
+              <ClipboardList className="h-5 w-5 text-info" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{t(lang, "Bill details & Auto-calculation", "બિલની વિગતો અને ગણતરી")}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
+                {lang === "en" ? (
+                  <>
+                    Enter your basic bill details, and the system automatically calculates deductions like GST, TDS, SD, and Net Receivable.
+                  </>
+                ) : (
+                  <>
+                    તમારા બિલની મૂળભૂત વિગતો નાખો, અને સિસ્ટમ આપમેળે GST, TDS, SD અને હાથમાં આવનાર ચોખ્ખી રકમ (Net Receivable) ની ગણતરી કરશે.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+          <div className="my-4 border-t border-border" />
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-success/10">
+              <Banknote className="h-5 w-5 text-success" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{t(lang, "Partial Payments & Account Balance", "પેમેન્ટ (Partially Pay) અને ખાતાનું બેલેન્સ")}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
+                {lang === "en" ? (
+                  <>
+                    Just creating an RA bill <span className="font-semibold">does not</span> add money to your accounts. To actually receive the money, click on the bill row to add a <span className="font-semibold">Partial Payment</span>. When you enter the received amount and select a "Received In" account (like your Bank), that amount is immediately added to your actual bank balance as Income. You can add multiple payments until the full bill amount is recovered.
+                  </>
+                ) : (
+                  <>
+                    માત્ર RA બિલ બનાવવાથી તમારા ખાતામાં પૈસા જમા <span className="font-semibold">નથી</span> થતા. ખાતામાં પૈસા લાવવા માટે, બિલની હરોળ પર ક્લિક કરો અને <span className="font-semibold">Payment</span> ઉમેરો. જ્યારે તમે પેમેન્ટની રકમ નાખીને "Received In" (કયા ખાતામાં પૈસા આવ્યા) સિલેક્ટ કરશો, ત્યારે એ રકમ તરત જ તમારા બેંક કે કેશ ખાતામાં આવક (Income) તરીકે ઉમેરાઈ જશે. જ્યાં સુધી બિલના પૂરા પૈસા ન મળે ત્યાં સુધી તમે થોડા-થોડા પેમેન્ટ (Partially Pay) ની એન્ટ્રી કરી શકો છો.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+        </Card>
+      </section>
+
+      {/* ── Activity Log ── */}
+      <section id="activity-log">
+        <h2 className="mb-1 text-base font-semibold text-foreground">
+          {t(lang, "Activity Log", "એક્ટિવિટી લોગ")}
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {lang === "en" ? (
+            <>
+              The <Link href="/activity" className="font-semibold text-primary hover:underline">Activity Log</Link> keeps a permanent record of everything that happens in the app.
+            </>
+          ) : (
+            <>
+              <Link href="/activity" className="font-semibold text-primary hover:underline">એક્ટિવિટી લોગ</Link> માં એપ્લિકેશનમાં થયેલી દરેક વસ્તુનો કાયમી રેકોર્ડ સચવાય છે.
+            </>
+          )}
+        </p>
+
+        <Card className="p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-warning/10">
+              <ActivitySquare className="h-5 w-5 text-warning" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{t(lang, "What it tracks", "આ શું ટ્રેક કરે છે?")}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
+                {lang === "en" ? (
+                  <>
+                    Every time someone creates, edits, or deletes a transaction, account, site, or RA bill, it is securely logged here with the date and exact details. It is read-only, ensuring a reliable audit trail.
+                  </>
+                ) : (
+                  <>
+                    જ્યારે પણ કોઈ ટ્રાન્ઝેક્શન, ખાતું, સાઇટ કે RA બિલ બનાવે, એડિટ કરે કે ડીલીટ કરે, ત્યારે તેની સંપૂર્ણ વિગતો તારીખ સાથે અહીં નોંધાઈ જાય છે. તેને બદલી શકાતો નથી, જેથી તમારો હિસાબ હંમેશા સુરક્ષિત રહે.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
         </Card>
       </section>
 

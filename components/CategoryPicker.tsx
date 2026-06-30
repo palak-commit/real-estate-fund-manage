@@ -8,9 +8,9 @@ import { CATEGORY_ICON } from "@/lib/format";
 type Sub = { id: number; name: string };
 type Head = { id: number; name: string; subheads: Sub[] };
 
-// Two-level expense category selector (Head → Sub-Head). The caller holds the selected
-// Sub-Head id (the leaf); the head is just for navigation. Admins can add a head or a
-// sub-head inline without leaving the form. `value` is the selected sub-head id ("" = none).
+// Two-level expense category selector (Head → Type of Head). The caller holds the selected
+// category id — either a Head (head-only) or one of its Sub-Heads (the Type of Head is
+// OPTIONAL). Admins can add a head or a sub-head inline. `value` is the selected id ("" = none).
 export default function CategoryPicker({
   value,
   onChange,
@@ -27,7 +27,8 @@ export default function CategoryPicker({
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const selectedLeaf = value ? Number(value) : null;
+  // The selected category id — may be a Head (head-only) or a Sub-Head (Type of Head).
+  const selectedId = value ? Number(value) : null;
 
   const load = (selectLeaf?: number | null) =>
     fetch("/api/categories")
@@ -35,10 +36,11 @@ export default function CategoryPicker({
       .then((j) => {
         const hs: Head[] = j.data || [];
         setHeads(hs);
-        // Keep the open head in sync with the currently-selected leaf.
-        const leaf = selectLeaf ?? selectedLeaf;
-        if (leaf != null) {
-          const h = hs.find((x) => x.subheads.some((s) => s.id === leaf));
+        // Open the head that matches the current selection — whether it's a sub-head (open
+        // its parent) or a head itself (open it).
+        const sel = selectLeaf ?? selectedId;
+        if (sel != null) {
+          const h = hs.find((x) => x.subheads.some((s) => s.id === sel)) || hs.find((x) => x.id === sel);
           if (h) setHeadId(h.id);
         }
         return hs;
@@ -57,6 +59,7 @@ export default function CategoryPicker({
     setHeadId(h.id);
     setAddMode(null);
     setName("");
+    onChange(h.id); // head-only selection; picking a Type of Head below is optional
   }
 
   async function createCategory(parentId: number | null) {
@@ -146,16 +149,16 @@ export default function CategoryPicker({
       {activeHead && (
         <div>
           <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Sub-category · {activeHead.name}
+            Type of Head <span className="normal-case text-muted-foreground/70">(optional)</span> · {activeHead.name}
           </p>
           <div className="flex flex-wrap gap-2">
             {activeHead.subheads.map((s) => {
-              const active = selectedLeaf === s.id;
+              const active = selectedId === s.id;
               return (
                 <button
                   key={s.id}
                   type="button"
-                  onClick={() => onChange(s.id)}
+                  onClick={() => onChange(active ? activeHead.id : s.id)}
                   className={`rounded-full border px-3 py-1.5 text-sm transition ${
                     active ? "border-primary bg-primary text-white" : "border-border hover:bg-muted"
                   }`}

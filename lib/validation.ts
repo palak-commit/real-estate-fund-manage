@@ -32,6 +32,11 @@ export const categoryCreateSchema = z.object({
   parent_id: z.coerce.number().int().positive().nullish(),
 });
 
+// Renaming a head or sub-head — just the name (its level/parent never changes).
+export const categoryUpdateSchema = z.object({
+  name: z.string().trim().min(1, "Category name is required").max(80, "Category name is too long (max 80 characters)"),
+});
+
 // Shape/type guard for transactions. Relational rules (which account/site is required
 // per type, funds availability) stay in the route since they need DB lookups.
 export const txnCreateSchema = z.object({

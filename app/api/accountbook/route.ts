@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   // type (all bank accounts, or all cash accounts). Running balance is meaningless across
   // multiple accounts, so it's omitted; the Bank/Cashbook view doesn't use it.
   if (!accountId) {
-    if (accountType !== "bank" && accountType !== "cash") {
+    if (accountType !== "bank" && accountType !== "cash" && accountType !== "partner") {
       return fail("account_id or account_type is required", 400);
     }
     const params: any[] = [accountType];
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     const allRows = await query<any>(
       `SELECT t.id, DATE_FORMAT(t.txn_date, '%Y-%m-%d') AS txn_date, t.type, t.note, t.paid_to,
          sa.name AS source_name, da.name AS dest_name, t.project_id, p.name AS project_name,
-         c.name AS category, pc.name AS category_head,
+         CASE WHEN c.parent_id IS NOT NULL THEN c.name END AS category, COALESCE(pc.name, c.name) AS category_head,
          0 AS debit, t.amount AS credit
        FROM transactions t
        JOIN accounts sa ON sa.id = t.source_account_id AND sa.account_type = ?
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
   const rows = await query<any>(
     `SELECT t.id, DATE_FORMAT(t.txn_date, '%Y-%m-%d') AS txn_date, t.type, t.note, t.paid_to,
        sa.name AS source_name, da.name AS dest_name, t.project_id, p.name AS project_name,
-       c.name AS category, pc.name AS category_head,
+       CASE WHEN c.parent_id IS NOT NULL THEN c.name END AS category, COALESCE(pc.name, c.name) AS category_head,
        CASE
          WHEN t.dest_account_id = ? AND t.type IN ('transfer','income') THEN t.amount
          WHEN t.source_account_id = ? AND t.type = 'partner_contribution' THEN t.amount

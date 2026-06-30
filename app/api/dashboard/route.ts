@@ -70,7 +70,7 @@ export async function GET() {
   // Recent transactions
   const recent = await query(
     `SELECT t.*, sa.name AS source_name, da.name AS dest_name, p.name AS project_name,
-            c.name AS category, pc.name AS category_head
+            CASE WHEN c.parent_id IS NOT NULL THEN c.name END AS category, COALESCE(pc.name, c.name) AS category_head
      FROM transactions t
      LEFT JOIN accounts sa ON sa.id = t.source_account_id
      LEFT JOIN accounts da ON da.id = t.dest_account_id
