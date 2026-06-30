@@ -244,15 +244,16 @@ async function initialize(): Promise<void> {
       );
     }
 
-    // Add the 'ra_receipt' value to the activity_log entity enum on older databases.
+    // Add the 'ra_receipt' / 'vendor_bill' values to the activity_log entity enum on older
+    // databases (CREATE TABLE IF NOT EXISTS won't alter an existing enum).
     const [entCol]: any = await admin.query(
       `SELECT COLUMN_TYPE AS t FROM information_schema.columns
         WHERE table_schema = ? AND table_name = 'activity_log' AND column_name = 'entity'`,
       [dbName]
     );
-    if (entCol.length && !String(entCol[0].t).includes("ra_receipt")) {
+    if (entCol.length && (!String(entCol[0].t).includes("ra_receipt") || !String(entCol[0].t).includes("vendor_bill"))) {
       await admin.query(
-        "ALTER TABLE activity_log MODIFY COLUMN entity ENUM('transaction','account','site','category','system','ra_receipt') NOT NULL"
+        "ALTER TABLE activity_log MODIFY COLUMN entity ENUM('transaction','account','site','category','system','ra_receipt','vendor_bill') NOT NULL"
       );
     }
 

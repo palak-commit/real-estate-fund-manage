@@ -4,6 +4,7 @@ import { pool, query, ready } from "@/lib/db";
 import { ok, fail } from "@/lib/api";
 import { raReceiptSchema, parseId, zErr } from "@/lib/validation";
 import { deleteIncome, recompute } from "@/lib/raTxn";
+import { netReceivableFrom } from "@/lib/ra";
 import { logActivity } from "@/lib/activity";
 
 // Lightweight status-only update (used when payments auto-complete/partial a bill).
@@ -31,13 +32,29 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const existing = await query<{ txn_id: number | null }>("SELECT txn_id FROM ra_receipts WHERE id = ?", [id]);
   if (!existing.length) return fail("RA receipt not found", 404);
 
+  // Guard: the edited Net Receivable can't drop below what's already been received against
+  // this bill — that would leave an impossible state (paid more than the bill is worth) and
+  // break the over-payment math in /payments. Compared in integer paisa to avoid float drift.
+  const net = netReceivableFrom(d, d.rates); // server-computed, not the client-sent value
+  const paidRow = await query<{ paid: number }>(
+    "SELECT COALESCE(SUM(amount),0) AS paid FROM ra_payments WHERE receipt_id = ?",
+    [id]
+  );
+  const paid = Number(paidRow[0]?.paid || 0);
+  const toPaisa = (n: number) => Math.round(n * 100);
+  if (toPaisa(net) < toPaisa(paid)) {
+    return fail(
+      `Net Receivable (₹${net.toLocaleString("en-IN")}) can't be less than the ₹${paid.toLocaleString("en-IN")} already received. Remove or reduce its payments first.`
+    );
+  }
+
   await pool.query(
     `UPDATE ra_receipts
         SET txn_date = ?, project_id = ?, account_id = ?, paid_to = ?, amount = ?,
             withheld_amt = ?, royalty = ?, agency_charge = ?, sub_let_bill = ?, net_receivable = ?, note = ?, status = ?, txn_id = NULL
       WHERE id = ?`,
     [d.txn_date || null, d.project_id || null, d.account_id || null, d.paid_to || null, d.amount,
-     d.withheld_amt, d.royalty, d.agency_charge, d.sub_let_bill, d.net_receivable || 0, d.note || null, d.status, id]
+     d.withheld_amt, d.royalty, d.agency_charge, d.sub_let_bill, net, d.note || null, d.status, id]
   );
 
   // Drop any legacy receipt-level income (old full-Net-Receivable behaviour) — money now

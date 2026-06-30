@@ -45,6 +45,50 @@ export async function GET() {
       WHERE r.net_receivable > COALESCE(pp.paid,0)`
   );
 
+  // Pending vendor payables: money owed (total_bill) but not yet paid (SUM of payments),
+  // across bills that aren't fully paid. Integer-paisa safe via the GREATEST guard.
+  const payable = await query<{ total: number; count: number }>(
+    `SELECT COALESCE(SUM(GREATEST(b.total_bill - COALESCE(pp.paid,0), 0)),0) AS total,
+            COUNT(*) AS count
+       FROM vendor_bills b
+       LEFT JOIN (SELECT bill_id, SUM(amount) AS paid FROM vendor_payments GROUP BY bill_id) pp
+              ON pp.bill_id = b.id
+      WHERE b.total_bill > COALESCE(pp.paid,0)`
+  );
+
+  // Aging buckets for outstanding payables & receivables, aged from the bill date (txn_date)
+  // to today: Current (≤30d), 31–60d, 61–90d, 90+d. Undated rows fall into Current (age 0).
+  // Same outstanding logic as pendingPayable/pendingReceivable above.
+  const AGING_BUCKETS = (outstanding: string) => `
+    SELECT
+      COALESCE(SUM(CASE WHEN age <= 30 THEN amt END),0) AS b0,
+      COALESCE(SUM(CASE WHEN age BETWEEN 31 AND 60 THEN amt END),0) AS b30,
+      COALESCE(SUM(CASE WHEN age BETWEEN 61 AND 90 THEN amt END),0) AS b60,
+      COALESCE(SUM(CASE WHEN age > 90 THEN amt END),0) AS b90
+    FROM (${outstanding}) x`;
+  const payAging = await query<{ b0: number; b30: number; b60: number; b90: number }>(
+    AGING_BUCKETS(
+      `SELECT GREATEST(b.total_bill - COALESCE(pp.paid,0),0) AS amt,
+              COALESCE(DATEDIFF(CURDATE(), b.txn_date),0) AS age
+         FROM vendor_bills b
+         LEFT JOIN (SELECT bill_id, SUM(amount) AS paid FROM vendor_payments GROUP BY bill_id) pp ON pp.bill_id=b.id
+        WHERE b.total_bill > COALESCE(pp.paid,0)`
+    )
+  );
+  const recvAging = await query<{ b0: number; b30: number; b60: number; b90: number }>(
+    AGING_BUCKETS(
+      `SELECT GREATEST(r.net_receivable - COALESCE(pp.paid,0),0) AS amt,
+              COALESCE(DATEDIFF(CURDATE(), r.txn_date),0) AS age
+         FROM ra_receipts r
+         LEFT JOIN (SELECT receipt_id, SUM(amount) AS paid FROM ra_payments GROUP BY receipt_id) pp ON pp.receipt_id=r.id
+        WHERE r.net_receivable > COALESCE(pp.paid,0)`
+    )
+  );
+  const agingOf = (row: any) => {
+    const b0 = Number(row?.b0 || 0), b30 = Number(row?.b30 || 0), b60 = Number(row?.b60 || 0), b90 = Number(row?.b90 || 0);
+    return { b0, b30, b60, b90, total: b0 + b30 + b60 + b90 };
+  };
+
   // Money that went OUT of each account type — expenses paid directly from the account PLUS
   // site-fund allocations (a transfer out of the account into a site, i.e. no dest account).
   // Account-to-account transfers (dest account set) are internal moves and don't count.
@@ -109,6 +153,10 @@ export async function GET() {
     monthExpense: Number(month[0]?.t || 0),
     pendingReceivable: Number(recv[0]?.total || 0),
     pendingReceivableCount: Number(recv[0]?.count || 0),
+    pendingPayable: Number(payable[0]?.total || 0),
+    pendingPayableCount: Number(payable[0]?.count || 0),
+    payablesAging: agingOf(payAging[0]),
+    receivablesAging: agingOf(recvAging[0]),
     spentBank: spent.bank,
     spentCash: spent.cash,
     spentPartner: spent.partner,

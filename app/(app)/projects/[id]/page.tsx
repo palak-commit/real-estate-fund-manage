@@ -244,9 +244,9 @@ export default function ProjectDetail() {
           </div>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4 text-sm sm:grid-cols-3">
-          <Mini label="Received" value={inr(p.received)} className="text-success" hint="Funds allocated into this site" />
+          <Mini label="Funds Allocated" value={inr(p.received)} className="text-success" hint="Funds moved into this site from your accounts" />
           <Mini
-            label="Income from site"
+            label="Revenue Earned"
             value={inr(p.income)}
             className="text-success"
             hint="Money earned from this site (sale, rent, etc.) deposited to an account"
@@ -284,7 +284,7 @@ export default function ProjectDetail() {
               { label: "All Types", value: "" },
               { label: "Transfer", value: "transfer" },
               { label: "Expense", value: "expense" },
-              { label: "Income", value: "income" },
+              { label: "Revenue Earned", value: "income" },
               { label: "Partner Payout", value: "partner_withdrawal" },
             ]}
             placeholder="All Types"
@@ -345,7 +345,7 @@ export default function ProjectDetail() {
             (() => {
               // Single-type filter → show its total. Category/Paid To imply expenses-only.
               const expenseOnly = type === "expense" || (!type && (!!category || !!paidTo));
-              const label = type ? (type === "income" ? "Income" : TYPE_LABELS[type]) : expenseOnly ? "Expense" : null;
+              const label = type ? (type === "income" ? "Revenue Earned" : TYPE_LABELS[type]) : expenseOnly ? "Expense" : null;
               return label ? (
                 <p className="text-sm font-semibold">
                   {label} total: {inr(sumAmount)}

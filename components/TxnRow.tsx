@@ -6,7 +6,7 @@ import { inr, formatDate, CATEGORY_ICON, TYPE_LABELS, TYPE_COLOR, TYPE_ICON } fr
 // Income split: money earned FROM a site (tagged with a project) reads as "Income";
 // plain outside money added to an account (no site) keeps the "Funds Added" label.
 function typeLabel(t: any): string {
-  if (t.type === "income" && t.project_id) return "Income";
+  if (t.type === "income" && t.project_id) return "Revenue Earned";
   return TYPE_LABELS[t.type];
 }
 

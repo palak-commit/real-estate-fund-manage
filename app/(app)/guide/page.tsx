@@ -21,6 +21,7 @@ import {
   Book,
   ClipboardList,
   ActivitySquare,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -34,9 +35,10 @@ const getTOC = (lang: Lang) => [
   { id: "transaction-types", label: t(lang, "Transaction Types", "ટ્રાન્ઝેક્શન ના પ્રકાર") },
   { id: "category-paidto",   label: t(lang, "Category & Paid To", "કેટેગરી અને પેઇડ ટુ (Paid To)") },
   { id: "add-money",         label: t(lang, "Add Money", "પૈસા ઉમેરો (Add Money)") },
-  { id: "bank-cashbook",     label: t(lang, "Bank, Cashbook & Partner", "બેંક, કેશબુક અને પાર્ટનર (Registers)") },
+  { id: "bank-cashbook",     label: t(lang, "Books (Bank, Cashbook & Partner)", "બુક્સ (બેંક, કેશબુક અને પાર્ટનર)") },
   { id: "rojmel",            label: t(lang, "Rojmel (Cash Daybook)", "રોજમેળ (Rojmel)") },
   { id: "ra-receipts",       label: t(lang, "Receipt of RA", "RA બિલ રસીદ (Receipt of RA)") },
+  { id: "vendor-bills",      label: t(lang, "Vendor Bills", "વેન્ડર બિલ (Vendor Bills)") },
   { id: "activity-log",      label: t(lang, "Activity Log", "એક્ટિવિટી લોગ (Activity Log)") },
   { id: "recheck-balances",  label: t(lang, "Recheck Balances", "Recheck Balances (બેલેન્સ ચેક કરો)") },
 ];
@@ -126,6 +128,7 @@ const getFeatures = (lang: Lang) => [
       { name: t(lang, "Paid To (optional)", "કોને ચૂકવ્યા (ઓપ્શનલ)"), desc: t(lang, "The contractor, vendor, or worker who received the money.", "કોન્ટ્રાક્ટર, વેન્ડર કે મજૂર જેને પૈસા આપ્યા તેનું નામ.") },
     ],
   },
+/*
   {
     label: t(lang, "Income", "આવક (Income)"),
     color: "bg-success/10 text-success border-success/20",
@@ -142,6 +145,7 @@ const getFeatures = (lang: Lang) => [
       { name: t(lang, "To", "શેમાં (To)"), desc: t(lang, "The account that receives the money (bank, cash, or partner).", "જે ખાતામાં પૈસા આવે (બેંક, કેશ અથવા પાર્ટનર).") },
     ],
   },
+*/
   {
     label: t(lang, "Transfer", "ટ્રાન્સફર (એક ખાતામાંથી બીજામાં)"),
     color: "bg-info/10 text-info border-info/20",
@@ -310,12 +314,12 @@ export default function GuidePage() {
           {lang === "en" ? (
             <>
               When you click the <span className="font-semibold">+ New Transaction</span> button,
-              you will see 5 options. Here is what each one means:
+              you will see 4 options. Here is what each one means:
             </>
           ) : (
             <>
               જ્યારે તમે <span className="font-semibold">+ New Transaction</span> બટન પર ક્લિક કરશો,
-              ત્યારે 5 ઓપ્શન દેખાશે. આ બધાનો શું અર્થ થાય છે તે નીચે મુજબ છે:
+              ત્યારે 4 ઓપ્શન દેખાશે. આ બધાનો શું અર્થ થાય છે તે નીચે મુજબ છે:
             </>
           )}
         </p>
@@ -867,16 +871,16 @@ export default function GuidePage() {
       {/* ── Bank, Cashbook & Partner ── */}
       <section id="bank-cashbook">
         <h2 className="mb-1 text-base font-semibold text-foreground">
-          {t(lang, "Bank, Cashbook & Partner Registers", "બેંક, કેશબુક અને પાર્ટનર રજિસ્ટર")}
+          {t(lang, "Books (Bank, Cashbook & Partner)", "બુક્સ (Books - બેંક, કેશબુક અને પાર્ટનર)")}
         </h2>
         <p className="mb-4 text-sm text-muted-foreground">
           {lang === "en" ? (
             <>
-              The <Link href="/bank" className="font-semibold text-primary hover:underline">Bank</Link>, <Link href="/cashbook" className="font-semibold text-primary hover:underline">Cashbook</Link>, and <Link href="/partner" className="font-semibold text-primary hover:underline">Partner</Link> pages give you a familiar ledger view of money paid out, just like your Excel sheets.
+              The <Link href="/books" className="font-semibold text-primary hover:underline">Books</Link> page is a unified hub containing the Bank, Cashbook, Partner, and Rojmel registers in one place. It gives you a familiar ledger view of money paid out, just like your Excel sheets.
             </>
           ) : (
             <>
-              <Link href="/bank" className="font-semibold text-primary hover:underline">Bank</Link>, <Link href="/cashbook" className="font-semibold text-primary hover:underline">Cashbook</Link>, અને <Link href="/partner" className="font-semibold text-primary hover:underline">Partner</Link> પેજ તમને ખર્ચેલા પૈસાનો હિસાબ બતાવે છે, બિલકુલ તમારી Excel શીટની જેમ.
+              <Link href="/books" className="font-semibold text-primary hover:underline">Books</Link> પેજ એક જ જગ્યાએ બેંક, કેશબુક, પાર્ટનર અને રોજમેળ રજિસ્ટર બતાવે છે. તે તમને ખર્ચેલા પૈસાનો હિસાબ બતાવે છે, બિલકુલ તમારી Excel શીટની જેમ.
             </>
           )}
         </p>
@@ -901,6 +905,54 @@ export default function GuidePage() {
               </p>
             </div>
           </div>
+
+          <div className="my-4 border-t border-border" />
+
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t(lang, "How it works: Books Page", "કેવી રીતે કામ કરે છે: બુક્સ પેજ")}
+          </p>
+          <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary text-xs font-bold text-white">1</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Step 1: Enter an Expense or Fund Transfer", "સ્ટેપ 1: ખર્ચ કે ફંડ ટ્રાન્સફરની એન્ટ્રી કરો")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>Whenever you save a <span className="font-semibold">Site Expense</span> or <span className="font-semibold">Add Site Fund</span> from the New Transaction form, choose the "Paid From" account.</>
+                  ) : (
+                    <>જ્યારે પણ તમે નવું <span className="font-semibold">સાઇટ એક્સપેન્સ (Site Expense)</span> કે <span className="font-semibold">Add Site Fund</span> કરો, ત્યારે ખાલી "Paid From" માં એકાઉન્ટ પસંદ કરો.</>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-info text-xs font-bold text-white">2</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Step 2: Auto-Update in Books", "સ્ટેપ 2: બુક્સમાં આપમેળે એન્ટ્રી")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>The app automatically places that entry into the correct tab — <span className="font-semibold">Bank</span>, <span className="font-semibold">Cashbook</span>, or <span className="font-semibold">Partner</span>. No manual ledger entry is needed.</>
+                  ) : (
+                    <>એપ આપમેળે તે એન્ટ્રીને યોગ્ય ટેબમાં — <span className="font-semibold">Bank</span>, <span className="font-semibold">Cashbook</span>, કે <span className="font-semibold">Partner</span> માં મૂકી દેશે. તમારે અલગથી રજિસ્ટરમાં એન્ટ્રી કરવાની જરૂર નથી.</>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-success text-xs font-bold text-white">✓</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Filter & Export", "ફિલ્ટર અને એક્સપોર્ટ (Export)")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>Use the filters at the top to search by Account, Site, or Category. Click Export to download the exact filtered data to Excel.</>
+                  ) : (
+                    <>ઉપરના ફિલ્ટરથી એકાઉન્ટ, સાઇટ કે કેટેગરી મુજબ સર્ચ કરો. પછી Export પર ક્લિક કરીને તે ડેટા સીધો Excel માં ડાઉનલોડ કરો.</>
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-4 flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
             <Info className="mt-0.5 h-4 w-4 flex-none text-primary" />
             <p className="text-xs text-muted-foreground leading-relaxed">
@@ -977,6 +1029,53 @@ export default function GuidePage() {
               </p>
             </div>
           </div>
+
+          <div className="my-4 border-t border-border" />
+
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t(lang, "How it works: Rojmel", "કેવી રીતે કામ કરે છે: રોજમેળ")}
+          </p>
+          <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary text-xs font-bold text-white">1</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Step 1: Select a Cash Account", "સ્ટેપ 1: કેશ એકાઉન્ટ પસંદ કરો")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>Open Rojmel and select the specific cash account you want to check.</>
+                  ) : (
+                    <>રોજમેળ ખોલો અને તમારે જે કેશ એકાઉન્ટ ચેક કરવું હોય તે પસંદ કરો.</>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-info text-xs font-bold text-white">2</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Step 2: Review Daily Entries", "સ્ટેપ 2: રોજના હિસાબ ચેક કરો")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>The app groups all money received and spent day-by-day, starting with the opening balance.</>
+                  ) : (
+                    <>એપ બધી આવક અને જાવક (ખર્ચ) ને દિવસ મુજબ અલગ અલગ બતાવશે, જે શરૂઆતના બેલેન્સથી ચાલુ થશે.</>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-success text-xs font-bold text-white">✓</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Match Closing Balance", "આખરનું બેલેન્સ મેળવો")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>Look at the <span className="font-semibold">Closing Balance</span> at the end of the day. It should exactly match the physical cash in your drawer.</>
+                  ) : (
+                    <>દિવસના અંતે દેખાતું <span className="font-semibold">આખરનું બેલેન્સ (Closing Balance)</span> જુઓ. તે તમારા ગલ્લામાં રહેલી રોકડ સાથે બિલકુલ મેચ થવું જોઈએ.</>
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
         </Card>
       </section>
 
@@ -1035,6 +1134,254 @@ export default function GuidePage() {
                   </>
                 )}
               </p>
+            </div>
+          </div>
+
+          <div className="my-4 border-t border-border" />
+
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t(lang, "How it works: RA Receipts & Payments", "કેવી રીતે કામ કરે છે: RA બિલ અને પેમેન્ટ")}
+          </p>
+          <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-info text-xs font-bold text-white">1</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Step 1: Enter Bill Details", "સ્ટેપ 1: બિલની વિગતો નાખો")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>Add the RA bill amount and details. The system automatically calculates deductions like GST and TDS to show the <span className="font-semibold">Net Receivable</span>.</>
+                  ) : (
+                    <>RA બિલની રકમ અને વિગતો નાખો. સિસ્ટમ આપમેળે GST અને TDS જેવી કપાત ગણીને <span className="font-semibold">Net Receivable</span> (હાથમાં આવતી રકમ) બતાવશે.</>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary text-xs font-bold text-white">2</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Step 2: Log a Payment", "સ્ટેપ 2: પેમેન્ટની નોંધ કરો")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>Click the bill row to add a payment. Enter the received amount and select the Bank/Cash account where the money arrived.</>
+                  ) : (
+                    <>પેમેન્ટ ઉમેરવા માટે બિલ પર ક્લિક કરો. જેટલા પૈસા મળ્યા હોય તે રકમ નાખો અને કયા બેંક/કેશ ખાતામાં પૈસા આવ્યા તે પસંદ કરો.</>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-success text-xs font-bold text-white">✓</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Automatic Income Entry", "આપમેળે આવકની એન્ટ્રી")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>Saving the payment automatically posts an <span className="font-semibold">Income</span> transaction, instantly increasing your actual bank balance.</>
+                  ) : (
+                    <>પેમેન્ટ સેવ કરતાની સાથે જ સિસ્ટમ આપમેળે એક <span className="font-semibold">Income (આવક)</span> ટ્રાન્ઝેક્શન નોંધશે, જેનાથી તરત જ તમારું બેંક બેલેન્સ વધી જશે.</>
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </section>
+
+      {/* ── Vendor Bills ── */}
+      <section id="vendor-bills">
+        <h2 className="mb-1 text-base font-semibold text-foreground">
+          {t(lang, "Vendor Bills (Accounts Payable)", "વેન્ડર બિલ (Vendor Bills)")}
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {lang === "en" ? (
+            <>
+              The <Link href="/vendor-bills" className="font-semibold text-primary hover:underline">Vendor Bills</Link> page tracks the money you owe to your vendors or contractors, functioning as your Accounts Payable register.
+            </>
+          ) : (
+            <>
+              <Link href="/vendor-bills" className="font-semibold text-primary hover:underline">Vendor Bills</Link> પેજ તમે વેન્ડર કે કોન્ટ્રાક્ટરને ચૂકવવાના બાકી નાણાંનો રેકોર્ડ રાખે છે, જે તમારી એકાઉન્ટ્સ પેયેબલ (Accounts Payable) રજિસ્ટર તરીકે કામ કરે છે.
+            </>
+          )}
+        </p>
+        
+        <Card className="p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-danger/10">
+              <FileText className="h-5 w-5 text-danger" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{t(lang, "Recording Bills & No Money Movement", "બિલની એન્ટ્રી અને પૈસાની લેવડ-દેવડ નહિ")}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
+                {lang === "en" ? (
+                  <>
+                    When you create a Vendor Bill, it only records what you <span className="font-semibold">owe</span> (Amount + GST = Total Bill). It <span className="font-semibold">does not</span> instantly move money out of your accounts or site funds. A Site is required for each bill, allowing you to track expenses specific to a project.
+                  </>
+                ) : (
+                  <>
+                    જ્યારે તમે કોઈ વેન્ડર બિલ બનાવો છો, ત્યારે તે ફક્ત તમારે <span className="font-semibold">કેટલા ચૂકવવાના બાકી છે</span> તે નોંધે છે (Amount + GST = Total Bill). આનાથી તરત જ તમારા ખાતામાંથી કે સાઇટના ફંડમાંથી પૈસા <span className="font-semibold">કપાતા નથી</span>. દરેક બિલ માટે સાઇટ (Site) પસંદ કરવી ફરજિયાત છે, જેથી પ્રોજેક્ટ મુજબ ખર્ચ ટ્રેક કરી શકાય.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+          <div className="my-4 border-t border-border" />
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-primary/10">
+              <CreditCard className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{t(lang, "Payments & Automatic Expense", "પેમેન્ટ અને આપમેળે ખર્ચ નોંધાવવો")}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
+                {lang === "en" ? (
+                  <>
+                    To clear the balance, click a bill row to add a <span className="font-semibold">Payment</span>. You can pay from an <span className="font-semibold">Account</span> (Bank, Cash, etc.) or directly from <span className="font-semibold">Site Funds</span>. As soon as you log a payment, the system automatically posts a real <span className="font-semibold">Site Expense</span> transaction to deduct the funds.
+                  </>
+                ) : (
+                  <>
+                    બાકી રકમ ક્લિયર કરવા માટે, બિલ પર ક્લિક કરી <span className="font-semibold">Payment</span> ઉમેરો. તમે કોઈપણ <span className="font-semibold">એકાઉન્ટ</span> (બેંક, રોકડ, વગેરે) માંથી અથવા સીધા <span className="font-semibold">સાઇટ ફંડ (Site Funds)</span> માંથી ચૂકવણી કરી શકો છો. જેવું તમે પેમેન્ટ ઉમેરશો, સિસ્ટમ આપમેળે નાણાં કાપવા માટે એક સાચું <span className="font-semibold">સાઇટ એક્સપેન્સ (Site Expense)</span> ટ્રાન્ઝેક્શન નોંધશે.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="my-4 border-t border-border" />
+
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t(lang, "How it works: Vendor Bills & Payments", "કેવી રીતે કામ કરે છે: વેન્ડર બિલ અને પેમેન્ટ")}
+          </p>
+          <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-danger text-xs font-bold text-white">1</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Step 1: Create a Vendor Bill", "સ્ટેપ 1: વેન્ડર બિલ બનાવો")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>Enter details like Vendor name, Site, Amount, and GST. This saves the bill as <span className="font-semibold">Pending</span> and records how much you owe without moving any money.</>
+                  ) : (
+                    <>વેન્ડરનું નામ, સાઇટ, રકમ અને GST જેવી વિગતો નાખો. આ બિલને <span className="font-semibold">Pending</span> તરીકે સેવ કરશે અને પૈસા કાપ્યા વગર નોંધશે કે તમારે કેટલા ચૂકવવાના છે.</>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary text-xs font-bold text-white">2</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Step 2: Add a Payment", "સ્ટેપ 2: પેમેન્ટ ઉમેરો")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>Click on the saved bill to open the Payments panel. Add the amount you are paying and choose whether it's from <span className="font-semibold">Site Funds</span> or a <span className="font-semibold">Bank/Cash Account</span>.</>
+                  ) : (
+                    <>પેમેન્ટ પેનલ ખોલવા માટે સેવ કરેલા બિલ પર ક્લિક કરો. તમે જેટલા પૈસા આપતા હોવ તે રકમ લખો અને પસંદ કરો કે પૈસા <span className="font-semibold">સાઇટ ફંડમાંથી</span> આપ્યા છે કે <span className="font-semibold">બેંક/કેશ એકાઉન્ટમાંથી</span>.</>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-success text-xs font-bold text-white">✓</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Automatic Expense Entry", "આપમેળે ખર્ચની એન્ટ્રી")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>As soon as you save the payment, the app automatically creates a <span className="font-semibold">Site Expense</span> for that amount. You don't need to enter it twice!</>
+                  ) : (
+                    <>જેવું તમે પેમેન્ટ સેવ કરશો, એપ આપમેળે તે રકમની <span className="font-semibold">સાઇટ એક્સપેન્સ (Site Expense)</span> એન્ટ્રી કરી દેશે. તમારે બે વાર એન્ટ્રી કરવાની જરૂર નથી!</>
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="my-4 border-t border-border" />
+
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t(lang, "How to handle Vendor Advances", "વેન્ડર એડવાન્સ કેવી રીતે મેનેજ કરવા")}
+          </p>
+          <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-danger text-xs font-bold text-white">1</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Step 1: Create an Advance Bill", "સ્ટેપ 1: એડવાન્સ માટે બિલ બનાવો")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>Create a Vendor Bill for the advance amount (e.g. ₹2,00,000) and immediately add a payment for it. The bill status will become <span className="font-semibold">Complete</span>.</>
+                  ) : (
+                    <>તમે જેટલો એડવાન્સ આપતા હોવ તેટલી રકમનું (દા.ત. ₹2,00,000) એક બિલ બનાવો અને તરત જ એનું પેમેન્ટ એડ કરી દો. બિલનું સ્ટેટસ <span className="font-semibold">Complete</span> થઈ જશે.</>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary text-xs font-bold text-white">2</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Step 2: Update when Final Bill Arrives", "સ્ટેપ 2: સાચું બિલ આવે ત્યારે રકમ વધારો")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>Later, when the real bill arrives for a larger amount (e.g. ₹5,00,000), search for the vendor, click the <span className="font-semibold">Pencil (Edit)</span> icon on that exact same advance bill, and change the amount to ₹5,00,000.</>
+                  ) : (
+                    <>ભવિષ્યમાં જ્યારે સાચું બિલ મોટી રકમનું (દા.ત. ₹5,00,000) આવે, ત્યારે વેન્ડરનું નામ સર્ચ કરો અને પેલા જૂના એડવાન્સ બિલ પર <span className="font-semibold">Pencil (Edit)</span> આઇકોન દબાવીને રકમ ₹5,00,000 કરી નાખો.</>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-warning text-xs font-bold text-white">✓</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Automatic Pending Balance", "આપમેળે બાકીની રકમનો હિસાબ")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>The system automatically recalculates (Total Bill 5L - Paid 2L = Remaining 3L) and switches the status to <span className="font-semibold">Partially Paid</span>. You now have a perfect record of the remaining payable balance!</>
+                  ) : (
+                    <>સિસ્ટમ જાતે જ હિસાબ કરશે (નવું બિલ 5L - ચૂકવેલા 2L = બાકી 3L) અને સ્ટેટસ બદલીને <span className="font-semibold">Partially Paid</span> કરી દેશે. એટલે તમારે હજી કેટલા આપવાના છે તેનો પાક્કો હિસાબ જળવાઈ રહેશે!</>
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="my-4 border-t border-border" />
+
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {t(lang, "How to Split Expenses (Multiple Heads in One Bill)", "એક જ બિલમાં અલગ-અલગ ખર્ચ (Split Expense) કેવી રીતે બતાવવા")}
+          </p>
+          <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-danger text-xs font-bold text-white">1</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Step 1: Create a Single Bill", "સ્ટેપ 1: એક જ સળંગ બિલ બનાવો")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>Create a single Vendor Bill for the total amount (e.g. ₹70,000) and leave the Head blank (or select a generic one). In the Note, you can write "Steel 40k, Labour 20k, Transport 10k".</>
+                  ) : (
+                    <>ટોટલ રકમનું (દા.ત. ₹70,000) એક જ બિલ બનાવો. બિલ બનાવતી વખતે Head નું ખાનું ખાલી છોડી દો. Note માં લખી દો: "Steel 40k, Labour 20k, Transport 10k".</>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary text-xs font-bold text-white">2</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Step 2: Split While Paying", "સ્ટેપ 2: પેમેન્ટ વખતે અલગ-અલગ Head સિલેક્ટ કરો")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>Click on the bill to open the Payments panel. Here, you can add multiple payments. The magic is in the <span className="font-semibold">"Head (optional)"</span> field at the bottom of the payment form!</>
+                  ) : (
+                    <>બિલ પર ક્લિક કરો એટલે પેમેન્ટની પેનલ ખુલશે. અહી તમે અલગ-અલગ પેમેન્ટ એડ કરી શકો છો. પેમેન્ટ ફોર્મમાં નીચે <span className="font-semibold">"Head (optional)"</span> નું ખાનું આપેલું છે!</>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-warning text-xs font-bold text-white">✓</span>
+              <div>
+                <p className="text-sm font-medium text-foreground">{t(lang, "Perfect Reports", "રિપોર્ટ્સમાં એકદમ ચોખ્ખો હિસાબ")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {lang === "en" ? (
+                    <>Add a 40k payment and select "Steel". Add a 20k payment and select "Labour". Add a 10k payment and select "Transport". The Reports page will show 3 separate expenses perfectly separated!</>
+                  ) : (
+                    <>પેમેન્ટમાં 40k લખી "Steel" સિલેક્ટ કરો, પછી 20k નું પેમેન્ટ કરી "Labour" સિલેક્ટ કરો, અને છેલ્લે 10k નું પેમેન્ટ કરી "Transport" સિલેક્ટ કરો. રિપોર્ટ્સમાં આ ત્રણેય ખર્ચ એકદમ અલગ-અલગ દેખાશે!</>
+                  )}
+                </p>
+              </div>
             </div>
           </div>
         </Card>

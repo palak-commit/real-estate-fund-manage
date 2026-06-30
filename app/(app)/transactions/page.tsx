@@ -30,14 +30,14 @@ const TYPE_FILTER_OPTIONS = [
   { label: "Transfer", value: "transfer" },
   { label: "Expense", value: "expense" },
   { label: "Funds Added", value: "funds_added" },
-  { label: "Income", value: "income" },
+  { label: "Revenue Earned", value: "income" },
   { label: "Partner Payout", value: "partner_withdrawal" },
 ];
 const TYPE_FILTER_LABEL: Record<string, string> = {
   transfer: "Transfer",
   expense: "Expense",
   funds_added: "Funds Added",
-  income: "Income",
+  income: "Revenue Earned",
   partner_withdrawal: "Partner Payout",
 };
 

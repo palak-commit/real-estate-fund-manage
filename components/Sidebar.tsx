@@ -18,6 +18,7 @@ import {
   Banknote,
   Tag,
   FileText,
+  ClipboardList,
 } from "lucide-react";
 import { useActions } from "@/components/ActionsProvider";
 
@@ -26,6 +27,7 @@ const PRIMARY = [
   { href: "/transactions", label: "Transactions", icon: Receipt },
   { href: "/books", label: "Books", icon: Banknote },
   { href: "/ra-receipts", label: "Receipt of RA", icon: FileText },
+  { href: "/vendor-bills", label: "Vendor Bills", icon: ClipboardList },
   { href: "/activity", label: "Activity", icon: Activity },
   { href: "/reports", label: "Reports", icon: BarChart3 },
 ];

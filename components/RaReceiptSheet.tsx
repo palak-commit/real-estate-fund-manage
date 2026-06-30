@@ -133,7 +133,8 @@ export default function RaReceiptSheet({
       sub_let_bill: form.sub_let_bill || 0,
       note: form.note || null,
       status: form.status,
-      net_receivable: preview.net_receivable,
+      net_receivable: preview.net_receivable, // advisory only — the server recomputes from `rates`
+      rates, // the deduction rate set used for the preview, so the server derives the same net
     };
     setSaving(true);
     const res = await fetch(receipt ? `/api/ra-receipts/${receipt.id}` : "/api/ra-receipts", {

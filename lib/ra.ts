@@ -48,6 +48,14 @@ export type RaComputed = {
 
 const pct = (base: number, rate: number) => (Number(base) || 0) * (Number(rate) || 0) / 100;
 
+// The authoritative Net Receivable for a receipt: derived from its inputs (+ an optional
+// partial rate set, merged over the defaults) and rounded to whole paisa, clamped to ≥ 0.
+// The server uses this instead of trusting the client-sent net_receivable.
+export function netReceivableFrom(i: RaInput, rates?: Partial<RaRates>): number {
+  const net = computeRa(i, { ...DEFAULT_RA_RATES, ...(rates ?? {}) }).net_receivable;
+  return Math.max(0, Math.round(net * 100) / 100);
+}
+
 export function computeRa(i: RaInput, r: RaRates): RaComputed {
   const amount = Number(i.amount) || 0;
   const gst = pct(amount, r.gst);

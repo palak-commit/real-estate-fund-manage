@@ -11,10 +11,12 @@ import {
   CalendarDays,
   AlertTriangle,
   TrendingUp,
+  ClipboardList,
+  Hourglass,
 } from "lucide-react";
 import { Card, Skeleton, EmptyState, Button } from "@/components/ui";
 import { useActions } from "@/components/ActionsProvider";
-import { inr, PROFIT_LABEL, PROFIT_HINT, type ProfitLevel } from "@/lib/format";
+import { inr, PROFIT_LABEL, PROFIT_HINT, type ProfitLevel, type SiteLevel } from "@/lib/format";
 import { TxnRow } from "@/components/TxnRow";
 import MoneyStrip from "@/components/MoneyStrip";
 
@@ -29,7 +31,10 @@ type Site = {
   profitLevel: ProfitLevel;
   burn: number;
   runway: number | null;
+  level: SiteLevel; // funding health (ok / low / critical / none) from lib/format siteStatus
 };
+
+type Aging = { b0: number; b30: number; b60: number; b90: number; total: number };
 
 type Dash = {
   availableToAllocate: number;
@@ -43,6 +48,10 @@ type Dash = {
   monthExpense: number;
   pendingReceivable: number;
   pendingReceivableCount: number;
+  pendingPayable: number;
+  pendingPayableCount: number;
+  payablesAging: Aging;
+  receivablesAging: Aging;
   spentBank: number;
   spentCash: number;
   spentPartner: number;
@@ -103,6 +112,11 @@ export default function Home() {
       ) : (
         <AttentionCards d={d} />
       )}
+
+      {/* Cash-flow runway warning + outstanding aging summary */}
+      {/* Runway warning hidden for now — re-enable when needed:
+      {d && <RunwayAlert sites={d.sites} />} */}
+      {d && <AgingSummary payables={d.payablesAging} receivables={d.receivablesAging} />}
 
       {/* Sites */}
       <div>
@@ -173,7 +187,7 @@ export default function Home() {
                     {/* Income earned vs total spent on the site */}
                     <div className="mt-2 flex justify-between border-t border-border pt-2 text-xs">
                       <span className="text-muted-foreground">
-                        Income <span className="font-semibold text-success">{inr(s.income)}</span>
+                        Revenue <span className="font-semibold text-success">{inr(s.income)}</span>
                       </span>
                       <span className="text-muted-foreground">
                         Spent <span className="font-semibold text-danger">{inr(s.spent)}</span>
@@ -241,6 +255,91 @@ export default function Home() {
 
 // Four decision cards an owner needs at a glance: what's owed to me, what I spent yesterday,
 // which sites are out of money, and which sites are winning/losing.
+// Plain-language cash-flow runway warning: which funded sites will run out of money soon,
+// based on the 14-day burn rate. Renders nothing when no site is at risk.
+// Currently hidden on the dashboard (render call commented out above); kept for re-enabling.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function RunwayAlert({ sites }: { sites: Site[] }) {
+  const atRisk = sites
+    .filter((s) => s.level === "low" && s.runway != null)
+    .sort((a, b) => (a.runway ?? 0) - (b.runway ?? 0));
+  if (!atRisk.length) return null;
+  const days = (n: number) => (n <= 0 ? "today" : `~${n} day${n === 1 ? "" : "s"}`);
+  return (
+    <Card className="border-amber-300 bg-amber-50 p-4">
+      <div className="flex items-start gap-2.5">
+        <Hourglass className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-amber-900">Cash runway warning</p>
+          <ul className="mt-1 space-y-0.5 text-sm text-amber-900/80">
+            {atRisk.map((s) => (
+              <li key={s.id}>
+                <Link href={`/projects/${s.id}`} className="hover:underline">
+                  <span className="font-medium">{s.name}</span> runs out of funds in {days(s.runway as number)}
+                  <span className="text-amber-900/60"> · ~{inr(Math.round(s.burn))}/day on average</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1.5 text-xs text-amber-900/55">
+            Estimate based on the average daily site spend over the last 14 days — actual day-to-day spending varies.
+          </p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+const AGING_COLS: { key: keyof Omit<Aging, "total">; label: string }[] = [
+  { key: "b0", label: "Current" },
+  { key: "b30", label: "31–60d" },
+  { key: "b60", label: "61–90d" },
+  { key: "b90", label: "90+ d" },
+];
+
+// Compact "outstanding by age" summary — payables (owed to vendors) and receivables (owed by
+// clients), bucketed by how overdue they are. Full breakdown lives in Reports → Aging.
+function AgingSummary({ payables, receivables }: { payables: Aging; receivables: Aging }) {
+  if (payables.total <= 0 && receivables.total <= 0) return null;
+  const Row = ({ label, a, href }: { label: string; a: Aging; href: string }) => (
+    <div className="grid grid-cols-5 items-center gap-2 py-1.5 text-sm">
+      <Link href={href} className="font-medium text-foreground hover:underline">
+        {label} <span className="text-muted-foreground">({inr(a.total)})</span>
+      </Link>
+      {AGING_COLS.map((c) => (
+        <span
+          key={c.key}
+          className={`text-right ${c.key === "b90" && a[c.key] > 0 ? "font-semibold text-danger" : "text-muted-foreground"}`}
+        >
+          {inr(a[c.key])}
+        </span>
+      ))}
+    </div>
+  );
+  return (
+    <Card className="p-4">
+      <div className="mb-1 flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-sm font-semibold">
+          <Hourglass className="h-4 w-4 text-muted-foreground" /> Outstanding by age
+        </h2>
+        <Link href="/reports?tab=aging" className="text-xs text-primary hover:underline">
+          Details →
+        </Link>
+      </div>
+      <div className="grid grid-cols-5 gap-2 border-b border-border pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <span />
+        {AGING_COLS.map((c) => (
+          <span key={c.key} className="text-right">{c.label}</span>
+        ))}
+      </div>
+      <div className="divide-y divide-border">
+        {payables.total > 0 && <Row label="Payable" a={payables} href="/vendor-bills" />}
+        {receivables.total > 0 && <Row label="Receivable" a={receivables} href="/ra-receipts" />}
+      </div>
+    </Card>
+  );
+}
+
 function AttentionCards({ d }: { d: Dash }) {
   // Sites out of money (balance ≤ 0), worst first.
   const needFunds = d.sites
@@ -251,8 +350,12 @@ function AttentionCards({ d }: { d: Dash }) {
   const best = active.length ? active.reduce((a, b) => (b.profit > a.profit ? b : a)) : null;
   const worst = active.length ? active.reduce((a, b) => (b.profit < a.profit ? b : a)) : null;
 
+  // Cashflow heads-up: payables in the market vs. liquid money on hand (Bank + Cash).
+  const liquid = d.bank + d.cash;
+  const payableShort = d.pendingPayable > liquid;
+
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       {/* Pending receivables */}
       <Link href="/ra-receipts">
         <Card className="flex h-full flex-col p-4 transition hover:border-primary/40 hover:shadow-md">
@@ -264,6 +367,25 @@ function AttentionCards({ d }: { d: Dash }) {
             {d.pendingReceivableCount > 0
               ? `${d.pendingReceivableCount} RA bill${d.pendingReceivableCount > 1 ? "s" : ""} to collect`
               : "All bills collected 🎉"}
+          </p>
+        </Card>
+      </Link>
+
+      {/* Pending payables — money owed to vendors, not yet paid */}
+      <Link href="/vendor-bills">
+        <Card className="flex h-full flex-col p-4 transition hover:border-primary/40 hover:shadow-md">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <ClipboardList className={`h-4 w-4 ${payableShort ? "text-danger" : ""}`} /> Pending Payable
+          </div>
+          <p className={`mt-2 text-2xl font-bold ${payableShort ? "text-danger" : "text-foreground"}`}>
+            {inr(d.pendingPayable)}
+          </p>
+          <p className="mt-auto pt-2 text-xs text-muted-foreground">
+            {d.pendingPayableCount > 0
+              ? payableShort
+                ? `Exceeds ${inr(liquid)} on hand — arrange funds`
+                : `${d.pendingPayableCount} bill${d.pendingPayableCount > 1 ? "s" : ""} to pay`
+              : "All vendors paid 🎉"}
           </p>
         </Card>
       </Link>

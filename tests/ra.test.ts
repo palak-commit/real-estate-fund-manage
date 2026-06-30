@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeRa, DEFAULT_RA_RATES } from "@/lib/ra";
+import { computeRa, netReceivableFrom, DEFAULT_RA_RATES } from "@/lib/ra";
 
 const base = { amount: 0, withheld_amt: 0, royalty: 0, agency_charge: 0, sub_let_bill: 0 };
 
@@ -46,5 +46,20 @@ describe("computeRa — matches the Excel 'Receipt of RA' sheet", () => {
     expect(c.gst).toBe(180_000);
     expect(c.total_bill).toBe(1_180_000);
     expect(c.tds).toBe(20_000);
+  });
+});
+
+describe("netReceivableFrom — server's authoritative net receivable", () => {
+  it("derives net at default rates, ignoring any client-sent value", () => {
+    expect(netReceivableFrom({ ...base, amount: 1_000_000 })).toBe(1_030_000);
+  });
+
+  it("honours a partial rate set merged over the defaults", () => {
+    // gst 18% → total_bill 1,180,000; deductions still 90,000 → cheque 1,090,000
+    expect(netReceivableFrom({ ...base, amount: 1_000_000 }, { gst: 18 })).toBe(1_090_000);
+  });
+
+  it("clamps a negative result to 0 (deductions exceed the bill)", () => {
+    expect(netReceivableFrom({ ...base, amount: 1_000, agency_charge: 999_999 })).toBe(0);
   });
 });

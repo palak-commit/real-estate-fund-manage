@@ -116,8 +116,8 @@ export default function ProjectsPage() {
                   <Label color={STATUS_COLOR[p.status]}>{(STATUS as any)[p.status]}</Label>
                 </div>
                 <div className="mt-4 space-y-2 text-sm">
-                  <Row label="Received" value={inr(p.received)} className="text-success" />
-                  <Row label="Revenue" value={inr(p.income)} className="text-success" />
+                  <Row label="Funds Allocated" value={inr(p.received)} className="text-success" />
+                  <Row label="Revenue Earned" value={inr(p.income)} className="text-success" />
                   <Row label="Spent" value={inr(p.spent)} className="text-danger" />
                   <div className="flex justify-between border-t border-border pt-2">
                     <span className="font-medium">Balance</span>

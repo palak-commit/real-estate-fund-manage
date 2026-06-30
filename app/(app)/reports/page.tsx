@@ -3,8 +3,13 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BarChart3, List } from "lucide-react";
 import { Card, CustomDatePicker, Skeleton, EmptyState } from "@/components/ui";
-import { inr, todayISO, CATEGORY_ICON, PROFIT_HINT } from "@/lib/format";
+import { inr, todayISO, formatDate, CATEGORY_ICON, PROFIT_HINT } from "@/lib/format";
 import MoneyStrip, { type MoneyStripData } from "@/components/MoneyStrip";
+
+// One outstanding bill placed in an age bucket (point-in-time "as of today").
+type AgingRow = { id: number; date: string | null; party: string; site: string; age: number; outstanding: number };
+const AGING_LABELS = ["Current", "31–60d", "61–90d", "90+ d"];
+const bucketIdx = (age: number) => (age <= 30 ? 0 : age <= 60 ? 1 : age <= 90 ? 2 : 3);
 
 type Report = {
   sites: {
@@ -52,8 +57,52 @@ export default function ReportsPage() {
   const [range, setRange] = useState<{ from: string; to: string }>(() => rangeFor("month"));
   const [r, setR] = useState<Report | null>(null);
   const [dash, setDash] = useState<Dash | null>(null);
-  const [tab, setTab] = useState<"site" | "category">("site");
+  const [tab, setTab] = useState<"site" | "category" | "aging">("site");
   const [view, setView] = useState<"table" | "chart">("table");
+  const [aging, setAging] = useState<{ payables: AgingRow[]; receivables: AgingRow[] } | null>(null);
+
+  // Open straight to the Aging tab when linked from the dashboard (?tab=aging). Read after
+  // mount (no useSearchParams) to keep this page statically prerenderable.
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "aging" || t === "site" || t === "category") setTab(t);
+  }, []);
+
+  // Aging is point-in-time (outstanding as of today), so it ignores the date-range presets.
+  // Computed client-side from the two registers' outstanding balances.
+  const loadAging = useCallback(() => {
+    const today = todayISO();
+    const ageDays = (d: string | null) =>
+      d ? Math.max(0, Math.floor((Date.parse(today) - Date.parse(d)) / 86400000)) : 0;
+    Promise.all([
+      fetch("/api/vendor-bills").then((res) => res.json()),
+      fetch("/api/ra-receipts").then((res) => res.json()),
+    ])
+      .then(([vb, ra]) => {
+        const payables: AgingRow[] = (vb.data ?? [])
+          .map((b: any) => ({
+            id: b.id,
+            date: b.txn_date,
+            party: b.paid_to || "—",
+            site: b.project_name || "—",
+            age: ageDays(b.txn_date),
+            outstanding: Math.max(Number(b.total_bill) - Number(b.paid), 0),
+          }))
+          .filter((x: AgingRow) => x.outstanding > 0);
+        const receivables: AgingRow[] = (ra.data ?? [])
+          .map((r2: any) => ({
+            id: r2.id,
+            date: r2.txn_date,
+            party: r2.paid_to || "—",
+            site: r2.project_name || "—",
+            age: ageDays(r2.txn_date),
+            outstanding: Math.max(Number(r2.net_receivable) - Number(r2.paid), 0),
+          }))
+          .filter((x: AgingRow) => x.outstanding > 0);
+        setAging({ payables, receivables });
+      })
+      .catch(() => {});
+  }, []);
 
   const loadDash = useCallback(() => {
     fetch("/api/dashboard")
@@ -66,10 +115,14 @@ export default function ReportsPage() {
   // (e.g. adding a site fund), so the Current Balance / Spent figures stay current.
   useEffect(() => {
     loadDash();
-    const h = () => loadDash();
+    loadAging();
+    const h = () => {
+      loadDash();
+      loadAging();
+    };
     window.addEventListener("txn:created", h);
     return () => window.removeEventListener("txn:created", h);
-  }, [loadDash]);
+  }, [loadDash, loadAging]);
 
   // Click a preset → fill the date fields with that range; editing a date → custom range.
   const pickPreset = (key: string) => {
@@ -154,6 +207,7 @@ export default function ReportsPage() {
               {([
                 { key: "site", label: "By Site" },
                 { key: "category", label: "By Category" },
+                { key: "aging", label: "Aging" },
               ] as const).map((t) => (
                 <button
                   key={t.key}
@@ -168,24 +222,26 @@ export default function ReportsPage() {
                 </button>
               ))}
             </div>
-            <button
-              onClick={() => setView((v) => (v === "table" ? "chart" : "table"))}
-              className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
-            >
-              {view === "table" ? (
-                <>
-                  <BarChart3 className="h-3.5 w-3.5" /> Chart
-                </>
-              ) : (
-                <>
-                  <List className="h-3.5 w-3.5" /> Table
-                </>
-              )}
-            </button>
+            {tab !== "aging" && (
+              <button
+                onClick={() => setView((v) => (v === "table" ? "chart" : "table"))}
+                className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              >
+                {view === "table" ? (
+                  <>
+                    <BarChart3 className="h-3.5 w-3.5" /> Chart
+                  </>
+                ) : (
+                  <>
+                    <List className="h-3.5 w-3.5" /> Table
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Chart view (current tab's spend as a pie) */}
-          {view === "chart" && (
+          {view === "chart" && tab !== "aging" && (
             <PieChart
               items={
                 tab === "site"
@@ -321,8 +377,98 @@ export default function ReportsPage() {
               </table>
             </div>
           )}
+
+          {/* Aging — outstanding payables & receivables by how overdue they are (as of today,
+              independent of the date range above). */}
+          {tab === "aging" && (
+            <div className="space-y-5 p-4">
+              <p className="text-xs text-muted-foreground">
+                Outstanding balances as of today — independent of the date range above. Oldest first.
+              </p>
+              <AgingTable title="Payable — owed to vendors" rows={aging?.payables ?? null} partyLabel="Vendor" />
+              <AgingTable title="Receivable — owed by clients (RA)" rows={aging?.receivables ?? null} partyLabel="Paid To" />
+            </div>
+          )}
         </Card>
       )}
+    </div>
+  );
+}
+
+// One aging table: each outstanding bill as a row, its amount placed in the right age-bucket
+// column, with per-bucket totals in the footer. Oldest (most overdue) first.
+function AgingTable({ title, rows, partyLabel }: { title: string; rows: AgingRow[] | null; partyLabel: string }) {
+  const totals = [0, 0, 0, 0];
+  const sorted = (rows ?? []).slice().sort((a, b) => b.age - a.age);
+  for (const row of sorted) totals[bucketIdx(row.age)] += row.outstanding;
+  const grand = totals.reduce((s, x) => s + x, 0);
+
+  return (
+    <div>
+      <h3 className="mb-2 text-sm font-semibold">
+        {title} {rows && <span className="font-normal text-muted-foreground">· {inr(grand)} outstanding</span>}
+      </h3>
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full min-w-[720px] text-sm">
+          <thead className="bg-muted text-left text-xs text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2.5 font-medium">{partyLabel}</th>
+              <th className="px-3 py-2.5 font-medium">Site</th>
+              <th className="px-3 py-2.5 font-medium">Date</th>
+              <th className="px-3 py-2.5 text-right font-medium">Age</th>
+              {AGING_LABELS.map((l) => (
+                <th key={l} className="px-3 py-2.5 text-right font-medium">{l}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {!rows ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <tr key={i}>
+                  <td colSpan={8} className="px-3 py-3">
+                    <Skeleton className="h-4 w-full" />
+                  </td>
+                </tr>
+              ))
+            ) : sorted.length === 0 ? (
+              <tr>
+                <td colSpan={8}>
+                  <EmptyState>Nothing outstanding 🎉</EmptyState>
+                </td>
+              </tr>
+            ) : (
+              sorted.map((row) => {
+                const bi = bucketIdx(row.age);
+                return (
+                  <tr key={row.id} className={bi === 3 ? "bg-danger/5" : ""}>
+                    <td className="px-3 py-2.5 font-medium">{row.party}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{row.site}</td>
+                    <td className="px-3 py-2.5 text-muted-foreground">{row.date ? formatDate(row.date) : "—"}</td>
+                    <td className="px-3 py-2.5 text-right text-muted-foreground">{row.date ? `${row.age}d` : "—"}</td>
+                    {AGING_LABELS.map((_, ci) => (
+                      <td key={ci} className={`px-3 py-2.5 text-right ${ci === 3 ? "font-semibold text-danger" : ""}`}>
+                        {ci === bi ? inr(row.outstanding) : ""}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+          {sorted.length > 0 && (
+            <tfoot className="border-t-2 border-border bg-muted/50 font-semibold">
+              <tr>
+                <td className="px-3 py-2.5" colSpan={4}>Total · {inr(grand)}</td>
+                {totals.map((t, i) => (
+                  <td key={i} className={`px-3 py-2.5 text-right ${i === 3 && t > 0 ? "text-danger" : ""}`}>
+                    {inr(t)}
+                  </td>
+                ))}
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
     </div>
   );
 }
