@@ -52,6 +52,16 @@ export default function CategoryPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Keep the open Head in sync with the selected value once it's known — covers the case where
+  // the parent fills `value` AFTER mount (e.g. the Edit sheet prefilling an existing expense),
+  // which the one-shot load() above would otherwise miss, leaving nothing highlighted.
+  useEffect(() => {
+    if (selectedId == null || heads.length === 0) return;
+    const h = heads.find((x) => x.subheads.some((s) => s.id === selectedId)) || heads.find((x) => x.id === selectedId);
+    if (h && h.id !== headId) setHeadId(h.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, heads]);
+
   const activeHead = heads.find((h) => h.id === headId) || null;
   const trimmed = name.trim();
 

@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { X, Info } from "lucide-react";
+import Link from "next/link";
 import { Card, CustomSelect, CustomDatePicker, EmptyState } from "@/components/ui";
 import { inr, formatDate } from "@/lib/format";
 
@@ -129,6 +130,16 @@ export default function RojmelBook() {
             <p className="text-lg font-bold text-success">{inr(book.summary.closing)}</p>
           </div>
         )}
+      </div>
+
+      {/* Info Note about how to add data */}
+      <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">
+        <Info className="mt-0.5 h-4 w-4 flex-none text-primary" />
+        <div className="text-muted-foreground">
+          <span className="font-semibold text-foreground">How this works: </span>
+          Data appears here automatically when you add a <span className="font-semibold text-foreground">Site Expense</span> or <span className="font-semibold text-foreground">Add Site Fund</span> and select a cash account as the source. 
+          {" "}<Link href="/guide#rojmel" className="font-semibold text-primary hover:underline">Read the guide →</Link>
+        </div>
       </div>
 
       {/* Filters */}

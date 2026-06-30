@@ -1,9 +1,10 @@
 "use client";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Receipt, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { Receipt, ChevronLeft, ChevronRight, Download, X } from "lucide-react";
 import { Card, CustomSelect, CustomDatePicker, Button, EmptyState } from "@/components/ui";
 import { TxnRow } from "@/components/TxnRow";
+import EditTxnSheet from "@/components/EditTxnSheet";
 import PaidToPicker from "@/components/PaidToPicker";
 import { useUI } from "@/components/UIProvider";
 import { TYPE_LABELS, inr, todayISO } from "@/lib/format";
@@ -79,6 +80,7 @@ function HistoryPageInner() {
   const [pg, setPg] = useState<Pagination | null>(null);
   const [sumAmount, setSumAmount] = useState(0);
   const [exporting, setExporting] = useState(false);
+  const [editTxn, setEditTxn] = useState<any | null>(null);
 
   // Shared filter params for both the list fetch and the export.
   const applyFilters = (qs: URLSearchParams) => {
@@ -340,7 +342,18 @@ function HistoryPageInner() {
         {!txns ? (
           <ListSkeleton />
         ) : txns.length === 0 ? (
-          <EmptyState icon={<Receipt className="h-6 w-6" />}>No transactions found.</EmptyState>
+          <EmptyState
+            icon={<Receipt className="h-6 w-6" />}
+            action={
+              hasFilters ? (
+                <Button variant="outline" onClick={clearFilters} className="!py-1.5 text-xs">
+                  <X className="h-3.5 w-3.5" /> Clear filters
+                </Button>
+              ) : undefined
+            }
+          >
+            {hasFilters ? "No transactions match these filters." : "No transactions yet."}
+          </EmptyState>
         ) : (
           <div className="divide-y divide-border">
             {txns.map((t) => (
@@ -348,6 +361,7 @@ function HistoryPageInner() {
                 key={t.id}
                 t={t}
                 onDelete={deleteTxn}
+                onEdit={(tx) => setEditTxn(tx)}
                 onRowClick={(tx) =>
                   tx.project_id ? router.push(`/projects/${tx.project_id}`) : router.push("/accounts")
                 }
@@ -385,6 +399,8 @@ function HistoryPageInner() {
           </div>
         </div>
       )}
+
+      <EditTxnSheet open={!!editTxn} txn={editTxn} onClose={() => setEditTxn(null)} />
     </div>
   );
 }

@@ -3,8 +3,61 @@ import { pool, ready } from "@/lib/db";
 import { accountEffects, toPaisa } from "@/lib/ledger";
 import { inr } from "@/lib/format";
 import { ok, fail } from "@/lib/api";
-import { parseId } from "@/lib/validation";
+import { parseId, txnEditSchema, zErr } from "@/lib/validation";
 import { logActivity, describeTxn, txnDetail } from "@/lib/activity";
+
+// Edit a transaction's NON-financial fields only (date, paid-to, note, and — for expenses —
+// category). Amount/type/accounts are immutable here, so this never moves money or touches a
+// balance. To change a financial field, delete the row and re-create it.
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  await ready();
+  const id = parseId((await params).id);
+  if (!id) return fail("Invalid transaction id", 400);
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return fail("Invalid request body", 400);
+  }
+  const parsed = txnEditSchema.safeParse(body);
+  if (!parsed.success) return fail(zErr(parsed.error));
+  const b = parsed.data;
+
+  const [rows]: any = await pool.query(
+    "SELECT id, type, project_id, dest_account_id, category_id FROM transactions WHERE id = ? LIMIT 1",
+    [id]
+  );
+  const txn = rows[0];
+  if (!txn) return fail("Transaction not found", 404);
+
+  // Category only applies to expenses. For other types we leave the existing value as-is.
+  // Validate the supplied id resolves (head or sub-head) so the FK can't be set to a bogus value.
+  let categoryId: number | null = txn.category_id ?? null;
+  if (txn.type === "expense") {
+    categoryId = null;
+    if (b.category_id) {
+      const [cat]: any = await pool.query("SELECT id FROM categories WHERE id = ? LIMIT 1", [b.category_id]);
+      if (!cat[0]) return fail("Category not found", 400);
+      categoryId = cat[0].id;
+    }
+  }
+
+  await pool.query(
+    "UPDATE transactions SET txn_date = ?, category_id = ?, paid_to = ?, note = ? WHERE id = ?",
+    [b.txn_date, categoryId, b.paid_to || null, b.note || null, id]
+  );
+
+  await logActivity({
+    action: "updated",
+    entity: "transaction",
+    entityId: id,
+    title: `${describeTxn(txn.type, { hasProject: txn.project_id != null, hasDest: txn.dest_account_id != null })} edited`,
+    meta: { type: txn.type, note: b.note || null, paid_to: b.paid_to || null },
+  });
+
+  return ok(null, "Transaction updated");
+}
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await ready();

@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, FileText, RotateCcw, Wallet, X } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText, RotateCcw, Wallet, X, ChevronDown, SlidersHorizontal, Download } from "lucide-react";
 import { Card, Button, Input, Label, CustomSelect, CustomDatePicker, Skeleton, EmptyState } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import RaReceiptSheet, { type RaReceipt } from "@/components/RaReceiptSheet";
 import RaPaymentsSheet from "@/components/RaPaymentsSheet";
 import { inr, formatDate, ACCOUNT_TYPE_LABELS } from "@/lib/format";
 import { computeRa, DEFAULT_RA_RATES, type RaRates } from "@/lib/ra";
+import { downloadCsv } from "@/lib/csv";
 
 const STATUS_LABEL: Record<string, string> = { pending: "Pending", partial: "Partially Paid", complete: "Complete" };
 const STATUS_COLOR: Record<string, string> = { pending: "amber", partial: "blue", complete: "green" };
@@ -26,6 +27,7 @@ export default function RaReceiptsPage() {
   const { toast, confirm } = useUI();
   const [rows, setRows] = useState<RaReceipt[] | null>(null);
   const [rates, setRates] = useState<RaRates>({ ...DEFAULT_RA_RATES });
+  const [showRates, setShowRates] = useState(false); // deduction rates are advanced — hidden by default
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editing, setEditing] = useState<RaReceipt | null>(null);
   const [payingFor, setPayingFor] = useState<RaReceipt | null>(null);
@@ -114,6 +116,28 @@ export default function RaReceiptsPage() {
     return t;
   }, [computed]);
 
+  // Export the filtered RA register (raw inputs + all derived columns) to a CSV (Excel).
+  function exportCsv() {
+    const headers = [
+      "Sr. No", "Date", "Site", "Paid To", "Received In", "Status", "Amount", "GST", "Total Bill",
+      "TDS", "TDS on GST", "SD", "Workman Cess", "Withheld", "Royalty", "Total Deduction",
+      "Cheque Amt", "Agency Charge", "Net Receivable", "Sub Let Bill", "Sub-GST",
+    ];
+    const rows = computed.map(({ row, c }, i) => [
+      i + 1,
+      row.txn_date ? formatDate(row.txn_date) : "",
+      row.project_name || "",
+      row.paid_to || "",
+      row.account_name || "",
+      STATUS_LABEL[row.status] || row.status || "",
+      Number(row.amount) || 0,
+      c.gst, c.total_bill, c.tds, c.tds_gst, c.sd, c.cess,
+      Number(row.withheld_amt) || 0, Number(row.royalty) || 0, c.total_deduction,
+      c.cheque_amt, Number(row.agency_charge) || 0, c.net_receivable, c.sub_let_bill, c.sub_gst,
+    ]);
+    downloadCsv(`ra-receipts-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  }
+
   function openNew() {
     setEditing(null);
     setSheetOpen(true);
@@ -147,37 +171,53 @@ export default function RaReceiptsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Receipt of RA</h1>
-        <Button onClick={openNew}>
-          <Plus className="h-4 w-4" /> New Receipt
-        </Button>
-      </div>
-
-      {/* Editable rate set — drives every derived column below. */}
-      <Card className="p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Deduction Rates (%)</h2>
-          <Button
-            variant="ghost"
-            onClick={() => setRates({ ...DEFAULT_RA_RATES })}
-            className="!py-1 text-xs text-muted-foreground"
-          >
-            <RotateCcw className="h-3.5 w-3.5" /> Reset
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={exportCsv} disabled={!computed.length}>
+            <Download className="h-4 w-4" /> Export
+          </Button>
+          <Button onClick={openNew}>
+            <Plus className="h-4 w-4" /> New Receipt
           </Button>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {RATE_FIELDS.map((f) => (
-            <label key={f.key} className="block space-y-1">
-              <span className="text-xs font-medium text-muted-foreground">{f.label}</span>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={String(rates[f.key])}
-                onChange={(e) => setRate(f.key, e.target.value)}
-              />
-            </label>
-          ))}
+      </div>
+
+      {/* Editable rate set — advanced, collapsed by default. Drives every derived column. */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setShowRates((v) => !v)}
+            className="flex items-center gap-2 text-sm font-semibold text-foreground"
+          >
+            <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+            Deduction Rates (Advanced)
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition ${showRates ? "rotate-180" : ""}`} />
+          </button>
+          {showRates && (
+            <Button
+              variant="ghost"
+              onClick={() => setRates({ ...DEFAULT_RA_RATES })}
+              className="!py-1 text-xs text-muted-foreground"
+            >
+              <RotateCcw className="h-3.5 w-3.5" /> Reset
+            </Button>
+          )}
         </div>
+        {showRates && (
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {RATE_FIELDS.map((f) => (
+              <label key={f.key} className="block space-y-1">
+                <span className="text-xs font-medium text-muted-foreground">{f.label} (%)</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={String(rates[f.key])}
+                  onChange={(e) => setRate(f.key, e.target.value)}
+                />
+              </label>
+            ))}
+          </div>
+        )}
       </Card>
 
       {/* Filters */}
@@ -278,8 +318,21 @@ export default function RaReceiptsPage() {
             ) : computed.length === 0 ? (
               <tr>
                 <td colSpan={22}>
-                  <EmptyState icon={<FileText className="h-8 w-8 text-muted-foreground/40" />}>
-                    {hasFilters ? "No RA receipts match these filters." : "No RA receipts yet. Click “New Receipt” to add one."}
+                  <EmptyState
+                    icon={<FileText className="h-8 w-8 text-muted-foreground/40" />}
+                    action={
+                      hasFilters ? (
+                        <Button variant="outline" onClick={clearFilters} className="!py-1.5 text-xs">
+                          <X className="h-3.5 w-3.5" /> Clear filters
+                        </Button>
+                      ) : (
+                        <Button onClick={openNew} className="!py-1.5 text-xs">
+                          <Plus className="h-3.5 w-3.5" /> New Receipt
+                        </Button>
+                      )
+                    }
+                  >
+                    {hasFilters ? "No RA receipts match these filters." : "No RA receipts yet. Record your first bill receipt."}
                   </EmptyState>
                 </td>
               </tr>

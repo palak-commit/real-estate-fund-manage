@@ -1,5 +1,5 @@
 "use client";
-import { Trash2 } from "lucide-react";
+import { Trash2, Pencil } from "lucide-react";
 import { Label } from "@/components/ui";
 import { inr, formatDate, CATEGORY_ICON, TYPE_LABELS, TYPE_COLOR, TYPE_ICON } from "@/lib/format";
 
@@ -44,10 +44,12 @@ function flow(t: any): string {
 export function TxnRow({
   t,
   onDelete,
+  onEdit,
   onRowClick,
 }: {
   t: any;
   onDelete?: (t: any) => void;
+  onEdit?: (t: any) => void;
   onRowClick?: (t: any) => void;
 }) {
   const sign = signOf(t.type);
@@ -109,6 +111,20 @@ export function TxnRow({
           {sign < 0 ? "-" : sign > 0 ? "+" : ""}
           {inr(t.amount)}
         </span>
+        {/* Edit temporarily disabled
+        {onEdit && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(t);
+            }}
+            aria-label="Edit transaction"
+            className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+        )}
+        */}
         {onDelete && (
           <button
             onClick={(e) => {

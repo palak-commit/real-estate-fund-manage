@@ -76,7 +76,7 @@ export function CustomSelect({
         type="button"
         onClick={toggleOpen}
         disabled={disabled}
-        className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed"
+        className="flex min-h-[44px] w-full items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed"
       >
         <span className={selectedOption ? "" : "text-muted-foreground"}>
           {selectedOption ? selectedOption.label : placeholder}

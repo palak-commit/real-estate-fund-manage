@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { X, ChevronDown } from "lucide-react";
+import { X, ChevronDown, RotateCcw } from "lucide-react";
 import { Button, Input, CustomSelect, CustomDatePicker } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import { inr, todayISO, sanitizeAmount, ACCOUNT_TYPE_LABELS } from "@/lib/format";
@@ -11,6 +11,19 @@ type Project = { id: number; name: string; balance: number };
 type Account = { id: number; name: string; account_type: string; current_balance: number };
 
 const LAST_SITE_KEY = "lastSiteId";
+const LAST_PAYFROM_KEY = "lastPayFrom";
+const LAST_EXPENSE_KEY = "lastExpense";
+
+// A snapshot of the previous expense, used by the "Repeat last" shortcut.
+type LastExpense = {
+  amount: string;
+  categoryId: number | "";
+  categoryLabel?: string;
+  projectId: string;
+  payFrom: string;
+  paidTo: string;
+  note: string;
+};
 
 export default function QuickExpenseSheet({
   open,
@@ -35,6 +48,7 @@ export default function QuickExpenseSheet({
   const [showMore, setShowMore] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
+  const [lastExpense, setLastExpense] = useState<LastExpense | null>(null);
   const amountRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -47,6 +61,13 @@ export default function QuickExpenseSheet({
     setNote("");
     setShowMore(false);
     setErr("");
+    // Load the previous expense snapshot for the "Repeat last" shortcut.
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem(LAST_EXPENSE_KEY) : null;
+      setLastExpense(raw ? (JSON.parse(raw) as LastExpense) : null);
+    } catch {
+      setLastExpense(null);
+    }
     fetch("/api/projects")
       .then((r) => r.json())
       .then((j) => {
@@ -62,10 +83,34 @@ export default function QuickExpenseSheet({
     fetch("/api/accounts")
       .then((r) => r.json())
       // Any account with money (bank, cash or partner) can directly pay an expense.
-      .then((j) => setAccounts((j.data as Account[]).filter((a) => a.current_balance > 0)));
+      .then((j) => {
+        const accs = (j.data as Account[]).filter((a) => a.current_balance > 0);
+        setAccounts(accs);
+        // Restore the last-used funding source (site funds, or a still-valid account) so the
+        // owner doesn't re-pick it every time.
+        const lastPay = typeof window !== "undefined" ? localStorage.getItem(LAST_PAYFROM_KEY) : null;
+        if (lastPay === "site") setPayFrom("site");
+        else if (lastPay && accs.some((a) => `acc:${a.id}` === lastPay)) setPayFrom(lastPay);
+      });
   }, [open, presetProjectId]);
 
   if (!open) return null;
+
+  // Prefill the form from the previous expense (amount, head, site, funding, paid-to, note),
+  // leaving the user to confirm or tweak before saving.
+  function repeatLast() {
+    if (!lastExpense) return;
+    setAmount(lastExpense.amount || "");
+    setCategoryId(lastExpense.categoryId ?? "");
+    setPaidTo(lastExpense.paidTo || "");
+    setNote(lastExpense.note || "");
+    if (!presetProjectId && lastExpense.projectId && projects.some((p) => String(p.id) === lastExpense.projectId))
+      setProjectId(lastExpense.projectId);
+    if (lastExpense.payFrom === "site" || accounts.some((a) => `acc:${a.id}` === lastExpense.payFrom))
+      setPayFrom(lastExpense.payFrom);
+    if (lastExpense.note || lastExpense.paidTo) setShowMore(true);
+    amountRef.current?.focus();
+  }
 
   const selectedSite = projects.find((p) => String(p.id) === projectId);
   const fromSite = payFrom === "site";
@@ -106,7 +151,12 @@ export default function QuickExpenseSheet({
     setSaving(false);
     if (!res.ok) return setErr((await res.json()).message || "Something went wrong");
 
-    if (typeof window !== "undefined") localStorage.setItem(LAST_SITE_KEY, projectId);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(LAST_SITE_KEY, projectId);
+      localStorage.setItem(LAST_PAYFROM_KEY, payFrom);
+      const snapshot: LastExpense = { amount, categoryId, projectId, payFrom, paidTo, note };
+      localStorage.setItem(LAST_EXPENSE_KEY, JSON.stringify(snapshot));
+    }
     window.dispatchEvent(new CustomEvent("txn:created"));
     toast("Expense recorded", "success");
 
@@ -138,6 +188,17 @@ export default function QuickExpenseSheet({
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {/* Repeat last expense */}
+        {lastExpense && !amount && (
+          <button
+            onClick={repeatLast}
+            className="mb-4 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-border py-2 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+          >
+            <RotateCcw className="h-3.5 w-3.5" /> Repeat last expense
+            {lastExpense.amount ? ` (${inr(Number(lastExpense.amount))})` : ""}
+          </button>
+        )}
 
         {/* Amount */}
         <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Amount</label>

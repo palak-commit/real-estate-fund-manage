@@ -1,7 +1,17 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, ArrowDownToLine, Building2, ChevronRight, Wallet } from "lucide-react";
+import {
+  Plus,
+  ArrowDownToLine,
+  Building2,
+  ChevronRight,
+  Wallet,
+  Receipt,
+  CalendarDays,
+  AlertTriangle,
+  TrendingUp,
+} from "lucide-react";
 import { Card, Skeleton, EmptyState, Button } from "@/components/ui";
 import { useActions } from "@/components/ActionsProvider";
 import { inr, PROFIT_LABEL, PROFIT_HINT, type ProfitLevel } from "@/lib/format";
@@ -29,7 +39,10 @@ type Dash = {
   partner: number;
   siteFunds: number;
   todayExpense: number;
+  yesterdayExpense: number;
   monthExpense: number;
+  pendingReceivable: number;
+  pendingReceivableCount: number;
   spentBank: number;
   spentCash: number;
   spentPartner: number;
@@ -82,6 +95,15 @@ export default function Home() {
       {/* Money strip */}
       {!d ? <Skeleton className="h-28 w-full rounded-2xl" /> : <MoneyStrip d={d} />}
 
+      {/* Needs attention — decision cards */}
+      {!d ? (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-xl" />)}
+        </div>
+      ) : (
+        <AttentionCards d={d} />
+      )}
+
       {/* Sites */}
       <div>
         <div className="mb-3 flex items-center justify-between">
@@ -97,8 +119,17 @@ export default function Home() {
           </div>
         ) : d.sites.length === 0 ? (
           <Card>
-            <EmptyState icon={<Building2 className="h-6 w-6" />}>
-              No active sites yet. Add one under “Manage”.
+            <EmptyState
+              icon={<Building2 className="h-6 w-6" />}
+              action={
+                <Link href="/projects">
+                  <Button className="!py-1.5 text-xs">
+                    <Plus className="h-3.5 w-3.5" /> Add your first site
+                  </Button>
+                </Link>
+              }
+            >
+              No active sites yet. Create a site to start tracking its money.
             </EmptyState>
           </Card>
         ) : (
@@ -186,7 +217,16 @@ export default function Home() {
             ))}
           </div>
         ) : d.recent.length === 0 ? (
-          <EmptyState icon={<Wallet className="h-6 w-6" />}>No activity yet.</EmptyState>
+          <EmptyState
+            icon={<Wallet className="h-6 w-6" />}
+            action={
+              <Button onClick={() => recordExpense()} className="!py-1.5 text-xs">
+                <Plus className="h-3.5 w-3.5" /> Record an expense
+              </Button>
+            }
+          >
+            No activity yet. Your transactions will show up here.
+          </EmptyState>
         ) : (
           <div className="divide-y divide-border">
             {d.recent.map((t) => (
@@ -194,6 +234,90 @@ export default function Home() {
             ))}
           </div>
         )}
+      </Card>
+    </div>
+  );
+}
+
+// Four decision cards an owner needs at a glance: what's owed to me, what I spent yesterday,
+// which sites are out of money, and which sites are winning/losing.
+function AttentionCards({ d }: { d: Dash }) {
+  // Sites out of money (balance ≤ 0), worst first.
+  const needFunds = d.sites
+    .filter((s) => s.balance <= 0)
+    .sort((a, b) => a.balance - b.balance);
+  // Profit leaderboard among sites with any activity.
+  const active = d.sites.filter((s) => s.income > 0 || s.spent > 0);
+  const best = active.length ? active.reduce((a, b) => (b.profit > a.profit ? b : a)) : null;
+  const worst = active.length ? active.reduce((a, b) => (b.profit < a.profit ? b : a)) : null;
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Pending receivables */}
+      <Link href="/ra-receipts">
+        <Card className="flex h-full flex-col p-4 transition hover:border-primary/40 hover:shadow-md">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <Receipt className="h-4 w-4" /> Pending Receivable
+          </div>
+          <p className="mt-2 text-2xl font-bold text-foreground">{inr(d.pendingReceivable)}</p>
+          <p className="mt-auto pt-2 text-xs text-muted-foreground">
+            {d.pendingReceivableCount > 0
+              ? `${d.pendingReceivableCount} RA bill${d.pendingReceivableCount > 1 ? "s" : ""} to collect`
+              : "All bills collected 🎉"}
+          </p>
+        </Card>
+      </Link>
+
+      {/* Yesterday spend */}
+      <Card className="flex h-full flex-col p-4">
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <CalendarDays className="h-4 w-4" /> Spent Yesterday
+        </div>
+        <p className="mt-2 text-2xl font-bold text-foreground">{inr(d.yesterdayExpense)}</p>
+        <p className="mt-auto pt-2 text-xs text-muted-foreground">Today {inr(d.todayExpense)}</p>
+      </Card>
+
+      {/* Sites needing funds */}
+      <Link href="/projects">
+        <Card className="flex h-full flex-col p-4 transition hover:border-primary/40 hover:shadow-md">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <AlertTriangle className={`h-4 w-4 ${needFunds.length ? "text-danger" : ""}`} /> Needs Funds
+          </div>
+          <p className={`mt-2 text-2xl font-bold ${needFunds.length ? "text-danger" : "text-foreground"}`}>
+            {needFunds.length}
+          </p>
+          <p className="mt-auto truncate pt-2 text-xs text-muted-foreground">
+            {needFunds.length ? needFunds.slice(0, 2).map((s) => s.name).join(", ") : "Every site funded ✅"}
+          </p>
+        </Card>
+      </Link>
+
+      {/* Profit leaderboard */}
+      <Card className="flex h-full flex-col p-4">
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <TrendingUp className="h-4 w-4" /> Profit Leaders
+        </div>
+        {best ? (
+          <div className="mt-2 space-y-1 text-sm">
+            <p className="flex items-center justify-between gap-2">
+              <span className="truncate text-muted-foreground">{best.name}</span>
+              <span className="shrink-0 font-semibold text-success">{inr(best.profit)}</span>
+            </p>
+            {worst && worst.id !== best.id && (
+              <p className="flex items-center justify-between gap-2">
+                <span className="truncate text-muted-foreground">{worst.name}</span>
+                <span className={`shrink-0 font-semibold ${worst.profit < 0 ? "text-danger" : "text-success"}`}>
+                  {inr(worst.profit)}
+                </span>
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">No site income yet</p>
+        )}
+        <Link href="/reports" className="mt-auto pt-2 text-xs text-primary hover:underline">
+          View all sites →
+        </Link>
       </Card>
     </div>
   );

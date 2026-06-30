@@ -17,9 +17,12 @@ export async function GET() {
   );
   const siteFunds = Number(siteAgg[0]?.funds || 0);
 
-  // Today + this-month expense
+  // Today + yesterday + this-month expense
   const today = await query<{ t: number }>(
     "SELECT COALESCE(SUM(amount),0) AS t FROM transactions WHERE type='expense' AND txn_date=CURDATE()"
+  );
+  const yesterday = await query<{ t: number }>(
+    "SELECT COALESCE(SUM(amount),0) AS t FROM transactions WHERE type='expense' AND txn_date=SUBDATE(CURDATE(),1)"
   );
   const month = await query<{ t: number }>(
     `SELECT COALESCE(SUM(amount),0) AS t FROM transactions
@@ -28,6 +31,18 @@ export async function GET() {
 
   const activeSites = await query<{ c: number }>(
     "SELECT COUNT(*) AS c FROM projects WHERE status='active'"
+  );
+
+  // Pending RA receivables: money billed (net_receivable) but not yet received (SUM of
+  // payments), across receipts that aren't fully received. Integer-paisa safe via the
+  // GREATEST guard so a slight over-receipt never goes negative.
+  const recv = await query<{ total: number; count: number }>(
+    `SELECT COALESCE(SUM(GREATEST(r.net_receivable - COALESCE(pp.paid,0), 0)),0) AS total,
+            COUNT(*) AS count
+       FROM ra_receipts r
+       LEFT JOIN (SELECT receipt_id, SUM(amount) AS paid FROM ra_payments GROUP BY receipt_id) pp
+              ON pp.receipt_id = r.id
+      WHERE r.net_receivable > COALESCE(pp.paid,0)`
   );
 
   // Money that went OUT of each account type — expenses paid directly from the account PLUS
@@ -90,7 +105,10 @@ export async function GET() {
     // site shifts it from Bank/Cash to In-Sites without changing this headline.
     totalMoney: acc.bank + acc.cash + acc.partner + siteFunds,
     todayExpense: Number(today[0]?.t || 0),
+    yesterdayExpense: Number(yesterday[0]?.t || 0),
     monthExpense: Number(month[0]?.t || 0),
+    pendingReceivable: Number(recv[0]?.total || 0),
+    pendingReceivableCount: Number(recv[0]?.count || 0),
     spentBank: spent.bank,
     spentCash: spent.cash,
     spentPartner: spent.partner,

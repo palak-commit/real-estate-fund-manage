@@ -16,21 +16,15 @@ import {
   Home as HomeIcon,
   BookOpen,
   Banknote,
-  Wallet,
-  Users,
   Tag,
   FileText,
-  NotebookText,
 } from "lucide-react";
 import { useActions } from "@/components/ActionsProvider";
 
 const PRIMARY = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/transactions", label: "Transactions", icon: Receipt },
-  { href: "/bank", label: "Bank", icon: Banknote },
-  { href: "/cashbook", label: "Cashbook", icon: Wallet },
-  { href: "/rojmel", label: "Rojmel", icon: NotebookText },
-  { href: "/partner", label: "Partner", icon: Users },
+  { href: "/books", label: "Books", icon: Banknote },
   { href: "/ra-receipts", label: "Receipt of RA", icon: FileText },
   { href: "/activity", label: "Activity", icon: Activity },
   { href: "/reports", label: "Reports", icon: BarChart3 },

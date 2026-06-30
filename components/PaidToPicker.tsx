@@ -60,7 +60,7 @@ export default function PaidToPicker({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+        className="flex min-h-[44px] w-full items-center justify-between rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
       >
         <span className={value ? "text-foreground" : "text-muted-foreground"}>
           {value || placeholder}

@@ -1,11 +1,12 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Trash2, Info } from "lucide-react";
+import { X, Trash2, Info, Download } from "lucide-react";
 import Link from "next/link";
 import { Card, Button, CustomSelect, CustomDatePicker, EmptyState } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import { inr, formatDate } from "@/lib/format";
+import { downloadCsv } from "@/lib/csv";
 
 type Account = { id: number; name: string; account_type: string; current_balance: number };
 type Row = {
@@ -167,6 +168,26 @@ export default function AccountBook({
     load();
   }
 
+  // Export the currently-filtered payments to a CSV (Excel) — same columns as the table.
+  function exportCsv() {
+    const headers = ["#", "Date", "Party Name", isBank ? "Particular / Bill Details" : "Particular"]
+      .concat(isBank ? ["Bank"] : [])
+      .concat(["Net Payment", "Head", "Types of Head"]);
+    const rows = filtered.map((r, i) => {
+      const particular =
+        r.type === "transfer" ? `Site fund → ${r.project_name ?? "site"}` : r.note || r.project_name || "";
+      const base: (string | number)[] = [i + 1, formatDate(r.txn_date), r.paid_to || "", particular];
+      if (isBank) base.push(r.source_name || "");
+      base.push(
+        Number(r.credit),
+        r.type === "transfer" ? "Site Fund" : r.category_head || "",
+        r.type === "transfer" ? "" : r.category || ""
+      );
+      return base;
+    });
+    downloadCsv(`${accountType}-book-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  }
+
   // Bank sheet has an extra "Bank" column + "Particular / Bill Details" header, plus a
   // trailing actions (delete) column.
   const colCount = (isBank ? 8 : 7) + 1;
@@ -175,9 +196,14 @@ export default function AccountBook({
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        <div className="rounded-lg bg-success/10 px-4 py-2 text-right">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Net Payment</p>
-          <p className="text-lg font-bold text-success">{inr(netTotal)}</p>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" onClick={exportCsv} disabled={!filtered.length} className="!py-2 text-sm">
+            <Download className="h-4 w-4" /> Export
+          </Button>
+          <div className="rounded-lg bg-success/10 px-4 py-2 text-right">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Net Payment</p>
+            <p className="text-lg font-bold text-success">{inr(netTotal)}</p>
+          </div>
         </div>
       </div>
 

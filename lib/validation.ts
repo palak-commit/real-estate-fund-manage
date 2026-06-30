@@ -44,6 +44,16 @@ export const txnCreateSchema = z.object({
   amount: z.coerce.number().positive("Amount must be greater than 0"),
 });
 
+// Editing a transaction is limited to its NON-financial fields — date, paid-to, note, and
+// (for expenses) the category. Amount/type/accounts can't be edited (that would move money);
+// to change those, delete and re-create. So this edit never touches account balances.
+export const txnEditSchema = z.object({
+  txn_date: z.string().trim().min(1, "Date is required").max(10),
+  category_id: z.coerce.number().int().positive().nullish(),
+  paid_to: z.string().trim().max(160, "Paid To is too long").nullish(),
+  note: z.string().trim().max(255, "Note is too long").nullish(),
+});
+
 // A Running Account (RA) bill receipt. Stores only raw inputs — every derived figure
 // (GST, deductions, cheque/net amounts) is computed from these in `lib/ra.ts`.
 export const raReceiptSchema = z.object({
