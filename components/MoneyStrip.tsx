@@ -11,6 +11,7 @@ export type MoneyStripData = {
   todayExpense: number;
   monthExpense: number;
   totalProfit: number;
+  totalIncome: number;
   spentBank: number;
   spentCash: number;
   spentPartner: number;
@@ -45,10 +46,11 @@ export default function MoneyStrip({ d }: { d: MoneyStripData }) {
         </div>
       </div>
 
-      {/* Footer: time-boxed spend + overall profit/loss. */}
-      <div className="mt-4 grid grid-cols-3 gap-3 border-t border-white/10 pt-4 text-sm">
+      {/* Footer: time-boxed spend + income earned + overall profit/loss. */}
+      <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-sm sm:grid-cols-4">
         <Strip label="Spent Today" value={inr(d.todayExpense)} />
         <Strip label="This Month" value={inr(d.monthExpense)} />
+        <Strip label="Income" value={inr(d.totalIncome)} valueClassName="text-success" />
         <Strip
           label="Profit / Loss"
           title={PROFIT_HINT}

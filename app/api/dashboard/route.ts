@@ -52,6 +52,7 @@ export async function GET() {
      GROUP BY p.id`
   );
   const totalProfit = profitRows.reduce((s, r) => s + (Number(r.income) - Number(r.spent)), 0);
+  const totalIncome = profitRows.reduce((s, r) => s + Number(r.income), 0); // revenue earned from sites
 
   // Per-site summary (with burn / runway)
   const sites = await query(
@@ -96,6 +97,7 @@ export async function GET() {
     spentTotal: spent.bank + spent.cash + spent.partner,
     activeSites: Number(activeSites[0]?.c || 0),
     totalProfit,
+    totalIncome,
     sites: sites.map((s: any) => {
       // Balance reflects only allocated site funds; "spent" shows total spend on the site.
       const balance = Number(s.received) - Number(s.spent_site);

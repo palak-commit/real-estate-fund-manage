@@ -36,6 +36,7 @@ type Dash = {
   spentTotal: number;
   activeSites: number;
   totalProfit: number;
+  totalIncome: number;
   sites: Site[];
   recent: any[];
 };
@@ -137,6 +138,16 @@ export default function Home() {
                     <p className="mt-2 text-xs text-muted-foreground">
                       {s.income > 0 ? `${pct}% of income spent` : "No income yet"}
                     </p>
+
+                    {/* Income earned vs total spent on the site */}
+                    <div className="mt-2 flex justify-between border-t border-border pt-2 text-xs">
+                      <span className="text-muted-foreground">
+                        Income <span className="font-semibold text-success">{inr(s.income)}</span>
+                      </span>
+                      <span className="text-muted-foreground">
+                        Spent <span className="font-semibold text-danger">{inr(s.spent)}</span>
+                      </span>
+                    </div>
                   </Link>
 
                   <div className="mt-4 flex gap-2">
