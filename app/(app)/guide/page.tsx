@@ -35,6 +35,7 @@ const getTOC = (lang: Lang) => [
   { id: "category-paidto",   label: t(lang, "Category & Paid To", "કેટેગરી અને પેઇડ ટુ (Paid To)") },
   { id: "add-money",         label: t(lang, "Add Money", "પૈસા ઉમેરો (Add Money)") },
   { id: "bank-cashbook",     label: t(lang, "Bank, Cashbook & Partner", "બેંક, કેશબુક અને પાર્ટનર (Registers)") },
+  { id: "rojmel",            label: t(lang, "Rojmel (Cash Daybook)", "રોજમેળ (Rojmel)") },
   { id: "ra-receipts",       label: t(lang, "Receipt of RA", "RA બિલ રસીદ (Receipt of RA)") },
   { id: "activity-log",      label: t(lang, "Activity Log", "એક્ટિવિટી લોગ (Activity Log)") },
   { id: "recheck-balances",  label: t(lang, "Recheck Balances", "Recheck Balances (બેલેન્સ ચેક કરો)") },
@@ -915,6 +916,66 @@ export default function GuidePage() {
                 </>
               )}
             </p>
+          </div>
+        </Card>
+      </section>
+
+      {/* ── Rojmel ── */}
+      <section id="rojmel">
+        <h2 className="mb-1 text-base font-semibold text-foreground">
+          {t(lang, "Rojmel (Cash Daybook)", "રોજમેળ (Rojmel)")}
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {lang === "en" ? (
+            <>
+              The <Link href="/rojmel" className="font-semibold text-primary hover:underline">Rojmel</Link> page gives you a daily cash daybook for any of your Cash accounts, grouping every cash receipt and expense day by day.
+            </>
+          ) : (
+            <>
+              <Link href="/rojmel" className="font-semibold text-primary hover:underline">Rojmel (રોજમેળ)</Link> પેજ તમારા કોઈપણ કેશ ખાતાનો દૈનિક હિસાબ બતાવે છે, જેમાં દરેક દિવસની આવક અને જાવક (ખર્ચ) અલગ અલગ નોંધાયેલી હોય છે.
+            </>
+          )}
+        </p>
+        
+        <Card className="p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-success/10">
+              <Book className="h-5 w-5 text-success" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{t(lang, "Opening & Closing Balance", "શરૂઆતનું અને આખરનું બેલેન્સ (Opening & Closing)")}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
+                {lang === "en" ? (
+                  <>
+                    For every single day, the system automatically calculates the <span className="font-semibold">Opening Balance</span> (money you had at the start of the day) and the <span className="font-semibold">Closing Balance</span> (money left at the end of the day after all receipts and expenses).
+                  </>
+                ) : (
+                  <>
+                    દરેક દિવસ માટે, સિસ્ટમ આપમેળે <span className="font-semibold">શરૂઆતનું બેલેન્સ (Opening Balance)</span> (દિવસની શરૂઆતમાં તમારી પાસે કેટલા રોકડા હતા) અને <span className="font-semibold">આખરનું બેલેન્સ (Closing Balance)</span> (બધી આવક અને ખર્ચ પછી દિવસના અંતે કેટલા રોકડા બચ્યા) ની ગણતરી કરે છે.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+          <div className="my-4 border-t border-border" />
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-warning/10">
+              <ClipboardList className="h-5 w-5 text-warning" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{t(lang, "Day Income & Total Expense", "દિવસની આવક અને કુલ ખર્ચ")}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
+                {lang === "en" ? (
+                  <>
+                    The transactions are neatly organized. First, you see the total money received for the day. Then, every expense is listed line by line with its Category and Description. Finally, the day ends with the total expense calculation, making it incredibly easy to match with your physical cash register.
+                  </>
+                ) : (
+                  <>
+                    ટ્રાન્ઝેક્શન્સ ખૂબ જ સરળ રીતે ગોઠવાયેલા હોય છે. પહેલા, તમને દિવસ દરમિયાન મળેલી કુલ આવક દેખાશે. પછી, દરેક ખર્ચ તેની કેટેગરી અને વિગત સાથે લાઈન બાય લાઈન બતાવવામાં આવે છે. છેલ્લે, દિવસના કુલ ખર્ચની ગણતરી કરવામાં આવે છે, જેથી તમારા સાચા રોજમેળ (કેશ રજિસ્ટર) સાથે હિસાબ મેળવવો ખૂબ જ સરળ બની જાય છે.
+                  </>
+                )}
+              </p>
+            </div>
           </div>
         </Card>
       </section>

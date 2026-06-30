@@ -20,6 +20,7 @@ import {
   Users,
   Tag,
   FileText,
+  NotebookText,
 } from "lucide-react";
 import { useActions } from "@/components/ActionsProvider";
 
@@ -28,6 +29,7 @@ const PRIMARY = [
   { href: "/transactions", label: "Transactions", icon: Receipt },
   { href: "/bank", label: "Bank", icon: Banknote },
   { href: "/cashbook", label: "Cashbook", icon: Wallet },
+  { href: "/rojmel", label: "Rojmel", icon: NotebookText },
   { href: "/partner", label: "Partner", icon: Users },
   { href: "/ra-receipts", label: "Receipt of RA", icon: FileText },
   { href: "/activity", label: "Activity", icon: Activity },

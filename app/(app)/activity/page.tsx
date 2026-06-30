@@ -13,6 +13,7 @@ import {
   Pencil,
   Trash2,
   FileText,
+  Info,
 } from "lucide-react";
 import { Card, Button, EmptyState, CustomSelect } from "@/components/ui";
 import { inr, formatDate } from "@/lib/format";
@@ -129,6 +130,12 @@ export default function ActivityPage() {
             <ActivityIcon className="h-6 w-6 text-muted-foreground" /> Activity
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">Everything that happened across your fund, newest first.</p>
+          <div className="mt-3 flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-2.5">
+            <Info className="mt-0.5 h-4 w-4 flex-none text-primary" />
+            <p className="text-xs text-muted-foreground">
+              <span className="font-semibold text-primary">Note:</span> Rojmel (Cash Daybook) activities are tracked as <span className="font-semibold">Transactions</span>.
+            </p>
+          </div>
         </div>
         <div className="w-44">
           <CustomSelect
