@@ -9,9 +9,42 @@ import { parseId } from "@/lib/validation";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const accountId = parseId(searchParams.get("account_id") || "");
-  if (!accountId) return fail("account_id is required", 400);
+  const accountType = searchParams.get("account_type");
   const from = searchParams.get("from");
   const to = searchParams.get("to");
+
+  // No specific account → aggregate every payment (expense) out of all accounts of this
+  // type (all bank accounts, or all cash accounts). Running balance is meaningless across
+  // multiple accounts, so it's omitted; the Bank/Cashbook view doesn't use it.
+  if (!accountId) {
+    if (accountType !== "bank" && accountType !== "cash") {
+      return fail("account_id or account_type is required", 400);
+    }
+    const params: any[] = [accountType];
+    let dateSql = "";
+    if (from) { dateSql += " AND t.txn_date >= ?"; params.push(from); }
+    if (to) { dateSql += " AND t.txn_date <= ?"; params.push(to); }
+    const allRows = await query<any>(
+      `SELECT t.id, DATE_FORMAT(t.txn_date, '%Y-%m-%d') AS txn_date, t.type, t.note, t.paid_to,
+         sa.name AS source_name, da.name AS dest_name, p.name AS project_name,
+         c.name AS category, pc.name AS category_head,
+         0 AS debit, t.amount AS credit
+       FROM transactions t
+       JOIN accounts sa ON sa.id = t.source_account_id AND sa.account_type = ?
+       LEFT JOIN accounts da ON da.id = t.dest_account_id
+       LEFT JOIN projects p ON p.id = t.project_id
+       LEFT JOIN categories c ON c.id = t.category_id
+       LEFT JOIN categories pc ON pc.id = c.parent_id
+       WHERE t.type = 'expense' OR (t.type = 'transfer' AND t.dest_account_id IS NULL)${dateSql}
+       ORDER BY t.txn_date ASC, t.id ASC`,
+      params
+    );
+    const totalOut = allRows.reduce((s, r) => s + Number(r.credit), 0);
+    return ok(
+      { account: null, rows: allRows, summary: { opening: 0, totalIn: 0, totalOut, closing: 0 } },
+      allRows.length ? "Account book fetched" : "No entries in range"
+    );
+  }
 
   const accRows = await query<{
     id: number;

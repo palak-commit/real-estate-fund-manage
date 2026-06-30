@@ -30,6 +30,10 @@ type Dash = {
   siteFunds: number;
   todayExpense: number;
   monthExpense: number;
+  spentBank: number;
+  spentCash: number;
+  spentPartner: number;
+  spentTotal: number;
   activeSites: number;
   totalProfit: number;
   sites: Site[];

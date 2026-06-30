@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { X } from "lucide-react";
 import { Card, CustomSelect, CustomDatePicker, EmptyState } from "@/components/ui";
 import { inr, formatDate } from "@/lib/format";
 
@@ -20,7 +21,7 @@ type Row = {
   balance: number;
 };
 type Book = {
-  account: Account;
+  account: Account | null; // null when showing all accounts of a type
   rows: Row[];
   summary: { opening: number; totalIn: number; totalOut: number; closing: number };
 };
@@ -40,32 +41,45 @@ export default function AccountBook({ accountType, title }: { accountType: "bank
   const [fSub, setFSub] = useState("");
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
+  // Master lists for the filter dropdowns — the full set of sites, heads/sub-heads and
+  // payees, so every option is selectable regardless of what the loaded account has spent on.
+  const [sites, setSites] = useState<string[]>([]);
+  const [heads, setHeads] = useState<{ name: string; subheads: { name: string }[] }[]>([]);
+  const [parties, setParties] = useState<string[]>([]);
 
-  useEffect(() => {
+  // Reload the account list (and their balances) on mount and whenever a transaction is
+  // created elsewhere — e.g. adding a site fund out of a bank/cash account — so the balances
+  // shown in the picker stay current. Default selection stays empty → opens on "all".
+  const loadAccounts = useCallback(() => {
     fetch("/api/accounts")
       .then((r) => r.json())
-      .then((j) => {
-        const list = (j.data as Account[]).filter((a) => a.account_type === accountType);
-        setAccounts(list);
-        setAccountId((prev) => prev || (list[0] ? String(list[0].id) : ""));
-      });
+      .then((j) => setAccounts((j.data as Account[]).filter((a) => a.account_type === accountType)));
   }, [accountType]);
 
+  useEffect(() => {
+    loadAccounts();
+    const h = () => loadAccounts();
+    window.addEventListener("txn:created", h);
+    return () => window.removeEventListener("txn:created", h);
+  }, [loadAccounts]);
+
+  useEffect(() => {
+    fetch("/api/projects").then((r) => r.json()).then((j) => setSites((j.data as any[]).map((p) => p.name)));
+    fetch("/api/categories").then((r) => r.json()).then((j) => setHeads(j.data ?? []));
+    fetch("/api/payees").then((r) => r.json()).then((j) => setParties(j.data ?? []));
+  }, []);
+
   const load = useCallback(() => {
-    if (!accountId) {
-      setBook(null);
-      setLoading(false);
-      return;
-    }
     setLoading(true);
-    const qs = new URLSearchParams({ account_id: accountId });
+    // A specific account → that account's book; none selected → all accounts of this type.
+    const qs = new URLSearchParams(accountId ? { account_id: accountId } : { account_type: accountType });
     if (from) qs.set("from", from);
     if (to) qs.set("to", to);
     fetch(`/api/accountbook?${qs}`)
       .then((r) => r.json())
       .then((j) => setBook(j.data ?? null))
       .finally(() => setLoading(false));
-  }, [accountId, from, to]);
+  }, [accountId, accountType, from, to]);
 
   useEffect(() => {
     load();
@@ -74,20 +88,28 @@ export default function AccountBook({ accountType, title }: { accountType: "bank
     return () => window.removeEventListener("txn:created", h);
   }, [load]);
 
-  // Only the payments (expenses) out of this account — that's what the Excel sheets list.
-  const payments = useMemo(() => (book?.rows ?? []).filter((r) => r.type === "expense"), [book]);
-
-  // Distinct filter options, derived from this account's payments.
-  const uniq = (vals: (string | null)[]) =>
-    Array.from(new Set(vals.filter((v): v is string => !!v))).sort((a, b) => a.localeCompare(b));
-  const partyOptions = useMemo(() => uniq(payments.map((r) => r.paid_to)), [payments]);
-  const siteOptions = useMemo(() => uniq(payments.map((r) => r.project_name)), [payments]);
-  const headOptions = useMemo(() => uniq(payments.map((r) => r.category_head)), [payments]);
-  // Sub-heads cascade from the chosen Head (or all sub-heads when no head is selected).
-  const subOptions = useMemo(
-    () => uniq(payments.filter((r) => !fHead || r.category_head === fHead).map((r) => r.category)),
-    [payments, fHead]
+  // Money OUT of this account: expenses paid from it + site-fund allocations (a transfer
+  // out of the account into a site — credit, with no destination account).
+  const payments = useMemo(
+    () =>
+      (book?.rows ?? []).filter(
+        (r) => r.type === "expense" || (r.type === "transfer" && Number(r.credit) > 0 && !r.dest_name)
+      ),
+    [book]
   );
+
+  // Filter options come from the master lists (all sites / heads / payees), not just the
+  // payments currently loaded — so any value can be picked even on a fresh account.
+  const dedupeSort = (vals: string[]) =>
+    Array.from(new Set(vals.filter(Boolean))).sort((a, b) => a.localeCompare(b));
+  const partyOptions = useMemo(() => dedupeSort(parties), [parties]);
+  const siteOptions = useMemo(() => dedupeSort(sites), [sites]);
+  const headOptions = useMemo(() => dedupeSort(heads.map((h) => h.name)), [heads]);
+  // Types of Head cascade from the chosen Head (or all sub-heads when no head is selected).
+  const subOptions = useMemo(() => {
+    const subs = (fHead ? heads.find((h) => h.name === fHead)?.subheads ?? [] : heads.flatMap((h) => h.subheads));
+    return dedupeSort(subs.map((s) => s.name));
+  }, [heads, fHead]);
 
   const filtered = useMemo(
     () =>
@@ -101,6 +123,18 @@ export default function AccountBook({ accountType, title }: { accountType: "bank
     [payments, fParty, fSite, fHead, fSub]
   );
   const netTotal = useMemo(() => filtered.reduce((s, r) => s + Number(r.credit), 0), [filtered]);
+
+  // "Clear" resets every filter, including the selected account.
+  const hasFilters = !!(accountId || from || to || fParty || fSite || fHead || fSub);
+  function clearFilters() {
+    setAccountId("");
+    setFrom("");
+    setTo("");
+    setFParty("");
+    setFSite("");
+    setFHead("");
+    setFSub("");
+  }
 
   // Bank sheet has an extra "Bank" column + "Particular / Bill Details" header.
   const colCount = isBank ? 8 : 7;
@@ -122,8 +156,12 @@ export default function AccountBook({ accountType, title }: { accountType: "bank
           <CustomSelect
             value={accountId}
             onChange={setAccountId}
-            options={accounts.map((a) => ({ label: `${a.name} (${inr(a.current_balance)})`, value: String(a.id) }))}
-            placeholder={`Select ${accountType} account…`}
+            onClear={() => setAccountId("")}
+            options={[
+              { label: isBank ? "All bank accounts" : "All cash accounts", value: "" },
+              ...accounts.map((a) => ({ label: `${a.name} (${inr(a.current_balance)})`, value: String(a.id) })),
+            ]}
+            placeholder={isBank ? "All bank accounts" : "All cash accounts"}
             className="w-56"
           />
         </div>
@@ -185,6 +223,14 @@ export default function AccountBook({ accountType, title }: { accountType: "bank
             className="w-44"
           />
         </div>
+        {hasFilters && (
+          <button
+            onClick={clearFilters}
+            className="flex h-[42px] items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted"
+          >
+            <X className="h-4 w-4" /> Clear
+          </button>
+        )}
       </div>
 
       {/* Payment register */}
@@ -218,10 +264,12 @@ export default function AccountBook({ accountType, title }: { accountType: "bank
                     <td className="px-3 py-2.5 text-muted-foreground">{i + 1}</td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{formatDate(r.txn_date)}</td>
                     <td className="px-3 py-2.5 font-medium">{r.paid_to || "—"}</td>
-                    <td className="px-3 py-2.5">{r.note || r.project_name || "—"}</td>
-                    {isBank && <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{book?.account.name}</td>}
+                    <td className="px-3 py-2.5">
+                      {r.type === "transfer" ? `Site fund → ${r.project_name ?? "site"}` : r.note || r.project_name || "—"}
+                    </td>
+                    {isBank && <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{r.source_name || "—"}</td>}
                     <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold">{inr(r.credit)}</td>
-                    <td className="whitespace-nowrap px-3 py-2.5">{r.category_head || "—"}</td>
+                    <td className="whitespace-nowrap px-3 py-2.5">{r.type === "transfer" ? "Site Fund" : r.category_head || "—"}</td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
                       {r.category && r.category !== r.category_head ? r.category : "—"}
                     </td>
@@ -231,7 +279,7 @@ export default function AccountBook({ accountType, title }: { accountType: "bank
                 <tr>
                   <td colSpan={colCount}>
                     <EmptyState>
-                      No payments{accountId ? " from this account in the selected period" : " — add an account first"}.
+                      No payments{accountId ? " from this account" : ` from any ${accountType} account`} in the selected period.
                     </EmptyState>
                   </td>
                 </tr>

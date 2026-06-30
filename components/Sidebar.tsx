@@ -17,6 +17,7 @@ import {
   BookOpen,
   Banknote,
   Wallet,
+  FileText,
 } from "lucide-react";
 import { useActions } from "@/components/ActionsProvider";
 
@@ -25,6 +26,7 @@ const PRIMARY = [
   { href: "/transactions", label: "Transactions", icon: Receipt },
   { href: "/bank", label: "Bank", icon: Banknote },
   { href: "/cashbook", label: "Cashbook", icon: Wallet },
+  { href: "/ra-receipts", label: "Receipt of RA", icon: FileText },
   { href: "/activity", label: "Activity", icon: Activity },
   { href: "/reports", label: "Reports", icon: BarChart3 },
 ];

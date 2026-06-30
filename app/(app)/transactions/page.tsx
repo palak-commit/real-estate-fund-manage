@@ -242,36 +242,36 @@ function HistoryPageInner() {
             className="w-40"
           />
         </Filter>
-        <Filter label="Category">
+        <Filter label="Head">
           <CustomSelect
             value={head}
             onChange={(val) => {
               setHead(val);
-              setCategory(""); // reset sub-category when the head changes
+              setCategory(""); // reset type of head when the head changes
             }}
             onClear={() => {
               setHead("");
               setCategory("");
             }}
             options={[
-              { label: "All Categories", value: "" },
+              { label: "All Heads", value: "" },
               ...categories.map((h) => ({ label: h.name, value: h.name })),
             ]}
-            placeholder="All Categories"
+            placeholder="All Heads"
             className="w-40"
           />
         </Filter>
-        <Filter label="Sub-category">
+        <Filter label="Type of Head">
           <CustomSelect
             value={category}
             onChange={(val) => setCategory(val)}
             onClear={() => setCategory("")}
             disabled={!selectedHead}
             options={[
-              { label: "All Sub-categories", value: "" },
+              { label: "All Types of Head", value: "" },
               ...(selectedHead?.subheads ?? []).map((s) => ({ label: s.name, value: s.name })),
             ]}
-            placeholder={selectedHead ? "All Sub-categories" : "Select a category first"}
+            placeholder={selectedHead ? "All Types of Head" : "Select a head first"}
             className="w-44"
           />
         </Filter>

@@ -10,7 +10,9 @@ import PaidToPicker from "@/components/PaidToPicker";
 type Account = { id: number; name: string; account_type: string; current_balance: number };
 type Project = { id: number; name: string; balance: number };
 
-const TYPES = ["site_fund", "site_expense", "transfer", "partner_withdrawal", "income"];
+// "income" tab is intentionally hidden from the New Transaction form (income now arrives via
+// RA receipt payments / Add Money). The income save-path below is kept for legacy/other use.
+const TYPES = ["site_fund", "site_expense", "transfer", "partner_withdrawal"];
 const labelFor = (tp: string) =>
   tp === "site_expense" ? "Site Expense" : tp === "site_fund" ? "Add Site Fund" : tp === "income" ? "Income" : TYPE_LABELS[tp];
 

@@ -196,6 +196,54 @@ async function initialize(): Promise<void> {
       );
     }
 
+    // Add the site / account / paid_to columns to ra_receipts for databases that created
+    // the table before these were introduced (CREATE TABLE IF NOT EXISTS won't alter it).
+    const raHasColumn = async (col: string) => {
+      const [r]: any = await admin.query(
+        `SELECT 1 FROM information_schema.columns
+          WHERE table_schema = ? AND table_name = 'ra_receipts' AND column_name = ?`,
+        [dbName, col]
+      );
+      return r.length > 0;
+    };
+    if (!(await raHasColumn("project_id"))) {
+      await admin.query("ALTER TABLE ra_receipts ADD COLUMN project_id INT NULL AFTER txn_date");
+      await admin.query("ALTER TABLE ra_receipts ADD INDEX idx_ra_project (project_id)");
+      await admin.query(
+        `ALTER TABLE ra_receipts ADD CONSTRAINT fk_ra_project
+           FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL`
+      );
+    }
+    if (!(await raHasColumn("account_id"))) {
+      await admin.query("ALTER TABLE ra_receipts ADD COLUMN account_id INT NULL AFTER project_id");
+      await admin.query("ALTER TABLE ra_receipts ADD INDEX idx_ra_account (account_id)");
+      await admin.query(
+        `ALTER TABLE ra_receipts ADD CONSTRAINT fk_ra_account
+           FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL`
+      );
+    }
+    if (!(await raHasColumn("paid_to"))) {
+      await admin.query("ALTER TABLE ra_receipts ADD COLUMN paid_to VARCHAR(160) NULL AFTER account_id");
+    }
+    if (!(await raHasColumn("txn_id"))) {
+      await admin.query("ALTER TABLE ra_receipts ADD COLUMN txn_id INT NULL");
+    }
+    if (!(await raHasColumn("status"))) {
+      await admin.query(
+        "ALTER TABLE ra_receipts ADD COLUMN status ENUM('pending','partial','complete') NOT NULL DEFAULT 'pending' AFTER note"
+      );
+    }
+    if (!(await raHasColumn("net_receivable"))) {
+      await admin.query("ALTER TABLE ra_receipts ADD COLUMN net_receivable DECIMAL(15,2) NOT NULL DEFAULT 0 AFTER sub_let_bill");
+      // Backfill legacy rows using the DEFAULT rate set (GST12/TDS1/TDSGST2/SD5/Cess1):
+      // net = amount*1.03 − withheld − royalty − agency_charge.
+      await admin.query(
+        `UPDATE ra_receipts
+            SET net_receivable = GREATEST(0, amount * 1.03 - withheld_amt - royalty - agency_charge)
+          WHERE net_receivable = 0`
+      );
+    }
+
     if (freshDatabase) {
       await admin.query(
         `INSERT INTO accounts (name, account_type, opening_balance, current_balance) VALUES

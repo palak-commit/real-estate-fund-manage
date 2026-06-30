@@ -55,12 +55,21 @@ export default function ReportsPage() {
   const [tab, setTab] = useState<"site" | "category">("site");
   const [view, setView] = useState<"table" | "chart">("table");
 
-  useEffect(() => {
+  const loadDash = useCallback(() => {
     fetch("/api/dashboard")
       .then((res) => res.json())
       .then((j) => setDash(j.data))
       .catch(() => {});
   }, []);
+
+  // Refresh the money strip on mount and whenever a transaction is created elsewhere
+  // (e.g. adding a site fund), so the Current Balance / Spent figures stay current.
+  useEffect(() => {
+    loadDash();
+    const h = () => loadDash();
+    window.addEventListener("txn:created", h);
+    return () => window.removeEventListener("txn:created", h);
+  }, [loadDash]);
 
   // Click a preset → fill the date fields with that range; editing a date → custom range.
   const pickPreset = (key: string) => {

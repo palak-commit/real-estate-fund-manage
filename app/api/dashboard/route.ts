@@ -30,6 +30,18 @@ export async function GET() {
     "SELECT COUNT(*) AS c FROM projects WHERE status='active'"
   );
 
+  // Money that went OUT of each account type — expenses paid directly from the account PLUS
+  // site-fund allocations (a transfer out of the account into a site, i.e. no dest account).
+  // Account-to-account transfers (dest account set) are internal moves and don't count.
+  const spentByType = await query<{ account_type: string; total: number }>(
+    `SELECT a.account_type, COALESCE(SUM(t.amount),0) AS total
+       FROM transactions t JOIN accounts a ON a.id = t.source_account_id
+      WHERE t.type='expense' OR (t.type='transfer' AND t.dest_account_id IS NULL)
+      GROUP BY a.account_type`
+  );
+  const spent: Record<string, number> = { bank: 0, cash: 0, partner: 0 };
+  for (const r of spentByType) spent[r.account_type] = Number(r.total);
+
   // Overall profit/loss = the literal SUM of per-site profit across ALL sites (including
   // completed). Uses the SAME shared SQL fragments as the per-site figures, so the total can
   // never diverge from the per-site profits shown on cards/detail/reports.
@@ -73,9 +85,15 @@ export async function GET() {
     partner: acc.partner,
     siteFunds,
     availableToAllocate: acc.bank + acc.cash,
-    totalMoney: acc.bank + acc.cash + acc.partner,
+    // Conserved total: liquid accounts + money deployed into sites. Moving cash into a
+    // site shifts it from Bank/Cash to In-Sites without changing this headline.
+    totalMoney: acc.bank + acc.cash + acc.partner + siteFunds,
     todayExpense: Number(today[0]?.t || 0),
     monthExpense: Number(month[0]?.t || 0),
+    spentBank: spent.bank,
+    spentCash: spent.cash,
+    spentPartner: spent.partner,
+    spentTotal: spent.bank + spent.cash + spent.partner,
     activeSites: Number(activeSites[0]?.c || 0),
     totalProfit,
     sites: sites.map((s: any) => {

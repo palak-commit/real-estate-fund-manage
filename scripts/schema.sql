@@ -48,6 +48,55 @@ CREATE TABLE IF NOT EXISTS activity_log (
   INDEX idx_activity_created (created_at)
 );
 
+-- Running Account (RA) bill receipts — a standalone register that mirrors the Excel
+-- "Receipt of RA" sheet. Stores only the raw INPUTS per bill (amount + manual deductions);
+-- every other column (GST, total bill, TDS, SD, cess, deductions, cheque/net amounts,
+-- sub-GST) is DERIVED from these plus the page's editable rate set, never stored.
+CREATE TABLE IF NOT EXISTS ra_receipts (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  txn_date DATE NULL,
+  project_id INT NULL,             -- which site the bill is for (origin tag)
+  account_id INT NULL,             -- which account/cashbook/partner received the money
+  paid_to VARCHAR(160) NULL,       -- party the receipt is from (free text, like transactions)
+  amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+  withheld_amt DECIMAL(15,2) NOT NULL DEFAULT 0,
+  royalty DECIMAL(15,2) NOT NULL DEFAULT 0,
+  agency_charge DECIMAL(15,2) NOT NULL DEFAULT 0,
+  sub_let_bill DECIMAL(15,2) NOT NULL DEFAULT 0,
+  -- Net Receivable SNAPSHOT (computed from the inputs + rate set at save time). Persisted so
+  -- the server can enforce that payments never exceed the balance due, independent of the
+  -- client's live rate panel.
+  net_receivable DECIMAL(15,2) NOT NULL DEFAULT 0,
+  note VARCHAR(255) NULL,
+  -- Manual payment status set by the admin (does NOT auto-derive from payments).
+  status ENUM('pending','partial','complete') NOT NULL DEFAULT 'pending',
+  -- Legacy: receipts used to post their full Net Receivable as one income transaction.
+  -- That behaviour is replaced by per-payment income (ra_payments); kept for old rows.
+  txn_id INT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_ra_date (txn_date),
+  INDEX idx_ra_project (project_id),
+  INDEX idx_ra_account (account_id),
+  CONSTRAINT fk_ra_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
+  CONSTRAINT fk_ra_account FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL
+);
+
+-- Partial payments received against an RA receipt. Each payment with an account credits that
+-- account via a real `income` transaction (linked by txn_id), so balances stay correct.
+CREATE TABLE IF NOT EXISTS ra_payments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  receipt_id INT NOT NULL,
+  txn_date DATE NOT NULL,
+  amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+  account_id INT NULL,             -- which account received this payment
+  note VARCHAR(255) NULL,
+  txn_id INT NULL,                 -- linked `income` transaction (no DB FK; created later)
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_rapay_receipt (receipt_id),
+  CONSTRAINT fk_rapay_receipt FOREIGN KEY (receipt_id) REFERENCES ra_receipts(id) ON DELETE CASCADE,
+  CONSTRAINT fk_rapay_account FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL
+);
+
 CREATE TABLE IF NOT EXISTS transactions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   type ENUM('transfer','expense','income','partner_contribution','partner_withdrawal') NOT NULL,

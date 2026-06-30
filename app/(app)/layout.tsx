@@ -9,7 +9,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <ActionsProvider>
         <Sidebar />
         <div className="lg:pl-60">
-          <main className="mx-auto max-w-6xl px-4 py-6 pb-24 lg:px-8 lg:pb-6">{children}</main>
+          <main className="mx-auto max-w-screen-2xl px-3 py-6 pb-24 lg:px-5 lg:pb-6">{children}</main>
         </div>
         <BottomNav />
       </ActionsProvider>
