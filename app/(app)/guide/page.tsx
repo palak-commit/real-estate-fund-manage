@@ -513,19 +513,20 @@ export default function GuidePage() {
             <div className="my-4 border-t border-border" />
 
             {/* Built-in chips */}
+            {/* Built-in chips */}
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {t(lang, "How it works", "કેવી રીતે કામ કરે છે")}
+              {t(lang, "How it works: Head & Sub-Head", "કેવી રીતે કામ કરે છે: મુખ્ય અને પેટા કેટેગરી (Head & Sub-Head)")}
             </p>
             <div className="rounded-xl border border-border bg-muted/40 p-4 space-y-3">
               <div className="flex items-start gap-3">
                 <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary text-xs font-bold text-white">1</span>
                 <div>
-                  <p className="text-sm font-medium text-foreground">{t(lang, "Tap an existing category chip", "આપેલી કેટેગરી પર ક્લિક કરો")}</p>
+                  <p className="text-sm font-medium text-foreground">{t(lang, "Step 1: Choose a Head (Main Category)", "સ્ટેપ 1: મુખ્ય કેટેગરી (Head) પસંદ કરો")}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {lang === "en" ? (
-                      <>You will see buttons like <span className="font-semibold">Labour, Material, Diesel, Contractor, JCB, Legal, Miscellaneous</span>. Just tap the one that fits and it is selected (turns purple).</>
+                      <>You will see main categories like <span className="font-semibold">Labour, Material, Diesel, Contractor, JCB</span>. Tap the one that fits. If you don't see it, tap <span className="font-semibold">+ Add head</span> to create a new one.</>
                     ) : (
-                      <>તમને <span className="font-semibold">Labour, Material, Diesel, Contractor, JCB, Legal, Miscellaneous</span> જેવા બટનો દેખાશે. જે બરાબર હોય તેના પર ક્લિક કરો એટલે તે સિલેક્ટ થઇ જશે.</>
+                      <>તમને મુખ્ય કેટેગરી દેખાશે જેમ કે <span className="font-semibold">Labour, Material, Diesel, Contractor, JCB</span>. જે બરાબર હોય તેના પર ક્લિક કરો. જો તમારી કેટેગરી ના દેખાય તો <span className="font-semibold">+ Add head</span> પર ક્લિક કરીને નવી બનાવો.</>
                     )}
                   </p>
                 </div>
@@ -533,11 +534,12 @@ export default function GuidePage() {
               <div className="flex items-start gap-3">
                 <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-primary text-xs font-bold text-white">2</span>
                 <div>
-                  <p className="text-sm font-medium text-foreground">{t(lang, 'Don\'t see the right category? Tap "+ Add"', 'તમારી કેટેગરી નથી દેખાતી? "+ Add" પર ક્લિક કરો')}</p>
+                  <p className="text-sm font-medium text-foreground">{t(lang, "Step 2: Choose a Type of Head (Sub-Category)", "સ્ટેપ 2: પેટા કેટેગરી (Type of Head) પસંદ કરો")}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {t(lang,
-                      'A small text box appears. Type the new category name (e.g. "Plumbing" or "Security") and press the ✓ button. It is created instantly and selected automatically.',
-                      'એક નાનું બોક્સ ખૂલશે. નવી કેટેગરીનું નામ લખો (જેમ કે "Plumbing") અને ✓ બટન દબાવો. તે તરત બની જશે અને સિલેક્ટ પણ થઇ જશે.'
+                    {lang === "en" ? (
+                      <>This is <span className="font-semibold">optional</span>. After choosing a Head, you can pick a specific type. For example, under <span className="font-semibold">Material</span>, you can pick <span className="font-semibold">Cement</span> or <span className="font-semibold">Steel</span>. Tap <span className="font-semibold">+ Add</span> to create a new sub-category.</>
+                    ) : (
+                      <>આ <span className="font-semibold">ઓપ્શનલ</span> છે. મુખ્ય કેટેગરી પસંદ કર્યા પછી, તમે પેટા-કેટેગરી પસંદ કરી શકો છો. દા.ત. <span className="font-semibold">Material</span> માં તમે <span className="font-semibold">Cement</span> કે <span className="font-semibold">Steel</span> પસંદ કરી શકો. નવી પેટા-કેટેગરી માટે <span className="font-semibold">+ Add</span> દબાવો.</>
                     )}
                   </p>
                 </div>
@@ -548,8 +550,8 @@ export default function GuidePage() {
                   <p className="text-sm font-medium text-foreground">{t(lang, "Saved permanently for future use", "આગળના ઉપયોગ માટે સેવ થઇ જશે")}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {t(lang,
-                      "Any new category you add will appear as a chip for all future expenses — you only need to create it once.",
-                      "તમે બનાવેલી નવી કેટેગરી પછી હંમેશા દેખાશે — તમારે એને ખાલી એક જ વાર બનાવવાની રહેશે."
+                      "Any new Head or Sub-Head you add will appear for all future expenses — you only need to create it once.",
+                      "તમે બનાવેલી નવી મુખ્ય કે પેટા કેટેગરી પછી હંમેશા દેખાશે — તમારે એને ખાલી એક જ વાર બનાવવાની રહેશે."
                     )}
                   </p>
                 </div>
@@ -563,16 +565,14 @@ export default function GuidePage() {
                 {lang === "en" ? (
                   <>
                     <span className="font-semibold text-foreground">Why this matters: </span>
-                    The Reports page uses categories to show you a breakdown like
-                    "You spent ₹2,50,000 on Labour, ₹80,000 on Material, and ₹40,000 on Diesel this month."
-                    Without categories, you cannot see where the most money is going.
+                    The Reports page uses this structure to show you a detailed breakdown like
+                    "You spent ₹2,50,000 on Labour, and under Material you spent ₹80,000 (₹50k Cement, ₹30k Steel)."
                   </>
                 ) : (
                   <>
                     <span className="font-semibold text-foreground">આ કેમ જરૂરી છે: </span>
-                    રિપોર્ટ્સ પેજમાં તમે જોઈ શકશો કે
-                    "આ મહિને મજૂરીમાં ₹2,50,000, મટીરીયલમાં ₹80,000 અને ડીઝલમાં ₹40,000 નો ખર્ચ થયો."
-                    કેટેગરી વિના ખબર નહિ પડે કે સૌથી વધુ પૈસા ક્યાં વપરાય છે.
+                    રિપોર્ટ્સ પેજમાં તમે વિગતવાર હિસાબ જોઈ શકશો કે
+                    "આ મહિને મજૂરીમાં ₹2,50,000 નો ખર્ચ થયો, અને મટીરીયલમાં ₹80,000 (₹50k સિમેન્ટ, ₹30k સ્ટીલ)."
                   </>
                 )}
               </p>
