@@ -244,6 +244,18 @@ async function initialize(): Promise<void> {
       );
     }
 
+    // Add the 'ra_receipt' value to the activity_log entity enum on older databases.
+    const [entCol]: any = await admin.query(
+      `SELECT COLUMN_TYPE AS t FROM information_schema.columns
+        WHERE table_schema = ? AND table_name = 'activity_log' AND column_name = 'entity'`,
+      [dbName]
+    );
+    if (entCol.length && !String(entCol[0].t).includes("ra_receipt")) {
+      await admin.query(
+        "ALTER TABLE activity_log MODIFY COLUMN entity ENUM('transaction','account','site','category','system','ra_receipt') NOT NULL"
+      );
+    }
+
     if (freshDatabase) {
       await admin.query(
         `INSERT INTO accounts (name, account_type, opening_balance, current_balance) VALUES

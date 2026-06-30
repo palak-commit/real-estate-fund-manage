@@ -1,7 +1,9 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
-import { Card, CustomSelect, CustomDatePicker, EmptyState } from "@/components/ui";
+import { useRouter } from "next/navigation";
+import { X, Trash2 } from "lucide-react";
+import { Card, Button, CustomSelect, CustomDatePicker, EmptyState } from "@/components/ui";
+import { useUI } from "@/components/UIProvider";
 import { inr, formatDate } from "@/lib/format";
 
 type Account = { id: number; name: string; account_type: string; current_balance: number };
@@ -13,6 +15,7 @@ type Row = {
   paid_to: string | null;
   source_name: string | null;
   dest_name: string | null;
+  project_id: number | null;
   project_name: string | null;
   category: string | null;
   category_head: string | null;
@@ -31,6 +34,8 @@ type Book = {
 // Net Payment total. (Money coming IN is shown on the Dashboard / account ledger.)
 export default function AccountBook({ accountType, title }: { accountType: "bank" | "cash"; title: string }) {
   const isBank = accountType === "bank";
+  const router = useRouter();
+  const { toast, confirm } = useUI();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountId, setAccountId] = useState("");
   const [from, setFrom] = useState("");
@@ -136,8 +141,26 @@ export default function AccountBook({ accountType, title }: { accountType: "bank
     setFSub("");
   }
 
-  // Bank sheet has an extra "Bank" column + "Particular / Bill Details" header.
-  const colCount = isBank ? 8 : 7;
+  // Delete a payment row (an expense or a site-fund allocation). Uses the protected
+  // transactions endpoint, which reverses the entry and refuses if money was already used.
+  async function del(r: Row) {
+    const ok = await confirm({
+      title: "Delete this payment?",
+      message: `${inr(r.credit)}${r.paid_to ? ` to ${r.paid_to}` : ""}${r.project_name ? ` · ${r.project_name}` : ""} will be removed.`,
+      confirmText: "Delete",
+      danger: true,
+    });
+    if (!ok) return;
+    const res = await fetch(`/api/transactions/${r.id}`, { method: "DELETE" });
+    if (!res.ok) return toast((await res.json()).message || "Could not delete", "error");
+    toast("Payment deleted", "success");
+    window.dispatchEvent(new CustomEvent("txn:created")); // refresh balances/dashboard
+    load();
+  }
+
+  // Bank sheet has an extra "Bank" column + "Particular / Bill Details" header, plus a
+  // trailing actions (delete) column.
+  const colCount = (isBank ? 8 : 7) + 1;
 
   return (
     <div className="space-y-4">
@@ -247,6 +270,7 @@ export default function AccountBook({ accountType, title }: { accountType: "bank
                 <th className="px-3 py-2.5 text-right font-medium">Net Payment</th>
                 <th className="px-3 py-2.5 text-left font-medium">Head</th>
                 <th className="px-3 py-2.5 text-left font-medium">Types of Head</th>
+                <th className="px-3 py-2.5"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -260,7 +284,12 @@ export default function AccountBook({ accountType, title }: { accountType: "bank
                 ))
               ) : filtered.length ? (
                 filtered.map((r, i) => (
-                  <tr key={r.id} className="hover:bg-muted/30">
+                  <tr
+                    key={r.id}
+                    onClick={() => r.project_id && router.push(`/projects/${r.project_id}`)}
+                    className={`hover:bg-muted/30 ${r.project_id ? "cursor-pointer" : ""}`}
+                    title={r.project_id ? `Open ${r.project_name ?? "site"}` : undefined}
+                  >
                     <td className="px-3 py-2.5 text-muted-foreground">{i + 1}</td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{formatDate(r.txn_date)}</td>
                     <td className="px-3 py-2.5 font-medium">{r.paid_to || "—"}</td>
@@ -272,6 +301,11 @@ export default function AccountBook({ accountType, title }: { accountType: "bank
                     <td className="whitespace-nowrap px-3 py-2.5">{r.type === "transfer" ? "Site Fund" : r.category_head || "—"}</td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">
                       {r.category && r.category !== r.category_head ? r.category : "—"}
+                    </td>
+                    <td className="px-3 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                      <Button variant="danger" onClick={() => del(r)} className="!px-2 !py-1.5">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </td>
                   </tr>
                 ))
@@ -292,7 +326,7 @@ export default function AccountBook({ accountType, title }: { accountType: "bank
                     Total
                   </td>
                   <td className="px-3 py-2.5 text-right">{inr(netTotal)}</td>
-                  <td className="px-3 py-2.5" colSpan={2} />
+                  <td className="px-3 py-2.5" colSpan={3} />
                 </tr>
               </tfoot>
             )}

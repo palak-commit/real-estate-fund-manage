@@ -12,6 +12,7 @@ import {
   Plus,
   Pencil,
   Trash2,
+  FileText,
 } from "lucide-react";
 import { Card, Button, EmptyState, CustomSelect } from "@/components/ui";
 import { inr, formatDate } from "@/lib/format";
@@ -20,7 +21,7 @@ type ActivityMeta = { detail?: string; note?: string | null } | null;
 type ActivityRow = {
   id: number;
   action: "created" | "updated" | "deleted" | "recompute";
-  entity: "transaction" | "account" | "site" | "category" | "system";
+  entity: "transaction" | "account" | "site" | "category" | "system" | "ra_receipt";
   entity_id: number | null;
   title: string;
   amount: number | null;
@@ -55,6 +56,7 @@ const ENTITY_ICON: Record<ActivityRow["entity"], any> = {
   site: Building2,
   category: Tag,
   system: RefreshCw,
+  ra_receipt: FileText,
 };
 const ACTION_ICON: Record<ActivityRow["action"], any> = {
   created: Plus,
@@ -139,6 +141,7 @@ export default function ActivityPage() {
               { label: "Accounts", value: "account" },
               { label: "Sites", value: "site" },
               { label: "Categories", value: "category" },
+              { label: "RA Receipts", value: "ra_receipt" },
               { label: "System", value: "system" },
             ]}
             placeholder="All Activity"

@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS categories (
 CREATE TABLE IF NOT EXISTS activity_log (
   id INT AUTO_INCREMENT PRIMARY KEY,
   action ENUM('created','updated','deleted','recompute') NOT NULL,
-  entity ENUM('transaction','account','site','category','system') NOT NULL,
+  entity ENUM('transaction','account','site','category','system','ra_receipt') NOT NULL,
   entity_id INT NULL,
   title VARCHAR(255) NOT NULL,
   amount DECIMAL(15,2) NULL,

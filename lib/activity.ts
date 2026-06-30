@@ -5,7 +5,7 @@ import { pool } from "@/lib/db";
 type Runner = { query: (sql: string, params?: any[]) => Promise<any> };
 
 export type ActivityAction = "created" | "updated" | "deleted" | "recompute";
-export type ActivityEntity = "transaction" | "account" | "site" | "category" | "system";
+export type ActivityEntity = "transaction" | "account" | "site" | "category" | "system" | "ra_receipt";
 
 export type ActivityEntry = {
   action: ActivityAction;

@@ -200,14 +200,6 @@ export default function ProjectDetail() {
               <Building2 className="h-6 w-6 text-muted-foreground" /> {p.name}
             </h1>
             <Label color={STATUS_COLOR[p.status]}>{STATUS_LABEL[p.status]}</Label>
-            {hasActivity && (
-              <span
-                title={PROFIT_HINT}
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-sm font-medium ${PROFIT_STYLE[pLevel]}`}
-              >
-                {PROFIT_LABEL[pLevel]} · {inr(Math.abs(profit))}
-              </span>
-            )}
             <button
               onClick={startEdit}
               aria-label="Edit site"
@@ -239,19 +231,22 @@ export default function ProjectDetail() {
               {inr(p.balance)}
             </p>
           </div>
-          <span 
-            title={PROFIT_HINT}
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-medium ${PROFIT_STYLE[pLevel]}`}
-          >
-            {pLevel === "loss" && <AlertTriangle className="h-3.5 w-3.5" />}
-            {PROFIT_LABEL[pLevel]}
-            {hasActivity && ` · ${inr(Math.abs(profit))}`}
-          </span>
+          <div className="text-right">
+            <p className="mb-1 text-sm text-muted-foreground">Profit / Loss</p>
+            <span
+              title={PROFIT_HINT}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm font-medium ${PROFIT_STYLE[pLevel]}`}
+            >
+              {pLevel === "loss" && <AlertTriangle className="h-3.5 w-3.5" />}
+              {PROFIT_LABEL[pLevel]}
+              {hasActivity && ` · ${inr(Math.abs(profit))}`}
+            </span>
+          </div>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4 text-sm sm:grid-cols-3">
           <Mini label="Received" value={inr(p.received)} className="text-success" hint="Funds allocated into this site" />
           <Mini
-            label="Revenue"
+            label="Income from site"
             value={inr(p.income)}
             className="text-success"
             hint="Money earned from this site (sale, rent, etc.) deposited to an account"

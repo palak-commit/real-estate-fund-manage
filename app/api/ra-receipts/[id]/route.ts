@@ -4,6 +4,7 @@ import { pool, query, ready } from "@/lib/db";
 import { ok, fail } from "@/lib/api";
 import { raReceiptSchema, parseId, zErr } from "@/lib/validation";
 import { deleteIncome, recompute } from "@/lib/raTxn";
+import { logActivity } from "@/lib/activity";
 
 // Lightweight status-only update (used when payments auto-complete/partial a bill).
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -45,6 +46,14 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     await deleteIncome(existing[0].txn_id);
     await recompute();
   }
+  await logActivity({
+    action: "updated",
+    entity: "ra_receipt",
+    entityId: id,
+    title: `RA receipt updated${d.paid_to ? ` · ${d.paid_to}` : ""}`,
+    amount: d.amount,
+    meta: { status: d.status },
+  });
   return ok(null, "RA receipt updated");
 }
 
@@ -52,7 +61,10 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   await ready();
   const id = parseId((await params).id);
   if (!id) return fail("Invalid RA receipt id", 400);
-  const existing = await query<{ txn_id: number | null }>("SELECT txn_id FROM ra_receipts WHERE id = ?", [id]);
+  const existing = await query<{ txn_id: number | null; amount: number; paid_to: string | null }>(
+    "SELECT txn_id, amount, paid_to FROM ra_receipts WHERE id = ?",
+    [id]
+  );
   if (!existing.length) return fail("RA receipt not found", 404);
 
   // Gather the income transactions of this receipt's payments (and any legacy receipt txn)
@@ -67,5 +79,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   for (const t of txnIds) await deleteIncome(t);
   if (txnIds.length) await recompute();
 
+  await logActivity({
+    action: "deleted",
+    entity: "ra_receipt",
+    entityId: id,
+    title: `RA receipt deleted${existing[0].paid_to ? ` · ${existing[0].paid_to}` : ""}`,
+    amount: existing[0].amount ?? null,
+  });
   return ok(null, "RA receipt deleted");
 }

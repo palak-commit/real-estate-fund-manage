@@ -30,13 +30,23 @@ export async function postIncome(d: IncomeData): Promise<number | null> {
      VALUES ('income', ?, ?, ?, ?, ?, ?)`,
     [dateOf(d), d.project_id || null, d.account_id, d.amount, d.paid_to || null, d.note || "RA bill payment"]
   );
+  // Look up names for a readable "from → into" detail line in the activity feed.
+  const [acc]: any = await pool.query("SELECT name FROM accounts WHERE id = ?", [d.account_id]);
+  const accountName = acc[0]?.name ?? "account";
+  let projectName: string | null = null;
+  if (d.project_id) {
+    const [pr]: any = await pool.query("SELECT name FROM projects WHERE id = ?", [d.project_id]);
+    projectName = pr[0]?.name ?? null;
+  }
+  // e.g. "River View → Axis Bank · jayesh kaka" (from the site, into the account, paid by)
+  const detail = `${projectName ? `${projectName} ` : ""}→ ${accountName}${d.paid_to ? ` · ${d.paid_to}` : ""}`;
   await logActivity({
     action: "created",
     entity: "transaction",
     entityId: r.insertId,
     title: "RA receipt payment",
     amount: d.amount,
-    meta: { source: "ra_payment" },
+    meta: { source: "ra_payment", detail },
   });
   return r.insertId as number;
 }

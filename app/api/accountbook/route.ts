@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     if (to) { dateSql += " AND t.txn_date <= ?"; params.push(to); }
     const allRows = await query<any>(
       `SELECT t.id, DATE_FORMAT(t.txn_date, '%Y-%m-%d') AS txn_date, t.type, t.note, t.paid_to,
-         sa.name AS source_name, da.name AS dest_name, p.name AS project_name,
+         sa.name AS source_name, da.name AS dest_name, t.project_id, p.name AS project_name,
          c.name AS category, pc.name AS category_head,
          0 AS debit, t.amount AS credit
        FROM transactions t
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
   // The CASE logic matches lib/ledger.ts accountEffects() exactly.
   const rows = await query<any>(
     `SELECT t.id, DATE_FORMAT(t.txn_date, '%Y-%m-%d') AS txn_date, t.type, t.note, t.paid_to,
-       sa.name AS source_name, da.name AS dest_name, p.name AS project_name,
+       sa.name AS source_name, da.name AS dest_name, t.project_id, p.name AS project_name,
        c.name AS category, pc.name AS category_head,
        CASE
          WHEN t.dest_account_id = ? AND t.type IN ('transfer','income') THEN t.amount

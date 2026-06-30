@@ -3,6 +3,7 @@ import { query, pool, ready } from "@/lib/db";
 import { ok, fail } from "@/lib/api";
 import { raReceiptSchema, zErr } from "@/lib/validation";
 import { postIncome, recompute } from "@/lib/raTxn";
+import { logActivity } from "@/lib/activity";
 
 const SELECT = `SELECT r.id, DATE_FORMAT(r.txn_date, '%Y-%m-%d') AS txn_date,
     r.project_id, p.name AS project_name, r.account_id, a.name AS account_name, r.paid_to,
@@ -53,5 +54,13 @@ export async function POST(req: NextRequest) {
     );
     await recompute(); // sync the credited account balance
   }
+  await logActivity({
+    action: "created",
+    entity: "ra_receipt",
+    entityId: receiptId,
+    title: `RA receipt added${d.paid_to ? ` · ${d.paid_to}` : ""}`,
+    amount: d.amount,
+    meta: { net_receivable: net, status: d.status, fully_received: fullyReceived },
+  });
   return ok({ id: receiptId }, "RA receipt added", {}, 201);
 }
