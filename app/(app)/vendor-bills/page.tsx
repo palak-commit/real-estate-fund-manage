@@ -24,6 +24,7 @@ export default function VendorBillsPage() {
   const [fTo, setFTo] = useState("");
   const [fSite, setFSite] = useState("");
   const [fStatus, setFStatus] = useState("");
+  const [fType, setFType] = useState(""); // payment type: normal / advance
   const [fVendor, setFVendor] = useState(""); // free-text vendor name search
   const [vendorFocus, setVendorFocus] = useState(false); // show the vendor suggestion dropdown
   const [siteOptions, setSiteOptions] = useState<string[]>([]);
@@ -46,9 +47,10 @@ export default function VendorBillsPage() {
           (!fTo || (r.txn_date != null && r.txn_date <= fTo)) &&
           (!fSite || r.project_name === fSite) &&
           (!fStatus || r.status === fStatus) &&
+          (!fType || (r.payment_type || "normal") === fType) &&
           (!fVendor || (r.paid_to ?? "").toLowerCase().includes(fVendor.trim().toLowerCase()))
       ),
-    [rows, fFrom, fTo, fSite, fStatus, fVendor]
+    [rows, fFrom, fTo, fSite, fStatus, fType, fVendor]
   );
 
   // Distinct vendor names from the loaded bills, for the search autocomplete.
@@ -63,12 +65,13 @@ export default function VendorBillsPage() {
     return vendorNames.filter((n) => n.toLowerCase().includes(q) && n.toLowerCase() !== q).slice(0, 8);
   }, [vendorNames, fVendor]);
 
-  const hasFilters = !!(fFrom || fTo || fSite || fStatus || fVendor);
+  const hasFilters = !!(fFrom || fTo || fSite || fStatus || fType || fVendor);
   function clearFilters() {
     setFFrom("");
     setFTo("");
     setFSite("");
     setFStatus("");
+    setFType("");
     setFVendor("");
   }
 
@@ -86,12 +89,13 @@ export default function VendorBillsPage() {
   }, [filtered]);
 
   function exportData() {
-    const headers = ["Sr. No", "Date", "Site", "Vendor", "Head", "Note", "Amount", "GST", "Total Bill", "Paid", "Remaining", "Status"];
+    const headers = ["Sr. No", "Date", "Site", "Vendor", "Type", "Head", "Note", "Amount", "GST", "Total Bill", "Paid", "Remaining", "Status"];
     const rows = filtered.map((r, i) => [
       i + 1,
       r.txn_date ? formatDate(r.txn_date) : "",
       r.project_name || "",
       r.paid_to || "",
+      r.payment_type === "advance" ? "Advance" : "Normal",
       r.category_head || "",
       r.note || "",
       Number(r.amount) || 0,
@@ -192,6 +196,21 @@ export default function VendorBillsPage() {
               { label: "Complete", value: "complete" },
             ]}
             placeholder="All Statuses"
+            className="w-44"
+          />
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-muted-foreground">Payment Type</p>
+          <CustomSelect
+            value={fType}
+            onChange={setFType}
+            onClear={() => setFType("")}
+            options={[
+              { label: "All Types", value: "" },
+              { label: "Normal", value: "normal" },
+              { label: "Advance", value: "advance" },
+            ]}
+            placeholder="All Types"
             className="w-44"
           />
         </div>
@@ -303,7 +322,16 @@ export default function VendorBillsPage() {
                     <Td>{i + 1}</Td>
                     <Td>{row.txn_date ? formatDate(row.txn_date) : "—"}</Td>
                     <Td>{row.project_name || "—"}</Td>
-                    <Td>{row.paid_to || "—"}</Td>
+                    <Td>
+                      <span className="flex items-center gap-1.5">
+                        {row.paid_to || "—"}
+                        {row.payment_type === "advance" && (
+                          <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
+                            Advance
+                          </span>
+                        )}
+                      </span>
+                    </Td>
                     <Td>{row.category_head || "—"}</Td>
                     <td className="max-w-[180px] truncate px-3 py-2.5 text-muted-foreground" title={row.note || ""}>
                       {row.note || "—"}

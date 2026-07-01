@@ -1,20 +1,36 @@
 import { NextRequest } from "next/server";
 import { query, pool, ready } from "@/lib/db";
 import { ok, fail } from "@/lib/api";
-import { categoryCreateSchema, zErr } from "@/lib/validation";
+import { categoryCreateSchema, parseId, zErr } from "@/lib/validation";
 import { logActivity } from "@/lib/activity";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   // Return the two-level tree: Heads (parent_id NULL) each with their Sub-Heads,
   // annotated with the total expense spent against each (so the /heads page can show
-  // "how much went to this Head / Type of Head").
+  // "how much went to this Head / Type of Head"). The spend can be scoped by ?project_id=
+  // (a site), ?account_id= (expenses paid from that account) and ?from=/?to= (date range) —
+  // used by the site-detail Heads tab filters; with none, it's all-time across everything.
+  const params = new URL(req.url).searchParams;
+  const projectId = parseId(params.get("project_id") || "");
+  const accountId = parseId(params.get("account_id") || "");
+  const from = params.get("from");
+  const to = params.get("to");
   const rows = await query<{ id: number; name: string; parent_id: number | null }>(
     "SELECT id, name, parent_id FROM categories ORDER BY name"
   );
   // Spend per category_id from expenses. A category_id can be a head (head-only
   // expense) or a sub-head; a head's total = its own head-only spend + all its sub-heads'.
+  const where: string[] = ["type = 'expense'", "category_id IS NOT NULL"];
+  const spendParams: (number | string)[] = [];
+  if (projectId) { where.push("project_id = ?"); spendParams.push(projectId); }
+  if (accountId) { where.push("source_account_id = ?"); spendParams.push(accountId); }
+  if (from) { where.push("txn_date >= ?"); spendParams.push(from); }
+  if (to) { where.push("txn_date <= ?"); spendParams.push(to); }
   const spendRows = await query<{ category_id: number; spent: number }>(
-    "SELECT category_id, SUM(amount) AS spent FROM transactions WHERE type = 'expense' AND category_id IS NOT NULL GROUP BY category_id"
+    `SELECT category_id, SUM(amount) AS spent FROM transactions
+      WHERE ${where.join(" AND ")}
+      GROUP BY category_id`,
+    spendParams
   );
   const spentById = new Map<number, number>();
   spendRows.forEach((r) => spentById.set(r.category_id, Number(r.spent)));

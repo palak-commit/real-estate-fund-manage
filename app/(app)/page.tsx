@@ -516,7 +516,9 @@ function AttentionCards({ d }: { d: Dash }) {
           <div className="mt-2 space-y-1 text-sm">
             <p className="flex items-center justify-between gap-2">
               <span className="truncate text-muted-foreground">{best.name}</span>
-              <span className="shrink-0 font-semibold text-success">{inr(best.profit)}</span>
+              <span className={`shrink-0 font-semibold ${best.profit < 0 ? "text-danger" : "text-success"}`}>
+                {inr(best.profit)}
+              </span>
             </p>
             {worst && worst.id !== best.id && (
               <p className="flex items-center justify-between gap-2">

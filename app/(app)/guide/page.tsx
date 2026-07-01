@@ -35,6 +35,7 @@ const getTOC = (lang: Lang) => [
   { id: "transaction-types", label: t(lang, "Transaction Types", "ટ્રાન્ઝેક્શન ના પ્રકાર") },
   { id: "category-paidto",   label: t(lang, "Category & Paid To", "કેટેગરી અને પેઇડ ટુ (Paid To)") },
   { id: "add-money",         label: t(lang, "Add Money", "પૈસા ઉમેરો (Add Money)") },
+  { id: "site-page",         label: t(lang, "Site Page (Project Detail)", "સાઇટ પેજ (પ્રોજેક્ટની વિગતો)") },
   { id: "bank-cashbook",     label: t(lang, "Books (Bank, Cashbook & Partner)", "બુક્સ (બેંક, કેશબુક અને પાર્ટનર)") },
   { id: "rojmel",            label: t(lang, "Rojmel (Cash Daybook)", "રોજમેળ (Rojmel)") },
   { id: "ra-receipts",       label: t(lang, "Receipt of RA", "RA બિલ રસીદ (Receipt of RA)") },
@@ -865,6 +866,108 @@ export default function GuidePage() {
             </p>
           </div>
 
+        </Card>
+      </section>
+
+      {/* ── Site Page ── */}
+      <section id="site-page">
+        <h2 className="mb-1 text-base font-semibold text-foreground">
+          {t(lang, "Site Page (Project Detail)", "સાઇટ પેજ (પ્રોજેક્ટની વિગતો)")}
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {lang === "en" ? (
+            <>
+              When you click on a specific site from the <Link href="/projects" className="font-semibold text-primary hover:underline">Sites page</Link>, you open its detailed dashboard. This page is a complete mini-app for that single project.
+            </>
+          ) : (
+            <>
+              જ્યારે તમે <Link href="/projects" className="font-semibold text-primary hover:underline">Sites પેજ</Link> પરથી કોઈ ચોક્કસ સાઇટ પર ક્લિક કરો છો, ત્યારે તેનું ડિટેલ પેજ ખુલે છે. આ પેજ તે પ્રોજેક્ટ માટે એક સંપૂર્ણ મીની-એપ જેવું કામ કરે છે.
+            </>
+          )}
+        </p>
+
+        <Card className="p-5 space-y-5">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">
+              {t(lang, "1. Balance & Profit Summary", "1. બેલેન્સ અને પ્રોફિટ/લોસ")}
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
+              {lang === "en" ? (
+                <>
+                  At the top, you instantly see the <span className="font-semibold">Site Fund</span> (money left in the site's budget) and the <span className="font-semibold">Profit / Loss</span>. It breaks down Total Spent into two parts: money paid from <span className="font-semibold">Site funds</span> vs money paid straight from your <span className="font-semibold">Accounts</span>.
+                </>
+              ) : (
+                <>
+                  સૌથી ઉપર તમને <span className="font-semibold">Site Fund</span> (સાઇટના બજેટમાં બચેલા પૈસા) અને <span className="font-semibold">Profit / Loss</span> દેખાશે. આ કુલ ખર્ચને બે ભાગમાં વહેંચે છે: <span className="font-semibold">સાઇટ ફંડમાંથી</span> ચૂકવેલા પૈસા અને સીધા <span className="font-semibold">બેંક/કેશમાંથી</span> ચૂકવેલા પૈસા.
+                </>
+              )}
+            </p>
+          </div>
+          
+          <div className="border-t border-border" />
+
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-3">
+              {t(lang, "2. The 6 Sub-Tabs", "2. સાઇટના 6 સબ-ટેબ્સ")}
+            </h3>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-border bg-muted/40 p-3">
+                <p className="text-sm font-semibold text-foreground">Transactions</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t(lang, "A full ledger of every expense and fund transfer just for this site.", "આ સાઇટના તમામ ખર્ચ અને ફંડ ટ્રાન્સફરનું લિસ્ટ.")}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/40 p-3">
+                <p className="text-sm font-semibold text-foreground">Books</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t(lang, "The Bank, Cashbook, and Partner payment registers, filtered strictly for this site.", "બેંક, કેશબુક અને પાર્ટનરનું પેમેન્ટ રજિસ્ટર, જે ફક્ત આ સાઇટનો ખર્ચ બતાવે છે.")}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/40 p-3">
+                <p className="text-sm font-semibold text-foreground">Rojmel</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t(lang, "The daily cash daybook embedded right inside the site.", "સાઇટની અંદર જ રોજમેળ (કેશનો રોજીંદો હિસાબ).")}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/40 p-3">
+                <p className="text-sm font-semibold text-foreground">Heads</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t(lang, "Site spend grouped by Category (Head). Click a Head to see every expense under it.", "કેટેગરી (Head) મુજબ સાઇટનો કુલ ખર્ચ. ખર્ચ જોવા માટે Head પર ક્લિક કરો.")}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/40 p-3">
+                <p className="text-sm font-semibold text-foreground">Receipt of RA</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t(lang, "RA bills and received payments tagged to this site.", "આ સાઇટના RA બિલ અને તેના મળેલા પેમેન્ટની વિગતો.")}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/40 p-3">
+                <p className="text-sm font-semibold text-foreground">Vendor Bills</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t(lang, "Accounts Payable (vendor bills) and payments just for this site.", "આ સાઇટના વેન્ડર બિલ (બાકી પેમેન્ટ) અને તેની ચૂકવણીનો હિસાબ.")}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="border-t border-border" />
+
+          <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <Info className="mt-0.5 h-4 w-4 flex-none text-primary" />
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {lang === "en" ? (
+                <>
+                  <span className="font-semibold text-foreground">Smart Navigation: </span>
+                  When you click on a transaction in the <span className="font-semibold">Transactions</span> tab, the app will automatically jump to the correct tab (like Vendor Bills or Books) and highlight the exact row!
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold text-foreground">સ્માર્ટ નેવિગેશન: </span>
+                  જ્યારે તમે <span className="font-semibold">Transactions</span> ટેબમાં કોઈ એન્ટ્રી પર ક્લિક કરશો, ત્યારે એપ જાતે જ યોગ્ય ટેબ (જેમ કે Vendor Bills કે Books) ખોલીને તે એન્ટ્રી હાઇલાઇટ કરી દેશે!
+                </>
+              )}
+            </p>
+          </div>
         </Card>
       </section>
 

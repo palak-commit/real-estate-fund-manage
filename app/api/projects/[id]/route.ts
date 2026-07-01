@@ -1,9 +1,21 @@
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { pool, query, ready } from "@/lib/db";
 import { RECEIVED_SQL, SPENT_SQL, SPENT_TOTAL_SQL, SPENT_14D_SQL, INCOME_SQL } from "@/lib/queries";
 import { ok, fail } from "@/lib/api";
 import { projectUpdateSchema, parseId, zErr } from "@/lib/validation";
 import { logActivity } from "@/lib/activity";
+
+// Per-site RA deduction rates (percentages). All optional; missing fields fall back to
+// DEFAULT_RA_RATES on the client.
+const raRatesSchema = z.object({
+  gst: z.coerce.number().min(0).max(100),
+  tds: z.coerce.number().min(0).max(100),
+  tdsGst: z.coerce.number().min(0).max(100),
+  sd: z.coerce.number().min(0).max(100),
+  cess: z.coerce.number().min(0).max(100),
+  subletGst: z.coerce.number().min(0).max(100),
+});
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const id = parseId((await params).id);
@@ -80,6 +92,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   await pool.query("UPDATE projects SET name = ?, status = ? WHERE id = ?", [name, status, id]);
   await logActivity({ action: "updated", entity: "site", entityId: id, title: `Site "${name}" updated`, meta: { status } });
   return ok(null, "Project updated");
+}
+
+// Save this site's RA deduction rate overrides (used by the site's Receipt of RA tab).
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  await ready();
+  const id = parseId((await params).id);
+  if (!id) return fail("Invalid project id", 400);
+  const parsed = raRatesSchema.safeParse((await req.json().catch(() => null))?.ra_rates);
+  if (!parsed.success) return fail(zErr(parsed.error));
+  const [res]: any = await pool.query("UPDATE projects SET ra_rates = ? WHERE id = ?", [JSON.stringify(parsed.data), id]);
+  if (!res.affectedRows) return fail("Project not found", 404);
+  return ok(null, "Deduction rates saved");
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

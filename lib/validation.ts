@@ -115,6 +115,8 @@ export const vendorBillSchema = z.object({
   gst: z.coerce.number().min(0, "GST can't be negative").default(0),
   note: z.string().trim().max(255, "Note is too long").nullish(),
   status: z.enum(["pending", "partial", "complete"]).default("pending"),
+  // Bill kind: 'advance' = money paid before the final bill total is known.
+  payment_type: z.enum(["normal", "advance"]).default("normal"),
 });
 
 // A payment made against a vendor bill. With an account it posts a Direct site expense from

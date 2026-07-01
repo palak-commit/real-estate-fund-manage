@@ -214,21 +214,36 @@ export default function VendorPaymentsSheet({
           ) : payments.length === 0 ? (
             <EmptyState>No payments recorded yet.</EmptyState>
           ) : (
-            payments.map((p) => (
-              <div key={p.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
-                <div className="min-w-0">
-                  <p className="font-semibold">{inr(p.amount)}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {formatDate(p.txn_date)}
-                    {` · ${p.account_name || "Site funds"}`}
-                    {p.note ? ` · ${p.note}` : ""}
-                  </p>
+            payments.map((p, i) => {
+              // Payments are oldest-first. On an advance bill the first one is the up-front
+              // advance; the rest are later installments.
+              const isAdvance = bill?.payment_type === "advance" && i === 0;
+              const label = isAdvance ? "Advance" : `Installment ${bill?.payment_type === "advance" ? i : i + 1}`;
+              return (
+                <div key={p.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-1.5 font-semibold">
+                      {inr(p.amount)}
+                      <span
+                        className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                          isAdvance ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {label}
+                      </span>
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {formatDate(p.txn_date)}
+                      {` · ${p.account_name || "Site funds"}`}
+                      {p.note ? ` · ${p.note}` : ""}
+                    </p>
+                  </div>
+                  <Button variant="danger" onClick={() => del(p)} className="!px-2">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
-                <Button variant="danger" onClick={() => del(p)} className="!px-2">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -287,6 +302,24 @@ export default function VendorPaymentsSheet({
                 <p className="mb-1.5 text-sm font-medium text-foreground">Head (optional)</p>
                 <CategoryPicker value={categoryId} onChange={(id) => setCategoryId(String(id))} />
               </div>
+
+              {/* Step-wise effect of this payment on the balance due. */}
+              {Number(amount) > 0 && !over && (
+                <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-lg bg-muted/50 p-3 text-sm">
+                  <div className="col-span-2 flex items-center justify-between">
+                    <span className="text-muted-foreground">Balance due</span>
+                    <span className="font-medium">{inr(balance)}</span>
+                  </div>
+                  <div className="col-span-2 flex items-center justify-between">
+                    <span className="text-muted-foreground">− This payment</span>
+                    <span className="font-medium text-danger">− {inr(Number(amount))}</span>
+                  </div>
+                  <div className="col-span-2 flex items-center justify-between border-t border-border pt-1.5">
+                    <span className="font-semibold">Remaining after</span>
+                    <span className="font-bold">{inr(balance - Number(amount))}</span>
+                  </div>
+                </div>
+              )}
 
               {err && <p className="mt-3 rounded-lg bg-danger/10 p-2.5 text-sm text-danger">{err}</p>}
               <Button onClick={addPayment} loading={saving} disabled={over || insufficient || balance <= 0} className="mt-4 w-full">

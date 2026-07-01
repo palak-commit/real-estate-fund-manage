@@ -1,6 +1,7 @@
 import type { PoolConnection } from "mysql2/promise";
-import { pool } from "@/lib/db";
-import { recomputeBalances } from "@/lib/ledger";
+import { pool, query } from "@/lib/db";
+import { recomputeBalances, toPaisa, toRupees } from "@/lib/ledger";
+import { inr } from "@/lib/format";
 import { logActivity } from "@/lib/activity";
 
 // Server-side glue between an RA receipt's partial payments and the real `income`
@@ -55,6 +56,43 @@ export async function postIncome(d: IncomeData, conn?: PoolConnection): Promise<
     conn
   );
   return r.insertId as number;
+}
+
+/**
+ * Guard for deleting RA income: removing these `income` transactions subtracts the money
+ * they credited from their account. If that money has since been spent (the account balance
+ * is already below what would be reversed), reversing it would push the account negative —
+ * i.e. dependent expenses rely on it. Returns a plain-language block message, or null when
+ * the reversal is safe. Mirrors the funds guard on the plain-transaction delete so RA
+ * receipt/payment deletes can't silently corrupt balances.
+ */
+export async function incomeReversalBlock(txnIds: number[]): Promise<string | null> {
+  const ids = txnIds.filter((t): t is number => !!t);
+  if (!ids.length) return null;
+  const rows = await query<{ dest_account_id: number | null; amount: number }>(
+    `SELECT dest_account_id, amount FROM transactions
+      WHERE id IN (${ids.map(() => "?").join(",")}) AND type = 'income' AND dest_account_id IS NOT NULL`,
+    ids
+  );
+  if (!rows.length) return null;
+  // Sum the credited amount per account (integer paisa) that this delete would reverse.
+  const perAccount = new Map<number, number>();
+  for (const r of rows) {
+    const acc = r.dest_account_id as number;
+    perAccount.set(acc, (perAccount.get(acc) ?? 0) + toPaisa(Number(r.amount)));
+  }
+  const accIds = [...perAccount.keys()];
+  const accounts = await query<{ id: number; name: string; current_balance: number }>(
+    `SELECT id, name, current_balance FROM accounts WHERE id IN (${accIds.map(() => "?").join(",")})`,
+    accIds
+  );
+  for (const a of accounts) {
+    const creditP = perAccount.get(a.id) ?? 0;
+    if (toPaisa(Number(a.current_balance)) < creditP) {
+      return `Cannot delete — ${a.name} only has ${inr(Number(a.current_balance))} left, but this credited it ${inr(toRupees(creditP))}. That money has already been used; delete the payments/expenses that spent it first.`;
+    }
+  }
+  return null;
 }
 
 export async function deleteIncome(txnId: number): Promise<void> {

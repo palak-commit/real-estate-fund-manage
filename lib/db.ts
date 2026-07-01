@@ -1,6 +1,7 @@
 import mysql from "mysql2/promise";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { DEFAULT_RA_RATES } from "./ra";
 
 // Predefined expense categories seeded on first run, as a two-level Head -> Sub-Head
 // tree (mirrors the Excel workbook). Heads with a single line of activity still get one
@@ -243,6 +244,21 @@ async function initialize(): Promise<void> {
           WHERE net_receivable = 0`
       );
     }
+    // Per-receipt deduction rates (this receipt's own rate set). NULL falls back to the site /
+    // default rates when the register recomputes its derived columns.
+    if (!(await raHasColumn("ra_rates"))) {
+      await admin.query("ALTER TABLE ra_receipts ADD COLUMN ra_rates JSON NULL AFTER net_receivable");
+    }
+    // Freeze any receipt that has no rates of its own to its site's current rates (or the
+    // defaults) — so later edits to a site's deduction rates never retroactively re-rate old
+    // rows. Idempotent: only touches NULLs, so newly-saved receipts keep their own set.
+    await admin.query(
+      `UPDATE ra_receipts r
+         LEFT JOIN projects p ON p.id = r.project_id
+          SET r.ra_rates = COALESCE(p.ra_rates, ?)
+        WHERE r.ra_rates IS NULL`,
+      [JSON.stringify(DEFAULT_RA_RATES)]
+    );
 
     // Add the 'ra_receipt' / 'vendor_bill' values to the activity_log entity enum on older
     // databases (CREATE TABLE IF NOT EXISTS won't alter an existing enum).
@@ -255,6 +271,28 @@ async function initialize(): Promise<void> {
       await admin.query(
         "ALTER TABLE activity_log MODIFY COLUMN entity ENUM('transaction','account','site','category','system','ra_receipt','vendor_bill') NOT NULL"
       );
+    }
+
+    // Add vendor_bills.payment_type (normal/advance) onto older databases.
+    const [vbPayType]: any = await admin.query(
+      `SELECT 1 FROM information_schema.columns
+        WHERE table_schema = ? AND table_name = 'vendor_bills' AND column_name = 'payment_type'`,
+      [dbName]
+    );
+    if (!vbPayType.length) {
+      await admin.query(
+        "ALTER TABLE vendor_bills ADD COLUMN payment_type ENUM('normal','advance') NOT NULL DEFAULT 'normal' AFTER status"
+      );
+    }
+
+    // Add projects.ra_rates (per-site RA deduction rate overrides) onto older databases.
+    const [projRaRates]: any = await admin.query(
+      `SELECT 1 FROM information_schema.columns
+        WHERE table_schema = ? AND table_name = 'projects' AND column_name = 'ra_rates'`,
+      [dbName]
+    );
+    if (!projRaRates.length) {
+      await admin.query("ALTER TABLE projects ADD COLUMN ra_rates JSON NULL AFTER status");
     }
 
     if (freshDatabase) {

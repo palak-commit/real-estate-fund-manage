@@ -3,7 +3,7 @@ import { z } from "zod";
 import { pool, query, ready } from "@/lib/db";
 import { ok, fail } from "@/lib/api";
 import { raReceiptSchema, parseId, zErr } from "@/lib/validation";
-import { deleteIncome, recompute } from "@/lib/raTxn";
+import { deleteIncome, recompute, incomeReversalBlock } from "@/lib/raTxn";
 import { netReceivableFrom } from "@/lib/ra";
 import { logActivity } from "@/lib/activity";
 
@@ -48,14 +48,20 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     );
   }
 
+  const raRatesJson = d.rates ? JSON.stringify(d.rates) : null;
   await pool.query(
     `UPDATE ra_receipts
         SET txn_date = ?, project_id = ?, account_id = ?, paid_to = ?, amount = ?,
-            withheld_amt = ?, royalty = ?, agency_charge = ?, sub_let_bill = ?, net_receivable = ?, note = ?, status = ?, txn_id = NULL
+            withheld_amt = ?, royalty = ?, agency_charge = ?, sub_let_bill = ?, net_receivable = ?, ra_rates = ?, note = ?, status = ?, txn_id = NULL
       WHERE id = ?`,
     [d.txn_date || null, d.project_id || null, d.account_id || null, d.paid_to || null, d.amount,
-     d.withheld_amt, d.royalty, d.agency_charge, d.sub_let_bill, net, d.note || null, d.status, id]
+     d.withheld_amt, d.royalty, d.agency_charge, d.sub_let_bill, net, raRatesJson, d.note || null, d.status, id]
   );
+
+  // Remember this rate set as the site's latest, so new receipts for the site default to it.
+  if (d.project_id && raRatesJson) {
+    await pool.query("UPDATE projects SET ra_rates = ? WHERE id = ?", [raRatesJson, d.project_id]);
+  }
 
   // Drop any legacy receipt-level income (old full-Net-Receivable behaviour) — money now
   // lives only on the partial payments.
@@ -90,9 +96,15 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     "SELECT txn_id FROM ra_payments WHERE receipt_id = ? AND txn_id IS NOT NULL",
     [id]
   );
+  const txnIds = [existing[0].txn_id, ...payTxns.map((p) => p.txn_id)].filter((t): t is number => !!t);
+
+  // Refuse if reversing the credited income would push an account negative (its money was
+  // already spent — e.g. paid out via vendor bills). Checked BEFORE anything is deleted.
+  const block = await incomeReversalBlock(txnIds);
+  if (block) return fail(block);
+
   await pool.query("DELETE FROM ra_receipts WHERE id = ?", [id]);
 
-  const txnIds = [existing[0].txn_id, ...payTxns.map((p) => p.txn_id)].filter((t): t is number => !!t);
   for (const t of txnIds) await deleteIncome(t);
   if (txnIds.length) await recompute();
 

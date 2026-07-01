@@ -55,18 +55,18 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   await pool.query(
     `UPDATE vendor_bills
-        SET txn_date = ?, project_id = ?, category_id = ?, paid_to = ?, amount = ?, gst = ?, total_bill = ?, note = ?, status = ?
+        SET txn_date = ?, project_id = ?, category_id = ?, paid_to = ?, amount = ?, gst = ?, total_bill = ?, note = ?, status = ?, payment_type = ?
       WHERE id = ?`,
-    [d.txn_date || null, d.project_id, d.category_id || null, d.paid_to || null, d.amount, d.gst, total, d.note || null, status, id]
+    [d.txn_date || null, d.project_id, d.category_id || null, d.paid_to || null, d.amount, d.gst, total, d.note || null, status, d.payment_type, id]
   );
 
   await logActivity({
     action: "updated",
     entity: "vendor_bill",
     entityId: id,
-    title: `Vendor bill updated${d.paid_to ? ` · ${d.paid_to}` : ""}`,
+    title: `Vendor bill updated${d.paid_to ? ` · ${d.paid_to}` : ""}${d.payment_type === "advance" ? " (advance)" : ""}`,
     amount: total,
-    meta: { status },
+    meta: { status, payment_type: d.payment_type },
   });
   return ok(null, "Vendor bill updated");
 }

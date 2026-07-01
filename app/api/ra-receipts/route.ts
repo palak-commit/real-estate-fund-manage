@@ -8,7 +8,7 @@ import { logActivity } from "@/lib/activity";
 
 const SELECT = `SELECT r.id, DATE_FORMAT(r.txn_date, '%Y-%m-%d') AS txn_date,
     r.project_id, p.name AS project_name, r.account_id, a.name AS account_name, r.paid_to,
-    r.amount, r.withheld_amt, r.royalty, r.agency_charge, r.sub_let_bill, r.net_receivable, r.note, r.status,
+    r.amount, r.withheld_amt, r.royalty, r.agency_charge, r.sub_let_bill, r.net_receivable, r.ra_rates, r.note, r.status,
     (SELECT COALESCE(SUM(amount),0) FROM ra_payments WHERE receipt_id = r.id) AS paid
   FROM ra_receipts r
   LEFT JOIN projects p ON p.id = r.project_id
@@ -38,13 +38,19 @@ export async function POST(req: NextRequest) {
   let receiptId: number;
   try {
     await conn.beginTransaction();
+    const raRatesJson = d.rates ? JSON.stringify(d.rates) : null;
     const [res]: any = await conn.query(
-      `INSERT INTO ra_receipts (txn_date, project_id, account_id, paid_to, amount, withheld_amt, royalty, agency_charge, sub_let_bill, net_receivable, note, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO ra_receipts (txn_date, project_id, account_id, paid_to, amount, withheld_amt, royalty, agency_charge, sub_let_bill, net_receivable, ra_rates, note, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [d.txn_date || null, d.project_id || null, d.account_id || null, d.paid_to || null,
-       d.amount, d.withheld_amt, d.royalty, d.agency_charge, d.sub_let_bill, net, d.note || null, d.status]
+       d.amount, d.withheld_amt, d.royalty, d.agency_charge, d.sub_let_bill, net, raRatesJson, d.note || null, d.status]
     );
     receiptId = res.insertId;
+
+    // Remember this rate set as the site's latest, so the next receipt for the site defaults to it.
+    if (d.project_id && raRatesJson) {
+      await conn.query("UPDATE projects SET ra_rates = ? WHERE id = ?", [raRatesJson, d.project_id]);
+    }
 
     if (fullyReceived) {
       const payDate = d.txn_date || new Date().toISOString().slice(0, 10);

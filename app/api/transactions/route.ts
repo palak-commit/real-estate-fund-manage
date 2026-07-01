@@ -13,13 +13,17 @@ const SELECT = `
     da.name AS dest_name, da.account_type AS dest_type,
     p.name AS project_name,
     CASE WHEN c.parent_id IS NOT NULL THEN c.name END AS category,
-    COALESCE(pc.name, c.name) AS category_head
+    COALESCE(pc.name, c.name) AS category_head,
+    vp.bill_id AS bill_id,
+    rp.receipt_id AS receipt_id
   FROM transactions t
   LEFT JOIN accounts sa ON sa.id = t.source_account_id
   LEFT JOIN accounts da ON da.id = t.dest_account_id
   LEFT JOIN projects p ON p.id = t.project_id
   LEFT JOIN categories c ON c.id = t.category_id
-  LEFT JOIN categories pc ON pc.id = c.parent_id`;
+  LEFT JOIN categories pc ON pc.id = c.parent_id
+  LEFT JOIN vendor_payments vp ON vp.txn_id = t.id
+  LEFT JOIN ra_payments rp ON rp.txn_id = t.id`;
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, FileText, RotateCcw, Wallet, X, ChevronDown, SlidersHorizontal, Download } from "lucide-react";
 import { Card, Button, Input, Label, CustomSelect, CustomDatePicker, Skeleton, EmptyState, Table, THead, TBody, Th, Td } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
-import RaReceiptSheet, { type RaReceipt } from "@/components/RaReceiptSheet";
+import RaReceiptSheet, { ratesForReceipt, type RaReceipt } from "@/components/RaReceiptSheet";
 import RaPaymentsSheet from "@/components/RaPaymentsSheet";
 import { inr, formatDate, ACCOUNT_TYPE_LABELS } from "@/lib/format";
 import { computeRa, DEFAULT_RA_RATES, type RaRates } from "@/lib/ra";
@@ -92,8 +92,14 @@ export default function RaReceiptsPage() {
     setFStatus("");
   }
 
+  // Each row computes with its OWN saved rates (falling back to the page rate panel), so a
+  // receipt booked at, say, TDS 1.5% keeps that rate even when the panel shows the default.
   const computed = useMemo(
-    () => filtered.map((r) => ({ row: r, c: computeRa(r, rates) })),
+    () =>
+      filtered.map((r) => {
+        const rr = ratesForReceipt(r.ra_rates, rates);
+        return { row: r, c: computeRa(r, rr), rr };
+      }),
     [filtered, rates]
   );
 
@@ -347,7 +353,7 @@ export default function RaReceiptsPage() {
                 </td>
               </tr>
             ) : (
-              computed.map(({ row, c }, i) => (
+              computed.map(({ row, c, rr }, i) => (
                 <tr
                   key={row.id}
                   onClick={() => setPayingFor(row)}
@@ -361,12 +367,12 @@ export default function RaReceiptsPage() {
                   <Td>{row.account_name || "—"}</Td>
                   <Td><Label color={STATUS_COLOR[row.status]}>{STATUS_LABEL[row.status]}</Label></Td>
                   <Td right>{inr(row.amount)}</Td>
-                  <Td right>{inr(c.gst)}</Td>
+                  <Td right>{inr(c.gst)}<RateTag row={rr.gst} site={rates.gst} /></Td>
                   <Td right>{inr(c.total_bill)}</Td>
-                  <Td right>{inr(c.tds)}</Td>
-                  <Td right>{inr(c.tds_gst)}</Td>
-                  <Td right>{inr(c.sd)}</Td>
-                  <Td right>{inr(c.cess)}</Td>
+                  <Td right>{inr(c.tds)}<RateTag row={rr.tds} site={rates.tds} /></Td>
+                  <Td right>{inr(c.tds_gst)}<RateTag row={rr.tdsGst} site={rates.tdsGst} /></Td>
+                  <Td right>{inr(c.sd)}<RateTag row={rr.sd} site={rates.sd} /></Td>
+                  <Td right>{inr(c.cess)}<RateTag row={rr.cess} site={rates.cess} /></Td>
                   <Td right>{inr(row.withheld_amt)}</Td>
                   <Td right>{inr(row.royalty)}</Td>
                   <Td right>{inr(c.total_deduction)}</Td>
@@ -374,7 +380,7 @@ export default function RaReceiptsPage() {
                   <Td right>{inr(row.agency_charge)}</Td>
                   <Td right className="font-semibold">{inr(c.net_receivable)}</Td>
                   <Td right>{inr(c.sub_let_bill)}</Td>
-                  <Td right>{inr(c.sub_gst)}</Td>
+                  <Td right>{inr(c.sub_gst)}<RateTag row={rr.subletGst} site={rates.subletGst} /></Td>
                   <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" onClick={() => setPayingFor(row)} className="!px-2 text-muted-foreground" >
@@ -440,6 +446,20 @@ export default function RaReceiptsPage() {
         onChanged={load}
       />
     </div>
+  );
+}
+
+// An amber pill next to a rate-driven cell when the row was booked at a different rate than the
+// panel's current one — the row keeps its own amount; the pill (+ tooltip) reveals its rate.
+function RateTag({ row, site }: { row: number; site: number }) {
+  if (row === site) return null;
+  return (
+    <span
+      title={`This row was calculated at ${row}% (the panel now shows ${site}%)`}
+      className="ml-1 inline-block whitespace-nowrap rounded bg-warning/10 px-1.5 py-0.5 align-middle text-[10px] font-semibold leading-none text-warning"
+    >
+      {row}%
+    </span>
   );
 }
 

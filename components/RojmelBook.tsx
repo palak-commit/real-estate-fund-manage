@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { X, Info } from "lucide-react";
 import Link from "next/link";
 import { Card, CustomSelect, CustomDatePicker, EmptyState, Table, THead, TBody, Th } from "@/components/ui";
-import { inr, formatDate } from "@/lib/format";
+import { inr, formatDate, ACCOUNT_TYPE_LABELS } from "@/lib/format";
 
 type Account = { id: number; name: string; account_type: string; current_balance: number };
 type Row = {
@@ -37,8 +37,8 @@ type Day = {
   outs: Row[]; // payments that day (credit > 0)
 };
 
-// Rojmel = a running CASH daybook for one cash account. Unlike the Cashbook (a flat payment
-// register), it groups by day with a per-day Opening Balance → Received → Expenses → Closing
+// Rojmel = a running daybook for one account (bank / cash / partner). Unlike the flat payment
+// registers, it groups by day with a per-day Opening Balance → Received → Expenses → Closing
 // Balance, exactly like the Excel "ROJMEL" sheet.
 export default function RojmelBook() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -48,14 +48,15 @@ export default function RojmelBook() {
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Cash accounts only (Rojmel is the cash daybook). Default to the first one.
+  // All accounts (bank / cash / partner). Default to the first cash account (the classic
+  // Rojmel use), else the first account of any type.
   const loadAccounts = useCallback(() => {
     fetch("/api/accounts")
       .then((r) => r.json())
       .then((j) => {
-        const cash = (j.data as Account[]).filter((a) => a.account_type === "cash");
-        setAccounts(cash);
-        setAccountId((cur) => cur || (cash[0] ? String(cash[0].id) : ""));
+        const all = j.data as Account[];
+        setAccounts(all);
+        setAccountId((cur) => cur || (all.find((a) => a.account_type === "cash") ?? all[0])?.id.toString() || "");
       });
   }, []);
 
@@ -120,10 +121,20 @@ export default function RojmelBook() {
   const hasFilters = !!(from || to);
   const COLS = 9;
 
+  // Account options grouped by type (Bank / Cash / Partner), each showing its balance.
+  const accountOptions = (["bank", "cash", "partner"] as const)
+    .map((t) => ({
+      group: ACCOUNT_TYPE_LABELS[t],
+      items: accounts
+        .filter((a) => a.account_type === t)
+        .map((a) => ({ label: `${a.name} (${inr(a.current_balance)})`, value: String(a.id) })),
+    }))
+    .filter((g) => g.items.length > 0);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Rojmel (Cash Daybook)</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Rojmel (Daybook)</h1>
         {book?.account && (
           <div className="rounded-lg bg-success/10 px-4 py-2 text-right">
             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Closing Balance</p>
@@ -137,7 +148,7 @@ export default function RojmelBook() {
         <Info className="mt-0.5 h-4 w-4 flex-none text-primary" />
         <div className="text-muted-foreground">
           <span className="font-semibold text-foreground">How this works: </span>
-          Data appears here automatically when you add a <span className="font-semibold text-foreground">Site Expense</span> or <span className="font-semibold text-foreground">Add Site Fund</span> and select a cash account as the source. 
+          Data appears here automatically when you add a <span className="font-semibold text-foreground">Site Expense</span> or <span className="font-semibold text-foreground">Add Site Fund</span> and select this account as the source.
           {" "}<Link href="/guide#rojmel" className="font-semibold text-primary hover:underline">Read the guide →</Link>
         </div>
       </div>
@@ -145,12 +156,12 @@ export default function RojmelBook() {
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
-          <p className="text-xs font-medium text-muted-foreground">Cash account</p>
+          <p className="text-xs font-medium text-muted-foreground">Account</p>
           <CustomSelect
             value={accountId}
             onChange={setAccountId}
-            options={accounts.map((a) => ({ label: `${a.name} (${inr(a.current_balance)})`, value: String(a.id) }))}
-            placeholder="Select cash account…"
+            options={accountOptions}
+            placeholder="Select account…"
             className="w-56"
           />
         </div>
@@ -202,7 +213,7 @@ export default function RojmelBook() {
               ) : !accountId ? (
                 <tr>
                   <td colSpan={COLS}>
-                    <EmptyState>Add a cash account to see its Rojmel.</EmptyState>
+                    <EmptyState>Add an account to see its Rojmel.</EmptyState>
                   </td>
                 </tr>
               ) : days.length ? (
@@ -244,7 +255,7 @@ function DayBlock({ day }: { day: Day }) {
           <td className="px-3 py-2 text-right font-medium text-success">{inr(r.debit)}</td>
           <td className="px-3 py-2" />
           <td className="px-3 py-2 text-muted-foreground" colSpan={6}>
-            {r.note || r.paid_to || "Cash received"}
+            {r.note || r.paid_to || "Amount received"}
           </td>
         </tr>
       ))}

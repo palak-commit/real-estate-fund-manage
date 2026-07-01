@@ -15,6 +15,9 @@ CREATE TABLE IF NOT EXISTS projects (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(120) NOT NULL,
   status ENUM('active', 'on_hold', 'completed') NOT NULL DEFAULT 'active',
+  -- Per-site RA deduction rate overrides (JSON: {gst,tds,tdsGst,sd,cess,subletGst});
+  -- NULL falls back to lib/ra DEFAULT_RA_RATES.
+  ra_rates JSON NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -67,6 +70,9 @@ CREATE TABLE IF NOT EXISTS ra_receipts (
   -- the server can enforce that payments never exceed the balance due, independent of the
   -- client's live rate panel.
   net_receivable DECIMAL(15,2) NOT NULL DEFAULT 0,
+  -- This receipt's own deduction-rate set (JSON). NULL falls back to the site / default rates
+  -- when the register recomputes derived columns.
+  ra_rates JSON NULL,
   note VARCHAR(255) NULL,
   -- Manual payment status set by the admin (does NOT auto-derive from payments).
   status ENUM('pending','partial','complete') NOT NULL DEFAULT 'pending',
@@ -115,6 +121,10 @@ CREATE TABLE IF NOT EXISTS vendor_bills (
   note VARCHAR(255) NULL,
   -- Payment status: pending (nothing paid) -> partial -> complete (paid in full).
   status ENUM('pending','partial','complete') NOT NULL DEFAULT 'pending',
+  -- Bill kind: 'normal' = ordinary bill; 'advance' = money paid to the vendor before the
+  -- final bill total is known (record the advance now, raise the amount to the final total
+  -- later to reopen the balance).
+  payment_type ENUM('normal','advance') NOT NULL DEFAULT 'normal',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_vb_date (txn_date),
   INDEX idx_vb_project (project_id),

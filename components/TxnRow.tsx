@@ -46,11 +46,13 @@ export function TxnRow({
   onDelete,
   onEdit,
   onRowClick,
+  hideSite,
 }: {
   t: any;
   onDelete?: (t: any) => void;
   onEdit?: (t: any) => void;
   onRowClick?: (t: any) => void;
+  hideSite?: boolean; // hide the site tag (e.g. on a site's own page where it's redundant)
 }) {
   const sign = signOf(t.type);
   // Expense title shows the full "Head › Sub-category" path (collapsing to one when the
@@ -90,8 +92,8 @@ export function TxnRow({
               {t.type === "expense" ? catLabel : typeLabel(t)}
             </span>
             <Label color={TYPE_COLOR[t.type]}>{typeLabel(t)}</Label>
-            {t.type === "expense" && t.project_name && <Label color="indigo">{t.project_name}</Label>}
-            {t.type !== "expense" && t.project_name && t.dest_name && (
+            {!hideSite && t.type === "expense" && t.project_name && <Label color="indigo">{t.project_name}</Label>}
+            {!hideSite && t.type !== "expense" && t.project_name && t.dest_name && (
               <Label color="indigo">{t.project_name}</Label>
             )}
           </div>
