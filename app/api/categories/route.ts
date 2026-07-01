@@ -5,17 +5,29 @@ import { categoryCreateSchema, zErr } from "@/lib/validation";
 import { logActivity } from "@/lib/activity";
 
 export async function GET() {
-  // Return the two-level tree: Heads (parent_id NULL) each with their Sub-Heads.
+  // Return the two-level tree: Heads (parent_id NULL) each with their Sub-Heads,
+  // annotated with the total expense spent against each (so the /heads page can show
+  // "how much went to this Head / Type of Head").
   const rows = await query<{ id: number; name: string; parent_id: number | null }>(
     "SELECT id, name, parent_id FROM categories ORDER BY name"
   );
+  // Spend per category_id from expenses. A category_id can be a head (head-only
+  // expense) or a sub-head; a head's total = its own head-only spend + all its sub-heads'.
+  const spendRows = await query<{ category_id: number; spent: number }>(
+    "SELECT category_id, SUM(amount) AS spent FROM transactions WHERE type = 'expense' AND category_id IS NOT NULL GROUP BY category_id"
+  );
+  const spentById = new Map<number, number>();
+  spendRows.forEach((r) => spentById.set(r.category_id, Number(r.spent)));
+
   const heads = rows
     .filter((r) => r.parent_id == null)
-    .map((h) => ({
-      id: h.id,
-      name: h.name,
-      subheads: rows.filter((s) => s.parent_id === h.id).map((s) => ({ id: s.id, name: s.name })),
-    }));
+    .map((h) => {
+      const subheads = rows
+        .filter((s) => s.parent_id === h.id)
+        .map((s) => ({ id: s.id, name: s.name, spent: spentById.get(s.id) ?? 0 }));
+      const spent = (spentById.get(h.id) ?? 0) + subheads.reduce((sum, s) => sum + s.spent, 0);
+      return { id: h.id, name: h.name, spent, subheads };
+    });
   return ok(heads, "Categories fetched successfully");
 }
 

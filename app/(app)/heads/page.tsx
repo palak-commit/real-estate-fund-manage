@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Tag, Plus, Pencil, Trash2, Check, X } from "lucide-react";
-import { Card, Button, Input, EmptyState, Skeleton } from "@/components/ui";
+import { Tag, Plus, Pencil, Trash2, Check, X, ChevronRight } from "lucide-react";
+import { Card, Button, Input, EmptyState, Skeleton, Table, THead, TBody, Th, Td } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
+import { inr } from "@/lib/format";
 
-type SubHead = { id: number; name: string };
-type Head = { id: number; name: string; subheads: SubHead[] };
+type SubHead = { id: number; name: string; spent: number };
+type Head = { id: number; name: string; spent: number; subheads: SubHead[] };
 
 export default function HeadsPage() {
   const { toast, confirm } = useUI();
@@ -18,6 +19,14 @@ export default function HeadsPage() {
   // Inline rename: which category id is being edited + the draft.
   const [editId, setEditId] = useState<number | null>(null);
   const [editVal, setEditVal] = useState("");
+  // Which heads are expanded to show their Types of Head table.
+  const [openIds, setOpenIds] = useState<Set<number>>(new Set());
+  const toggleOpen = (id: number) =>
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
 
   const load = () => fetch("/api/categories").then((r) => r.json()).then((j) => setHeads(j.data ?? []));
   useEffect(() => {
@@ -129,10 +138,13 @@ export default function HeadsPage() {
           <EmptyState icon={<Tag className="h-6 w-6" />}>No heads yet. Add your first one above.</EmptyState>
         </Card>
       ) : (
-        <div className="grid items-start gap-4 lg:grid-cols-2">
-          {heads.map((h) => (
-            <Card key={h.id} className="flex flex-col gap-3 !p-4">
-              <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+        <div className="space-y-3">
+          {heads.map((h) => {
+            const open = openIds.has(h.id);
+            return (
+            <Card key={h.id} className="!p-0">
+              {/* Head header — click to expand its Types of Head */}
+              <div className="flex items-center justify-between gap-3 p-4">
                 {editId === h.id ? (
                   <div className="flex flex-1 items-center gap-2">
                     <Input
@@ -153,12 +165,20 @@ export default function HeadsPage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex min-w-0 items-center gap-2">
+                  <button
+                    onClick={() => toggleOpen(h.id)}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    aria-expanded={open}
+                  >
+                    <ChevronRight className={`h-4 w-4 shrink-0 text-muted-foreground transition ${open ? "rotate-90" : ""}`} />
                     <h2 className="truncate text-base font-semibold text-foreground">{h.name}</h2>
                     <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                       {h.subheads.length}
                     </span>
-                  </div>
+                    <span className="ml-auto shrink-0 text-sm font-semibold text-foreground" title="Total spent under this head">
+                      {inr(h.spent)}
+                    </span>
+                  </button>
                 )}
                 {editId !== h.id && (
                   <div className="flex shrink-0 items-center gap-1">
@@ -180,92 +200,116 @@ export default function HeadsPage() {
                 )}
               </div>
 
-              {/* Sub-heads (types of head) */}
-              <div className="flex flex-wrap items-center gap-2">
-                {h.subheads.length === 0 && (
-                  <span className="text-xs text-muted-foreground">No types of head yet.</span>
-                )}
-                {h.subheads.map((s) =>
-                  editId === s.id ? (
-                    <span key={s.id} className="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-1">
-                      <Input
-                        autoFocus
-                        value={editVal}
-                        onChange={(e) => setEditVal(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") rename(s.id);
-                          if (e.key === "Escape") setEditId(null);
-                        }}
-                        className="!h-7 !w-32 !py-0 !text-sm"
-                      />
-                      <button onClick={() => rename(s.id)} className="text-success" aria-label="Save">
-                        <Check className="h-4 w-4" />
-                      </button>
-                      <button onClick={() => setEditId(null)} className="text-muted-foreground" aria-label="Cancel">
-                        <X className="h-4 w-4" />
-                      </button>
-                    </span>
-                  ) : (
-                    <span
-                      key={s.id}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/60 py-1 pl-3 pr-1.5 text-sm"
-                    >
-                      {s.name}
-                      <span className="flex items-center gap-0.5">
-                        <button
-                          onClick={() => startEdit(s.id, s.name)}
-                          className="rounded-full p-1 text-muted-foreground transition hover:bg-background hover:text-foreground"
-                          aria-label="Rename type"
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </button>
-                        <button
-                          onClick={() => remove(s, false)}
-                          className="rounded-full p-1 text-muted-foreground transition hover:bg-danger/10 hover:text-danger"
-                          aria-label="Delete type"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </span>
-                    </span>
-                  )
-                )}
+              {/* Types of Head table — shown when expanded */}
+              {open && (
+                <div className="border-t border-border">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <THead>
+                        <Th>Type of Head</Th>
+                        <Th right>Spent</Th>
+                        <Th right>Actions</Th>
+                      </THead>
+                      <TBody>
+                        {h.subheads.length === 0 && (
+                          <tr>
+                            <Td className="text-muted-foreground">No types of head yet.</Td>
+                            <Td right>—</Td>
+                            <Td right>—</Td>
+                          </tr>
+                        )}
+                        {h.subheads.map((s) => (
+                          <tr key={s.id}>
+                            <Td>
+                              {editId === s.id ? (
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Input
+                                    autoFocus
+                                    value={editVal}
+                                    onChange={(e) => setEditVal(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") rename(s.id);
+                                      if (e.key === "Escape") setEditId(null);
+                                    }}
+                                    className="!h-8 !w-40 !py-0 !text-sm"
+                                  />
+                                  <button onClick={() => rename(s.id)} className="text-success" aria-label="Save">
+                                    <Check className="h-4 w-4" />
+                                  </button>
+                                  <button onClick={() => setEditId(null)} className="text-muted-foreground" aria-label="Cancel">
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </span>
+                              ) : (
+                                s.name
+                              )}
+                            </Td>
+                            <Td right className="font-medium">{inr(s.spent)}</Td>
+                            <Td right>
+                              {editId !== s.id && (
+                                <span className="flex items-center justify-end gap-0.5">
+                                  <button
+                                    onClick={() => startEdit(s.id, s.name)}
+                                    className="rounded-lg p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                    aria-label="Rename type"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => remove(s, false)}
+                                    className="rounded-lg p-1 text-muted-foreground transition hover:bg-danger/10 hover:text-danger"
+                                    aria-label="Delete type"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </span>
+                              )}
+                            </Td>
+                          </tr>
+                        ))}
+                      </TBody>
+                    </Table>
+                  </div>
 
-                {/* Add a type of head under this head */}
-                {subFor === h.id ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Input
-                      autoFocus
-                      value={newSub}
-                      onChange={(e) => setNewSub(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") addSub(h.id);
-                        if (e.key === "Escape") setSubFor(null);
-                      }}
-                      placeholder="New type of head"
-                      className="!h-8 !w-40 !py-0 !text-sm"
-                    />
-                    <Button variant="outline" onClick={() => addSub(h.id)} className="!px-2 !py-1">
-                      <Check className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" onClick={() => setSubFor(null)} className="!px-2 !py-1">
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setSubFor(h.id);
-                      setNewSub("");
-                    }}
-                    className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-3 py-1 text-sm text-muted-foreground transition hover:bg-muted"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> Add type
-                  </button>
-                )}
-              </div>
+                  {/* Add a type of head under this head */}
+                  <div className="p-3">
+                    {subFor === h.id ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Input
+                          autoFocus
+                          value={newSub}
+                          onChange={(e) => setNewSub(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") addSub(h.id);
+                            if (e.key === "Escape") setSubFor(null);
+                          }}
+                          placeholder="New type of head"
+                          className="!h-8 !w-40 !py-0 !text-sm"
+                        />
+                        <Button variant="outline" onClick={() => addSub(h.id)} className="!px-2 !py-1">
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" onClick={() => setSubFor(null)} className="!px-2 !py-1">
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setSubFor(h.id);
+                          setNewSub("");
+                        }}
+                        className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-3 py-1 text-sm text-muted-foreground transition hover:bg-muted"
+                      >
+                        <Plus className="h-3.5 w-3.5" /> Add type
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
