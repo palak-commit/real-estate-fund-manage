@@ -89,6 +89,33 @@ export async function GET() {
     return { b0, b30, b60, b90, total: b0 + b30 + b60 + b90 };
   };
 
+  // Top outstanding payables (Vendors owed) and receivables (Sites/Clients owing)
+  const topPayables = await query<{ name: string; project_name: string; amount: number; days: number }>(
+    `SELECT b.paid_to AS name, 
+            MAX(p.name) AS project_name,
+            GREATEST(SUM(b.total_bill - COALESCE(pp.paid,0)), 0) AS amount,
+            MAX(COALESCE(DATEDIFF(CURDATE(), b.txn_date), 0)) AS days
+       FROM vendor_bills b
+       LEFT JOIN projects p ON p.id = b.project_id
+       LEFT JOIN (SELECT bill_id, SUM(amount) AS paid FROM vendor_payments GROUP BY bill_id) pp ON pp.bill_id = b.id
+      GROUP BY b.paid_to
+     HAVING amount > 0
+      ORDER BY days DESC, amount DESC LIMIT 5`
+  );
+  
+  const topReceivables = await query<{ name: string; project_name: string; amount: number; days: number }>(
+    `SELECT COALESCE(r.paid_to, 'Unknown Client') AS name, 
+            MAX(p.name) AS project_name,
+            GREATEST(SUM(r.net_receivable - COALESCE(pp.paid,0)), 0) AS amount,
+            MAX(COALESCE(DATEDIFF(CURDATE(), r.txn_date), 0)) AS days
+       FROM ra_receipts r
+       LEFT JOIN projects p ON p.id = r.project_id
+       LEFT JOIN (SELECT receipt_id, SUM(amount) AS paid FROM ra_payments GROUP BY receipt_id) pp ON pp.receipt_id = r.id
+      GROUP BY name
+     HAVING amount > 0
+      ORDER BY days DESC, amount DESC LIMIT 5`
+  );
+
   // Money that went OUT of each account type — expenses paid directly from the account PLUS
   // site-fund allocations (a transfer out of the account into a site, i.e. no dest account).
   // Account-to-account transfers (dest account set) are internal moves and don't count.
@@ -155,6 +182,8 @@ export async function GET() {
     pendingReceivableCount: Number(recv[0]?.count || 0),
     pendingPayable: Number(payable[0]?.total || 0),
     pendingPayableCount: Number(payable[0]?.count || 0),
+    topPayables: topPayables.map((r: any) => ({ name: r.name, project_name: r.project_name, amount: Number(r.amount), days: Number(r.days) })),
+    topReceivables: topReceivables.map((r: any) => ({ name: r.name, project_name: r.project_name, amount: Number(r.amount), days: Number(r.days) })),
     payablesAging: agingOf(payAging[0]),
     receivablesAging: agingOf(recvAging[0]),
     spentBank: spent.bank,

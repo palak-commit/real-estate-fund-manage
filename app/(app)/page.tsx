@@ -13,6 +13,7 @@ import {
   TrendingUp,
   ClipboardList,
   Hourglass,
+  CheckCircle,
 } from "lucide-react";
 import { Card, Skeleton, EmptyState, Button } from "@/components/ui";
 import { useActions } from "@/components/ActionsProvider";
@@ -57,10 +58,11 @@ type Dash = {
   spentPartner: number;
   spentTotal: number;
   activeSites: number;
-  totalProfit: number;
   totalIncome: number;
   sites: Site[];
   recent: any[];
+  topPayables: { name: string; project_name: string; amount: number; days: number }[];
+  topReceivables: { name: string; project_name: string; amount: number; days: number }[];
 };
 
 const PROFIT_STYLE: Record<ProfitLevel, string> = {
@@ -113,10 +115,10 @@ export default function Home() {
         <AttentionCards d={d} />
       )}
 
-      {/* Cash-flow runway warning + outstanding aging summary */}
+      {/* Cash-flow runway warning + top outstanding summary */}
       {/* Runway warning hidden for now — re-enable when needed:
       {d && <RunwayAlert sites={d.sites} />} */}
-      {d && <AgingSummary payables={d.payablesAging} receivables={d.receivablesAging} />}
+      {d && <TopOutstanding payables={d.topPayables} receivables={d.topReceivables} />}
 
       {/* Sites */}
       <div>
@@ -173,16 +175,22 @@ export default function Home() {
                     <p className={`mt-3 text-2xl font-bold ${s.balance < 0 ? "text-danger" : "text-foreground"}`}>
                       {inr(s.balance)}
                     </p>
-                    <p className="text-xs text-muted-foreground">available balance</p>
+                    <p className="text-xs text-muted-foreground">remaining site funds</p>
 
                     <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
                       <div className={`h-full ${PROFIT_BAR[s.profitLevel]}`} style={{ width: `${pct}%` }} />
                     </div>
 
-                    {/* % of income spent, shown below the progress bar */}
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {s.income > 0 ? `${pct}% of income spent` : "No income yet"}
-                    </p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">
+                        {s.income > 0 ? `${pct}% of income spent` : "No income yet"}
+                      </p>
+                      {s.runway !== null && (
+                        <p className={`text-xs font-medium ${s.runway <= 7 ? "text-danger" : "text-amber-600"}`}>
+                          {s.runway} Days Left
+                        </p>
+                      )}
+                    </div>
 
                     {/* Income earned vs total spent on the site */}
                     <div className="mt-2 flex justify-between border-t border-border pt-2 text-xs">
@@ -209,6 +217,9 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {/* Today's Action Plan (AI Synthesis) - moved after Sites per user request */}
+      {d && <TodaysAction d={d} />}
 
       {/* Recent activity */}
       <Card className="overflow-hidden">
@@ -290,53 +301,131 @@ function RunwayAlert({ sites }: { sites: Site[] }) {
   );
 }
 
-const AGING_COLS: { key: keyof Omit<Aging, "total">; label: string }[] = [
-  { key: "b0", label: "Current" },
-  { key: "b30", label: "31–60d" },
-  { key: "b60", label: "61–90d" },
-  { key: "b90", label: "90+ d" },
-];
+// Actionable checklist synthesized from the most urgent pending items.
+function TodaysAction({ d }: { d: Dash }) {
+  const actions: { text: string; icon: React.ReactNode; href: string }[] = [];
 
-// Compact "outstanding by age" summary — payables (owed to vendors) and receivables (owed by
-// clients), bucketed by how overdue they are. Full breakdown lives in Reports → Aging.
-function AgingSummary({ payables, receivables }: { payables: Aging; receivables: Aging }) {
-  if (payables.total <= 0 && receivables.total <= 0) return null;
-  const Row = ({ label, a, href }: { label: string; a: Aging; href: string }) => (
-    <div className="grid grid-cols-5 items-center gap-2 py-1.5 text-sm">
-      <Link href={href} className="font-medium text-foreground hover:underline">
-        {label} <span className="text-muted-foreground">({inr(a.total)})</span>
-      </Link>
-      {AGING_COLS.map((c) => (
-        <span
-          key={c.key}
-          className={`text-right ${c.key === "b90" && a[c.key] > 0 ? "font-semibold text-danger" : "text-muted-foreground"}`}
-        >
-          {inr(a[c.key])}
-        </span>
-      ))}
-    </div>
-  );
+  // 1. Top Payable (most overdue / highest amount)
+  if (d.topPayables.length > 0) {
+    const p = d.topPayables[0];
+    actions.push({
+      text: `Pay ${p.name} ${inr(p.amount)}`,
+      icon: <ClipboardList className="h-4 w-4 text-danger" />,
+      href: "/vendor-bills",
+    });
+  }
+
+  // 2. Top Receivable
+  if (d.topReceivables.length > 0) {
+    const r = d.topReceivables[0];
+    actions.push({
+      text: `Collect ${inr(r.amount)} from ${r.name}`,
+      icon: <Receipt className="h-4 w-4 text-success" />,
+      href: "/ra-receipts",
+    });
+  }
+
+  // 3. Urgent Sites (Runway <= 7 days or Balance <= 0)
+  // Sort by balance (lowest first) to prioritize the most critical.
+  const urgentSites = d.sites
+    .filter((s) => s.balance <= 0 || (s.runway !== null && s.runway <= 7))
+    .sort((a, b) => a.balance - b.balance);
+    
+  if (urgentSites.length > 0) {
+    urgentSites.slice(0, 2).forEach((s) => {
+      let msg = "";
+      if (s.balance <= 0) msg = `${s.name} needs funds immediately (Balance: ${inr(s.balance)})`;
+      else msg = `${s.name} needs funds in ${s.runway} days`;
+
+      actions.push({
+        text: msg,
+        icon: <AlertTriangle className="h-4 w-4 text-amber-600" />,
+        href: `/projects/${s.id}`,
+      });
+    });
+  }
+
+  if (actions.length === 0) return null;
+
   return (
-    <Card className="p-4">
-      <div className="mb-1 flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-sm font-semibold">
-          <Hourglass className="h-4 w-4 text-muted-foreground" /> Outstanding by age
-        </h2>
-        <Link href="/reports?tab=aging" className="text-xs text-primary hover:underline">
-          Details →
-        </Link>
-      </div>
-      <div className="grid grid-cols-5 gap-2 border-b border-border pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        <span />
-        {AGING_COLS.map((c) => (
-          <span key={c.key} className="text-right">{c.label}</span>
+    <Card className="border-l-4 border-l-primary bg-primary/5 p-4 shadow-sm">
+      <h2 className="mb-3 flex items-center gap-2 font-semibold text-primary">
+        <CheckCircle className="h-5 w-5" /> Today's Action Plan
+      </h2>
+      <ul className="space-y-3">
+        {actions.map((a, i) => (
+          <li key={i}>
+            <Link href={a.href} className="flex items-center gap-3 text-sm hover:underline">
+              <span className="shrink-0 rounded-full bg-background p-1.5 shadow-sm">
+                {a.icon}
+              </span>
+              <span className="font-medium text-foreground/90">{a.text}</span>
+            </Link>
+          </li>
         ))}
-      </div>
-      <div className="divide-y divide-border">
-        {payables.total > 0 && <Row label="Payable" a={payables} href="/vendor-bills" />}
-        {receivables.total > 0 && <Row label="Receivable" a={receivables} href="/ra-receipts" />}
-      </div>
+      </ul>
     </Card>
+  );
+}
+
+// Compact list of who needs to be paid (Vendors) and who owes us (Clients/Sites).
+function TopOutstanding({ payables, receivables }: { payables: Dash["topPayables"]; receivables: Dash["topReceivables"] }) {
+  if (payables.length === 0 && receivables.length === 0) return null;
+  
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      {payables.length > 0 && (
+        <Card className="p-4">
+          <div className="mb-3 flex items-center justify-between border-b border-border pb-2">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-danger">
+              <ClipboardList className="h-4 w-4" /> Top Payables (To Pay)
+            </h2>
+            <Link href="/vendor-bills" className="text-xs text-primary hover:underline">
+              View All →
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {payables.map((p, i) => (
+              <div key={i} className="flex items-center justify-between text-sm">
+                <div>
+                  <p className="font-medium">{p.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {p.project_name ? `${p.project_name} · ` : ""}Overdue by {p.days} days
+                  </p>
+                </div>
+                <p className="font-semibold">{inr(p.amount)}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {receivables.length > 0 && (
+        <Card className="p-4">
+          <div className="mb-3 flex items-center justify-between border-b border-border pb-2">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-success">
+              <Receipt className="h-4 w-4" /> Top Receivables (To Collect)
+            </h2>
+            <Link href="/ra-receipts" className="text-xs text-primary hover:underline">
+              View All →
+            </Link>
+          </div>
+          <div className="space-y-3">
+            {receivables.map((r, i) => (
+              <div key={i} className="flex items-center justify-between text-sm">
+                <div>
+                  <p className="font-medium">{r.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {r.project_name ? `${r.project_name} · ` : ""}Pending for {r.days} days
+                  </p>
+                </div>
+                <p className="font-semibold">{inr(r.amount)}</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
   );
 }
 
@@ -390,20 +479,23 @@ function AttentionCards({ d }: { d: Dash }) {
         </Card>
       </Link>
 
-      {/* Yesterday spend */}
+      {/* Daily Expense */}
       <Card className="flex h-full flex-col p-4">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          <CalendarDays className="h-4 w-4" /> Spent Yesterday
+          <CalendarDays className="h-4 w-4" /> Daily Expense
         </div>
-        <p className="mt-2 text-2xl font-bold text-foreground">{inr(d.yesterdayExpense)}</p>
-        <p className="mt-auto pt-2 text-xs text-muted-foreground">Today {inr(d.todayExpense)}</p>
+        <p className="mt-2 text-2xl font-bold text-foreground">
+          <span className="text-sm font-normal text-muted-foreground">Today</span> <br />
+          {inr(d.todayExpense)}
+        </p>
+        <p className="mt-auto pt-2 text-xs text-muted-foreground">Yesterday: {inr(d.yesterdayExpense)}</p>
       </Card>
 
       {/* Sites needing funds */}
       <Link href="/projects">
         <Card className="flex h-full flex-col p-4 transition hover:border-primary/40 hover:shadow-md">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <AlertTriangle className={`h-4 w-4 ${needFunds.length ? "text-danger" : ""}`} /> Needs Funds
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground" title="Sites with balance at or below 0">
+            <AlertTriangle className={`h-4 w-4 ${needFunds.length ? "text-danger" : ""}`} /> Needs Funds (≤ 0)
           </div>
           <p className={`mt-2 text-2xl font-bold ${needFunds.length ? "text-danger" : "text-foreground"}`}>
             {needFunds.length}
@@ -417,7 +509,7 @@ function AttentionCards({ d }: { d: Dash }) {
       {/* Profit leaderboard */}
       <Card className="flex h-full flex-col p-4">
         <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          <TrendingUp className="h-4 w-4" /> Profit Leaders
+          <TrendingUp className="h-4 w-4" /> Profit Leaders (Best & Worst)
         </div>
         {best ? (
           <div className="mt-2 space-y-1 text-sm">

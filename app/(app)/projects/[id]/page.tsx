@@ -241,6 +241,11 @@ export default function ProjectDetail() {
               {PROFIT_LABEL[pLevel]}
               {hasActivity && ` · ${inr(Math.abs(profit))}`}
             </span>
+            {hasActivity && (
+              <p className="mt-1.5 text-[11px] font-medium text-muted-foreground" title="Revenue minus Total Spent">
+                {inr(p.income)} (Rev) - {inr(p.spent)} (Spent)
+              </p>
+            )}
           </div>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4 text-sm sm:grid-cols-3">
@@ -252,10 +257,10 @@ export default function ProjectDetail() {
             hint="Money earned from this site (sale, rent, etc.) deposited to an account"
           />
           <Mini
-            label="Profit"
-            value={inr(p.profit)}
-            className={p.profit < 0 ? "text-danger" : "text-success"}
-            hint={PROFIT_HINT}
+            label="Total Spent"
+            value={inr(p.spent)}
+            className="text-danger"
+            hint="Total actual expenses (Site funds + Direct)"
           />
           <Mini
             label="Spent · Site funds"
@@ -264,10 +269,10 @@ export default function ProjectDetail() {
             hint="Paid from the site’s allocated funds — lowers the balance"
           />
           <Mini
-            label="Spent · Direct"
+            label="Spent · Accounts + Cash + Partner"
             value={inr(p.spent_direct)}
             className="text-danger"
-            hint="Paid straight from a bank/cash account — tagged to this site"
+            hint="Paid straight from a bank/cash/partner account — tagged to this site"
           />
           <Mini label="Last Activity" value={p.last_txn_date ? formatDate(p.last_txn_date) : "—"} />
         </div>
