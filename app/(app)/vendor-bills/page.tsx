@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, ClipboardList, Wallet, X, Download, Info } from "lucide-react";
+import { Plus, Pencil, Trash2, ClipboardList, Wallet, X, Download, Info, FileText } from "lucide-react";
 import { Card, Button, Input, Label, CustomSelect, CustomDatePicker, Skeleton, EmptyState, Table, THead, TBody, Th, Td } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import Link from "next/link";
@@ -8,6 +8,7 @@ import VendorBillSheet, { type VendorBill } from "@/components/VendorBillSheet";
 import VendorPaymentsSheet from "@/components/VendorPaymentsSheet";
 import { inr, formatDate } from "@/lib/format";
 import { downloadCsv } from "@/lib/csv";
+import { downloadPdf } from "@/lib/pdf";
 
 const STATUS_LABEL: Record<string, string> = { pending: "Pending", partial: "Partially Paid", complete: "Complete" };
 const STATUS_COLOR: Record<string, string> = { pending: "amber", partial: "blue", complete: "green" };
@@ -84,9 +85,9 @@ export default function VendorBillsPage() {
     return t;
   }, [filtered]);
 
-  function exportCsv() {
+  function exportData() {
     const headers = ["Sr. No", "Date", "Site", "Vendor", "Head", "Note", "Amount", "GST", "Total Bill", "Paid", "Remaining", "Status"];
-    const data = filtered.map((r, i) => [
+    const rows = filtered.map((r, i) => [
       i + 1,
       r.txn_date ? formatDate(r.txn_date) : "",
       r.project_name || "",
@@ -100,7 +101,15 @@ export default function VendorBillsPage() {
       Math.max(Number(r.total_bill) - Number(r.paid), 0),
       STATUS_LABEL[r.status] || r.status || "",
     ]);
-    downloadCsv(`vendor-bills-${new Date().toISOString().slice(0, 10)}.csv`, headers, data);
+    return { headers, rows };
+  }
+  function exportCsv() {
+    const { headers, rows } = exportData();
+    downloadCsv(`vendor-bills-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  }
+  function exportPdf() {
+    const { headers, rows } = exportData();
+    downloadPdf("Vendor Bills", headers, rows, { subtitle: `Exported ${formatDate(new Date().toISOString().slice(0, 10))}` });
   }
 
   function openNew() {
@@ -138,7 +147,10 @@ export default function VendorBillsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={exportCsv} disabled={!filtered.length}>
-            <Download className="h-4 w-4" /> Export
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
+          <Button variant="outline" onClick={exportPdf} disabled={!filtered.length}>
+            <FileText className="h-4 w-4" /> Export PDF
           </Button>
           <Button onClick={openNew}>
             <Plus className="h-4 w-4" /> New Bill

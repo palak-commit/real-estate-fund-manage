@@ -1,12 +1,13 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Trash2, Info, Download } from "lucide-react";
+import { X, Trash2, Info, Download, FileText } from "lucide-react";
 import Link from "next/link";
 import { Card, Button, CustomSelect, CustomDatePicker, EmptyState, Table, THead, TBody, Th } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import { inr, formatDate } from "@/lib/format";
 import { downloadCsv } from "@/lib/csv";
+import { downloadPdf } from "@/lib/pdf";
 
 type Account = { id: number; name: string; account_type: string; current_balance: number };
 type Row = {
@@ -168,8 +169,9 @@ export default function AccountBook({
     load();
   }
 
-  // Export the currently-filtered payments to a CSV (Excel) — same columns as the table.
-  function exportCsv() {
+  // Build the currently-filtered payments into the shared headers/rows — same columns as
+  // the table — reused by both the CSV and PDF exports.
+  function exportData() {
     const headers = ["#", "Date", "Party Name", isBank ? "Particular / Bill Details" : "Particular"]
       .concat(isBank ? ["Bank"] : [])
       .concat(["Net Payment", "Head", "Types of Head"]);
@@ -185,7 +187,15 @@ export default function AccountBook({
       );
       return base;
     });
+    return { headers, rows };
+  }
+  function exportCsv() {
+    const { headers, rows } = exportData();
     downloadCsv(`${accountType}-book-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  }
+  function exportPdf() {
+    const { headers, rows } = exportData();
+    downloadPdf(title, headers, rows, { subtitle: `Exported ${formatDate(new Date().toISOString().slice(0, 10))}` });
   }
 
   // Bank sheet has an extra "Bank" column + "Particular / Bill Details" header, plus a
@@ -198,7 +208,10 @@ export default function AccountBook({
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         <div className="flex items-center gap-3">
           <Button variant="outline" onClick={exportCsv} disabled={!filtered.length} className="!py-2 text-sm">
-            <Download className="h-4 w-4" /> Export
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
+          <Button variant="outline" onClick={exportPdf} disabled={!filtered.length} className="!py-2 text-sm">
+            <FileText className="h-4 w-4" /> Export PDF
           </Button>
           <div className="rounded-lg bg-success/10 px-4 py-2 text-right">
             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Net Payment</p>

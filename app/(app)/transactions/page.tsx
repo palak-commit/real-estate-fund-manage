@@ -1,13 +1,15 @@
 "use client";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Receipt, ChevronLeft, ChevronRight, Download, X } from "lucide-react";
+import { Receipt, ChevronLeft, ChevronRight, Download, FileText, X } from "lucide-react";
 import { Card, CustomSelect, CustomDatePicker, Button, EmptyState } from "@/components/ui";
 import { TxnRow } from "@/components/TxnRow";
 import EditTxnSheet from "@/components/EditTxnSheet";
 import PaidToPicker from "@/components/PaidToPicker";
 import { useUI } from "@/components/UIProvider";
-import { TYPE_LABELS, inr, todayISO } from "@/lib/format";
+import { TYPE_LABELS, inr, todayISO, formatDate } from "@/lib/format";
+import { downloadCsv } from "@/lib/csv";
+import { downloadPdf } from "@/lib/pdf";
 
 type Project = { id: number; name: string };
 type Account = { id: number; name: string; account_type: string };
@@ -162,50 +164,54 @@ function HistoryPageInner() {
     window.dispatchEvent(new CustomEvent("txn:created"));
   }
 
-  // Export ALL transactions matching the current filters (across pages) to a CSV
-  // that opens cleanly in Excel.
+  // Fetch ALL transactions matching the current filters (across pages) and shape them
+  // into the shared headers/rows used by both the CSV and PDF exports.
+  async function fetchAllForExport() {
+    const all: any[] = [];
+    let p = 1;
+    // Pull every matching page (API caps limit at 200).
+    while (true) {
+      const qs = new URLSearchParams({ limit: "200", page: String(p) });
+      applyFilters(qs);
+      const res = await fetch(`/api/transactions?${qs}`).then((r) => r.json());
+      all.push(...(res.data ?? []));
+      if (!res.pagination?.hasNextPage) break;
+      p++;
+    }
+    const headers = ["Date", "Type", "Category", "Site", "Source", "Destination", "Paid To", "Amount", "Note"];
+    const rows: (string | number)[][] = all.map((t) => [
+      t.txn_date ? formatDate(t.txn_date) : "",
+      TYPE_LABELS[t.type] || t.type,
+      t.category || "",
+      t.project_name || "",
+      t.source_name || (t.type === "expense" && !t.source_account_id ? "Site funds" : ""),
+      t.dest_name || "",
+      t.paid_to || "",
+      Number(t.amount),
+      t.note || "",
+    ]);
+    return { headers, rows, count: all.length };
+  }
+
   async function exportCsv() {
     setExporting(true);
     try {
-      const all: any[] = [];
-      let p = 1;
-      // Pull every matching page (API caps limit at 200).
-      while (true) {
-        const qs = new URLSearchParams({ limit: "200", page: String(p) });
-        applyFilters(qs);
-        const res = await fetch(`/api/transactions?${qs}`).then((r) => r.json());
-        all.push(...(res.data ?? []));
-        if (!res.pagination?.hasNextPage) break;
-        p++;
-      }
+      const { headers, rows, count } = await fetchAllForExport();
+      downloadCsv(`transactions-${todayISO()}.csv`, headers, rows);
+      toast(`Exported ${count} transaction${count === 1 ? "" : "s"}`, "success");
+    } catch {
+      toast("Could not export", "error");
+    } finally {
+      setExporting(false);
+    }
+  }
 
-      const headers = ["Date", "Type", "Category", "Site", "Source", "Destination", "Paid To", "Amount", "Note"];
-      const esc = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-      const lines = all.map((t) =>
-        [
-          t.txn_date,
-          TYPE_LABELS[t.type] || t.type,
-          t.category || "",
-          t.project_name || "",
-          t.source_name || (t.type === "expense" && !t.source_account_id ? "Site funds" : ""),
-          t.dest_name || "",
-          t.paid_to || "",
-          Number(t.amount),
-          t.note || "",
-        ]
-          .map(esc)
-          .join(",")
-      );
-      // BOM so Excel reads UTF-8 (₹, names) correctly.
-      const csv = "﻿" + [headers.map(esc).join(","), ...lines].join("\r\n");
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `transactions-${todayISO()}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast(`Exported ${all.length} transaction${all.length === 1 ? "" : "s"}`, "success");
+  async function exportPdf() {
+    setExporting(true);
+    try {
+      const { headers, rows, count } = await fetchAllForExport();
+      downloadPdf("Transactions", headers, rows, { subtitle: `Exported ${formatDate(todayISO())}` });
+      toast(`Exported ${count} transaction${count === 1 ? "" : "s"}`, "success");
     } catch {
       toast("Could not export", "error");
     } finally {
@@ -317,7 +323,16 @@ function HistoryPageInner() {
             disabled={!pg || pg.total === 0}
             className="!py-1.5 text-xs"
           >
-            <Download className="h-3.5 w-3.5" /> Export
+            <Download className="h-3.5 w-3.5" /> Export CSV
+          </Button>
+          <Button
+            variant="outline"
+            onClick={exportPdf}
+            loading={exporting}
+            disabled={!pg || pg.total === 0}
+            className="!py-1.5 text-xs"
+          >
+            <FileText className="h-3.5 w-3.5" /> Export PDF
           </Button>
           <div className="text-right">
             <p className="text-xs text-muted-foreground">{pg ? `${pg.total} entries` : "—"}</p>

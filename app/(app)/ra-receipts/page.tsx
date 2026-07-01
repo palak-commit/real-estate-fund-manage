@@ -8,6 +8,7 @@ import RaPaymentsSheet from "@/components/RaPaymentsSheet";
 import { inr, formatDate, ACCOUNT_TYPE_LABELS } from "@/lib/format";
 import { computeRa, DEFAULT_RA_RATES, type RaRates } from "@/lib/ra";
 import { downloadCsv } from "@/lib/csv";
+import { downloadPdf } from "@/lib/pdf";
 
 const STATUS_LABEL: Record<string, string> = { pending: "Pending", partial: "Partially Paid", complete: "Complete" };
 const STATUS_COLOR: Record<string, string> = { pending: "amber", partial: "blue", complete: "green" };
@@ -116,8 +117,8 @@ export default function RaReceiptsPage() {
     return t;
   }, [computed]);
 
-  // Export the filtered RA register (raw inputs + all derived columns) to a CSV (Excel).
-  function exportCsv() {
+  // Build the filtered RA register (raw inputs + all derived columns) for export.
+  function exportData() {
     const headers = [
       "Sr. No", "Date", "Site", "Paid To", "Received In", "Status", "Amount", "GST", "Total Bill",
       "TDS", "TDS on GST", "SD", "Workman Cess", "Withheld", "Royalty", "Total Deduction",
@@ -135,7 +136,15 @@ export default function RaReceiptsPage() {
       Number(row.withheld_amt) || 0, Number(row.royalty) || 0, c.total_deduction,
       c.cheque_amt, Number(row.agency_charge) || 0, c.net_receivable, c.sub_let_bill, c.sub_gst,
     ]);
+    return { headers, rows };
+  }
+  function exportCsv() {
+    const { headers, rows } = exportData();
     downloadCsv(`ra-receipts-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  }
+  function exportPdf() {
+    const { headers, rows } = exportData();
+    downloadPdf("Receipt of RA", headers, rows, { subtitle: `Exported ${formatDate(new Date().toISOString().slice(0, 10))}` });
   }
 
   function openNew() {
@@ -173,7 +182,10 @@ export default function RaReceiptsPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Receipt of RA</h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={exportCsv} disabled={!computed.length}>
-            <Download className="h-4 w-4" /> Export
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
+          <Button variant="outline" onClick={exportPdf} disabled={!computed.length}>
+            <FileText className="h-4 w-4" /> Export PDF
           </Button>
           <Button onClick={openNew}>
             <Plus className="h-4 w-4" /> New Receipt
