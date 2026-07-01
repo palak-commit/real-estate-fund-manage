@@ -111,7 +111,7 @@ export async function GET() {
        FROM ra_receipts r
        LEFT JOIN projects p ON p.id = r.project_id
        LEFT JOIN (SELECT receipt_id, SUM(amount) AS paid FROM ra_payments GROUP BY receipt_id) pp ON pp.receipt_id = r.id
-      GROUP BY name
+      GROUP BY COALESCE(r.paid_to, 'Unknown Client')
      HAVING amount > 0
       ORDER BY days DESC, amount DESC LIMIT 5`
   );
