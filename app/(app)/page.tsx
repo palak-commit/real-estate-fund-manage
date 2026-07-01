@@ -59,6 +59,7 @@ type Dash = {
   spentTotal: number;
   activeSites: number;
   totalIncome: number;
+  totalProfit: number;
   sites: Site[];
   recent: any[];
   topPayables: { name: string; project_name: string; amount: number; days: number }[];
