@@ -300,7 +300,8 @@ export default function AccountBook({
             onChange={setFSub}
             onClear={() => setFSub("")}
             options={[{ label: "All Types", value: "" }, ...subOptions.map((s) => ({ label: s, value: s }))]}
-            placeholder="All Types"
+            placeholder={fHead ? "All Types" : "Select a Head first"}
+            disabled={!fHead}
             className="w-44"
           />
         </div>
