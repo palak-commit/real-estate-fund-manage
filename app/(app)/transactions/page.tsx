@@ -224,7 +224,29 @@ function HistoryPageInner() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Transactions</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight">Transactions</h1>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={exportCsv}
+            loading={exporting}
+            disabled={!pg || pg.total === 0}
+            className="!py-1.5 text-xs"
+          >
+            <Download className="h-3.5 w-3.5" /> Export CSV
+          </Button>
+          <Button
+            variant="outline"
+            onClick={exportPdf}
+            loading={exporting}
+            disabled={!pg || pg.total === 0}
+            className="!py-1.5 text-xs"
+          >
+            <FileText className="h-3.5 w-3.5" /> Export PDF
+          </Button>
+        </div>
+      </div>
 
       <div className="flex flex-wrap items-end gap-3">
         <Filter label="Type">
@@ -316,26 +338,7 @@ function HistoryPageInner() {
           </button>
         )}
         <div className="ml-auto flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={exportCsv}
-            loading={exporting}
-            disabled={!pg || pg.total === 0}
-            className="!py-1.5 text-xs"
-          >
-            <Download className="h-3.5 w-3.5" /> Export CSV
-          </Button>
-          <Button
-            variant="outline"
-            onClick={exportPdf}
-            loading={exporting}
-            disabled={!pg || pg.total === 0}
-            className="!py-1.5 text-xs"
-          >
-            <FileText className="h-3.5 w-3.5" /> Export PDF
-          </Button>
           <div className="text-right">
-            <p className="text-xs text-muted-foreground">{pg ? `${pg.total} entries` : "—"}</p>
             {pg &&
               pg.total > 0 &&
               (() => {

@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
        LEFT JOIN projects p ON p.id = t.project_id
        LEFT JOIN categories c ON c.id = t.category_id
        LEFT JOIN categories pc ON pc.id = c.parent_id
-       WHERE t.type = 'expense' OR (t.type = 'transfer' AND t.dest_account_id IS NULL)${dateSql}
+       WHERE (t.type = 'expense' OR (t.type = 'transfer' AND t.dest_account_id IS NULL))${dateSql}
        ORDER BY t.txn_date ASC, t.id ASC`,
       params
     );
