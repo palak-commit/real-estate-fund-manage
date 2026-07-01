@@ -27,7 +27,7 @@ export type VendorBill = {
   payment_count?: number; // number of payments (installments) recorded
 };
 
-type Project = { id: number; name: string };
+type Project = { id: number; name: string; balance?: number };
 type Account = { id: number; name: string; account_type: string; current_balance: number };
 
 // advance_amount / advance_from capture an optional first payment made when the bill is
@@ -88,14 +88,17 @@ export default function VendorBillSheet({
   // GST is entered as a percentage; the rupee amount is derived (rounded to paise).
   const gstAmount = Math.round(num(form.amount) * num(form.gst_pct)) / 100;
   const totalBill = num(form.amount) + gstAmount;
+  // The advance paid up front (create only) can't exceed the total bill.
+  const advanceOver = !bill && num(form.advance_amount) > totalBill;
 
   const setField = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   // "Paid From" for the advance: Site funds or an account, grouped by Bank/Cash/Partner with
   // balances — mirrors VendorPaymentsSheet. Only sources holding money are listed (a ₹0
   // balance can't fund a payment), but the current selection is always kept.
+  const siteBalance = projects.find((p) => String(p.id) === form.project_id)?.balance;
   const accountOptions = [
-    { label: "Site funds", value: "" },
+    { label: siteBalance != null ? `Site funds · ${inr(siteBalance)}` : "Site funds", value: "" },
     ...(["bank", "cash", "partner"] as const)
       .map((t) => ({
         group: ACCOUNT_TYPE_LABELS[t],
@@ -266,7 +269,11 @@ export default function VendorBillSheet({
                   value={form.advance_amount}
                   onChange={(e) => setField("advance_amount", sanitizeAmount(e.target.value))}
                   placeholder="0"
+                  className={advanceOver ? "!border-danger !ring-danger/20" : ""}
                 />
+                {advanceOver && (
+                  <p className="mt-1 text-xs text-danger">Can't be more than the Total Bill ({inr(totalBill)}).</p>
+                )}
               </Field>
               <Field label="Paid from">
                 <CustomSelect
@@ -314,7 +321,7 @@ export default function VendorBillSheet({
 
         {err && <p className="mt-3 rounded-lg bg-danger/10 p-2.5 text-sm text-danger">{err}</p>}
 
-        <Button onClick={submit} loading={saving} className="mt-5 w-full !py-3 text-base">
+        <Button onClick={submit} loading={saving} disabled={advanceOver} className="mt-5 w-full !py-3 text-base">
           {bill ? "Save Changes" : "Add Bill"}
         </Button>
       </div>

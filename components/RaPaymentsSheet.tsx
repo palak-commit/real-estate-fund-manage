@@ -85,7 +85,6 @@ export default function RaPaymentsSheet({
   }, [payments, paid, netReceivable, open]);
 
   const accountOptions = [
-    { label: "No account", value: "" },
     ...(["bank", "cash", "partner"] as const)
       .map((t) => ({
         group: ACCOUNT_TYPE_LABELS[t],
@@ -103,6 +102,7 @@ export default function RaPaymentsSheet({
     if (!date) return setErr("Select a date");
     const amt = Number(amount);
     if (!amount || amt <= 0) return setErr("Enter a valid amount");
+    if (!accountId) return setErr("Select where the payment was received");
     if (balance <= 0) return setErr("This bill is already fully received.");
     if (amt > balance) return setErr(`Amount can't exceed the balance due (${inr(balance)}).`);
     setSaving(true);
@@ -223,7 +223,7 @@ export default function RaPaymentsSheet({
               {over && <p className="mt-1 text-xs text-danger">Max {inr(balance)} (balance due)</p>}
             </Field>
             <div className="col-span-2">
-              <Field label="Received In (optional)">
+              <Field label="Received In" required>
                 <CustomSelect
                   value={accountId}
                   onChange={setAccountId}
@@ -240,7 +240,7 @@ export default function RaPaymentsSheet({
             </div>
           </div>
           {err && <p className="mt-3 rounded-lg bg-danger/10 p-2.5 text-sm text-danger">{err}</p>}
-          <Button onClick={addPayment} loading={saving} disabled={over || balance <= 0} className="mt-4 w-full">
+          <Button onClick={addPayment} loading={saving} disabled={over || balance <= 0 || !accountId} className="mt-4 w-full">
             <Plus className="h-4 w-4" /> Add Payment
           </Button>
           </>

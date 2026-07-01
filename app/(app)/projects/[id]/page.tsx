@@ -1213,11 +1213,13 @@ export default function ProjectDetail() {
               {vbHasFilters ? "No vendor bills match these filters." : "No vendor bills for this site."}
             </EmptyState>
           ) : (
-            <Table minWidth={720}>
+            <Table minWidth={920}>
               <THead>
                 <Th>Date</Th>
                 <Th>Vendor</Th>
                 <Th>Head</Th>
+                <Th right>Amount</Th>
+                <Th right>GST</Th>
                 <Th right>Total Bill</Th>
                 <Th right>Advance</Th>
                 <Th right>Paid</Th>
@@ -1243,6 +1245,15 @@ export default function ProjectDetail() {
                         </span>
                       </Td>
                       <Td>{r.category_head || "—"}</Td>
+                      <Td right>{inr(Number(r.amount) || 0)}</Td>
+                      <Td right>
+                        {inr(Number(r.gst) || 0)}
+                        {Number(r.amount) > 0 && Number(r.gst) > 0 && (
+                          <span className="ml-1 align-middle text-[10px] text-muted-foreground">
+                            @ {Math.round((Number(r.gst) / Number(r.amount)) * 10000) / 100}%
+                          </span>
+                        )}
+                      </Td>
                       <Td right className="font-semibold">{inr(r.total_bill)}</Td>
                       <Td right>
                         {r.payment_type === "advance" && Number(r.advance) > 0 ? (
