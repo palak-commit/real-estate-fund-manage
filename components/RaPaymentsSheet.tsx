@@ -209,10 +209,10 @@ export default function RaPaymentsSheet({
           <>
           <p className="mb-2 text-sm font-semibold">Record a payment</p>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Date">
+            <Field label="Date" required>
               <CustomDatePicker value={date} onChange={setDate} />
             </Field>
-            <Field label="Amount">
+            <Field label="Amount" required>
               <Input
                 inputMode="decimal"
                 value={amount}

@@ -104,13 +104,19 @@ export default function VendorPaymentsSheet({
   }, [payments, paid, totalBill, open]);
 
   // "Paid From": Site funds (no account → lowers site balance) or any account (Direct expense).
+  // Only sources that actually hold money are listed — a ₹0 balance can't fund a payment
+  // (the funds guard would block it anyway). The currently-selected source is always kept so
+  // an in-progress selection never vanishes.
   const accountOptions = [
-    { label: siteBalance != null ? `Site funds · ${inr(siteBalance)}` : "Site funds", value: "" },
+    ...(siteBalance == null || Number(siteBalance) > 0 || accountId === ""
+      ? [{ label: siteBalance != null ? `Site funds · ${inr(siteBalance)}` : "Site funds", value: "" }]
+      : []),
     ...(["bank", "cash", "partner"] as const)
       .map((t) => ({
         group: ACCOUNT_TYPE_LABELS[t],
         items: accounts
           .filter((a) => a.account_type === t)
+          .filter((a) => Number(a.current_balance) > 0 || String(a.id) === accountId)
           .map((a) => ({ label: `${a.name} · ${inr(a.current_balance)}`, value: String(a.id) })),
       }))
       .filter((g) => g.items.length > 0),
@@ -236,10 +242,10 @@ export default function VendorPaymentsSheet({
             <>
               <p className="mb-2 text-sm font-semibold">Record a payment</p>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Date">
+                <Field label="Date" required>
                   <CustomDatePicker value={date} onChange={setDate} />
                 </Field>
-                <Field label="Amount">
+                <Field label="Amount" required>
                   <Input
                     inputMode="decimal"
                     value={amount}

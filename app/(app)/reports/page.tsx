@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BarChart3, List } from "lucide-react";
-import { Card, CustomDatePicker, Skeleton, EmptyState } from "@/components/ui";
+import { Card, CustomDatePicker, Skeleton, EmptyState, Table, THead, TBody, Th } from "@/components/ui";
 import { inr, todayISO, formatDate, CATEGORY_ICON, PROFIT_HINT } from "@/lib/format";
 import MoneyStrip, { type MoneyStripData } from "@/components/MoneyStrip";
 
@@ -254,20 +254,16 @@ export default function ReportsPage() {
           {/* By Site */}
           {view === "table" && tab === "site" && (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted text-left text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-2.5 font-medium">Site</th>
-                    <th className="px-4 py-2.5 text-right font-medium">Revenue</th>
-                    <th className="px-4 py-2.5 text-right font-medium">Spent · Site funds</th>
-                    <th className="px-4 py-2.5 text-right font-medium">Spent · Direct</th>
-                    <th className="px-4 py-2.5 text-right font-medium" title={PROFIT_HINT}>
-                      Profit / Loss
-                    </th>
-                    <th className="px-4 py-2.5 text-right font-medium">Site Balance</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
+              <Table>
+                <THead>
+                  <Th>Site</Th>
+                  <Th right>Revenue</Th>
+                  <Th right>Spent · Site funds</Th>
+                  <Th right>Spent · Direct</Th>
+                  <Th right><span title={PROFIT_HINT} className="cursor-help">Profit / Loss</span></Th>
+                  <Th right>Site Balance</Th>
+                </THead>
+                <TBody>
                   {r.sites.map((s) => (
                     <tr
                       key={s.id}
@@ -294,7 +290,7 @@ export default function ReportsPage() {
                       </td>
                     </tr>
                   )}
-                </tbody>
+                </TBody>
                 {r.sites.length > 0 && (
                   <tfoot className="border-t-2 border-border bg-muted/50">
                     <tr className="font-semibold">
@@ -323,22 +319,20 @@ export default function ReportsPage() {
                     </tr>
                   </tfoot>
                 )}
-              </table>
+              </Table>
             </div>
           )}
 
           {/* By Category */}
           {view === "table" && tab === "category" && (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted text-left text-muted-foreground">
-                  <tr>
-                    <th className="px-4 py-2.5 font-medium">Category</th>
-                    <th className="px-4 py-2.5 text-right font-medium">Count</th>
-                    <th className="px-4 py-2.5 text-right font-medium">Spent</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
+              <Table>
+                <THead>
+                  <Th>Category</Th>
+                  <Th right>Count</Th>
+                  <Th right>Spent</Th>
+                </THead>
+                <TBody>
                   {r.categories.map((c) => {
                     const Icon = CATEGORY_ICON[c.category] || CATEGORY_ICON.Miscellaneous;
                     return (
@@ -360,7 +354,7 @@ export default function ReportsPage() {
                       </td>
                     </tr>
                   )}
-                </tbody>
+                </TBody>
                 {r.categories.length > 0 && (
                   <tfoot className="border-t-2 border-border bg-muted/50">
                     <tr className="font-semibold">
@@ -374,7 +368,7 @@ export default function ReportsPage() {
                     </tr>
                   </tfoot>
                 )}
-              </table>
+              </Table>
             </div>
           )}
 
@@ -409,19 +403,17 @@ function AgingTable({ title, rows, partyLabel }: { title: string; rows: AgingRow
         {title} {rows && <span className="font-normal text-muted-foreground">· {inr(grand)} outstanding</span>}
       </h3>
       <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full min-w-[720px] text-sm">
-          <thead className="bg-muted text-left text-xs text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2.5 font-medium">{partyLabel}</th>
-              <th className="px-3 py-2.5 font-medium">Site</th>
-              <th className="px-3 py-2.5 font-medium">Date</th>
-              <th className="px-3 py-2.5 text-right font-medium">Age</th>
-              {AGING_LABELS.map((l) => (
-                <th key={l} className="px-3 py-2.5 text-right font-medium">{l}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
+        <Table minWidth={720}>
+          <THead>
+            <Th>{partyLabel}</Th>
+            <Th>Site</Th>
+            <Th>Date</Th>
+            <Th right>Age</Th>
+            {AGING_LABELS.map((l) => (
+              <Th key={l} right>{l}</Th>
+            ))}
+          </THead>
+          <TBody>
             {!rows ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <tr key={i}>
@@ -454,7 +446,7 @@ function AgingTable({ title, rows, partyLabel }: { title: string; rows: AgingRow
                 );
               })
             )}
-          </tbody>
+          </TBody>
           {sorted.length > 0 && (
             <tfoot className="border-t-2 border-border bg-muted/50 font-semibold">
               <tr>
@@ -467,7 +459,7 @@ function AgingTable({ title, rows, partyLabel }: { title: string; rows: AgingRow
               </tr>
             </tfoot>
           )}
-        </table>
+        </Table>
       </div>
     </div>
   );

@@ -106,7 +106,6 @@ export default function RaReceiptSheet({
 
   // Accounts grouped by type (Bank / Cash / Partner), each showing its available balance.
   const accountOptions = [
-    { label: "No account", value: "" },
     ...(["bank", "cash", "partner"] as const)
       .map((t) => ({
         group: ACCOUNT_TYPE_LABELS[t],
@@ -121,6 +120,8 @@ export default function RaReceiptSheet({
     setErr("");
     if (!form.txn_date) return setErr("Please select a date");
     if (!form.amount || Number(form.amount) <= 0) return setErr("Enter a valid amount");
+    if (!form.project_id) return setErr("Please select a site");
+    if (!form.account_id) return setErr("Please select where it was received");
     const payload = {
       txn_date: form.txn_date || null,
       project_id: form.project_id || null,
@@ -155,7 +156,7 @@ export default function RaReceiptSheet({
       onClick={onClose}
     >
       <div
-        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-card p-5 shadow-xl sm:rounded-2xl"
+        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-card p-5 shadow-xl sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
@@ -166,10 +167,10 @@ export default function RaReceiptSheet({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Date">
+          <Field label="Date" required>
             <CustomDatePicker value={form.txn_date} onChange={(v) => setField("txn_date", v)} />
           </Field>
-          <Field label="Amount">
+          <Field label="Amount" required>
             <Input
               autoFocus
               inputMode="decimal"
@@ -178,20 +179,18 @@ export default function RaReceiptSheet({
               placeholder="0"
             />
           </Field>
-          <Field label="Site (optional)">
+          <Field label="Site" required>
             <CustomSelect
               value={form.project_id}
               onChange={(v) => setField("project_id", v)}
-              onClear={() => setField("project_id", "")}
-              options={[{ label: "No site", value: "" }, ...projects.map((p) => ({ label: p.name, value: String(p.id) }))]}
+              options={projects.map((p) => ({ label: p.name, value: String(p.id) }))}
               placeholder="Select site"
             />
           </Field>
-          <Field label="Received In (optional)">
+          <Field label="Received In" required>
             <CustomSelect
               value={form.account_id}
               onChange={(v) => setField("account_id", v)}
-              onClear={() => setField("account_id", "")}
               options={accountOptions}
               placeholder="Bank / Cash / Partner"
             />
@@ -212,7 +211,7 @@ export default function RaReceiptSheet({
             </Field>
           </div>
           <div className="col-span-2">
-            <Field label="Status">
+            <Field label="Status" required>
               <CustomSelect
                 value={form.status}
                 onChange={(v) => setField("status", v)}

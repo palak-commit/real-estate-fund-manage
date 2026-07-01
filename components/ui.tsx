@@ -70,10 +70,21 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   );
 }
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+export function Field({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: ReactNode;
+}) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-sm font-medium text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium text-muted-foreground">
+        {label}
+        {required && <span className="ml-0.5 text-danger">*</span>}
+      </span>
       {children}
     </label>
   );
@@ -93,6 +104,63 @@ export function Label({ children, color = "muted" }: { children: ReactNode; colo
       {children}
     </span>
   );
+}
+
+// ── Table primitives ─────────────────────────────────────────────────────────
+// Shared, consistent styling for every register/report table. `Table` is the
+// `<table>` element (wrap it in a scroll container — usually `<Card className="overflow-x-auto">`);
+// pass `minWidth` for wide registers. `THead` renders the header row, `TBody` the body.
+// `Th`/`Td` are cells with a `right` flag for numeric columns.
+export function Table({
+  className = "",
+  minWidth,
+  children,
+}: {
+  className?: string;
+  minWidth?: number;
+  children: ReactNode;
+}) {
+  return (
+    <table className={`w-full text-sm ${className}`} style={minWidth ? { minWidth } : undefined}>
+      {children}
+    </table>
+  );
+}
+
+export function THead({ children }: { children: ReactNode }) {
+  return (
+    <thead className="border-b border-border bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+      <tr>{children}</tr>
+    </thead>
+  );
+}
+
+export function TBody({ children }: { children: ReactNode }) {
+  return <tbody className="divide-y divide-border">{children}</tbody>;
+}
+
+export function Th({
+  children,
+  right,
+  className = "",
+}: {
+  children?: ReactNode;
+  right?: boolean;
+  className?: string;
+}) {
+  return <th className={`whitespace-nowrap px-3 py-2.5 font-medium ${right ? "text-right" : ""} ${className}`}>{children}</th>;
+}
+
+export function Td({
+  children,
+  right,
+  className = "",
+}: {
+  children?: ReactNode;
+  right?: boolean;
+  className?: string;
+}) {
+  return <td className={`whitespace-nowrap px-3 py-2.5 ${right ? "text-right" : ""} ${className}`}>{children}</td>;
 }
 
 export function Spinner({ className = "" }: { className?: string }) {

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, ClipboardList, Wallet, X, Download, Info } from "lucide-react";
-import { Card, Button, Input, Label, CustomSelect, CustomDatePicker, Skeleton, EmptyState } from "@/components/ui";
+import { Card, Button, Input, Label, CustomSelect, CustomDatePicker, Skeleton, EmptyState, Table, THead, TBody, Th, Td } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import Link from "next/link";
 import VendorBillSheet, { type VendorBill } from "@/components/VendorBillSheet";
@@ -232,25 +232,23 @@ export default function VendorBillsPage() {
       </div>
 
       <Card className="overflow-x-auto">
-        <table className="w-full min-w-[1150px] text-sm">
-          <thead className="bg-muted text-left text-xs text-muted-foreground">
-            <tr>
-              <Th>Sr. No.</Th>
-              <Th>Date</Th>
-              <Th>Site</Th>
-              <Th>Vendor</Th>
-              <Th>Head</Th>
-              <Th>Note</Th>
-              <Th right>Amount</Th>
-              <Th right>GST</Th>
-              <Th right>Total Bill</Th>
-              <Th right>Paid</Th>
-              <Th right>Remaining</Th>
-              <Th>Status</Th>
-              <Th right></Th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
+        <Table minWidth={1150}>
+          <THead>
+            <Th>Sr. No.</Th>
+            <Th>Date</Th>
+            <Th>Site</Th>
+            <Th>Vendor</Th>
+            <Th>Head</Th>
+            <Th>Note</Th>
+            <Th right>Amount</Th>
+            <Th right>GST</Th>
+            <Th right>Total Bill</Th>
+            <Th right>Paid</Th>
+            <Th right>Remaining</Th>
+            <Th>Status</Th>
+            <Th right></Th>
+          </THead>
+          <TBody>
             {!rows ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i}>
@@ -323,7 +321,7 @@ export default function VendorBillsPage() {
                 );
               })
             )}
-          </tbody>
+          </TBody>
           {/* Totals row */}
           {filtered.length > 0 && (
             <tfoot className="border-t-2 border-border bg-muted/60 font-semibold">
@@ -338,7 +336,7 @@ export default function VendorBillsPage() {
               </tr>
             </tfoot>
           )}
-        </table>
+        </Table>
       </Card>
 
       <VendorBillSheet
@@ -362,17 +360,3 @@ export default function VendorBillsPage() {
   );
 }
 
-function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <th className={`whitespace-nowrap px-3 py-2.5 font-medium ${right ? "text-right" : ""}`}>{children}</th>;
-}
-function Td({
-  children,
-  right,
-  className = "",
-}: {
-  children?: React.ReactNode;
-  right?: boolean;
-  className?: string;
-}) {
-  return <td className={`whitespace-nowrap px-3 py-2.5 ${right ? "text-right" : ""} ${className}`}>{children}</td>;
-}

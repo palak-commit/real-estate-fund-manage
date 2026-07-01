@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { X, Info } from "lucide-react";
 import Link from "next/link";
-import { Card, CustomSelect, CustomDatePicker, EmptyState } from "@/components/ui";
+import { Card, CustomSelect, CustomDatePicker, EmptyState, Table, THead, TBody, Th } from "@/components/ui";
 import { inr, formatDate } from "@/lib/format";
 
 type Account = { id: number; name: string; account_type: string; current_balance: number };
@@ -178,21 +178,19 @@ export default function RojmelBook() {
       {/* Daybook */}
       <Card className="overflow-hidden !p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2.5 text-left font-medium">Date</th>
-                <th className="px-3 py-2.5 text-right font-medium">Received</th>
-                <th className="px-3 py-2.5 text-right font-medium">Opening Balance</th>
-                <th className="px-3 py-2.5 text-left font-medium">Payment Reference</th>
-                <th className="px-3 py-2.5 text-right font-medium">Amount</th>
-                <th className="px-3 py-2.5 text-left font-medium">Description</th>
-                <th className="px-3 py-2.5 text-left font-medium">Types of Head</th>
-                <th className="px-3 py-2.5 text-left font-medium">Head</th>
-                <th className="px-3 py-2.5 text-right font-medium">Closing Balance</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
+          <Table>
+            <THead>
+              <Th>Date</Th>
+              <Th right>Received</Th>
+              <Th right>Opening Balance</Th>
+              <Th>Payment Reference</Th>
+              <Th right>Amount</Th>
+              <Th>Description</Th>
+              <Th>Types of Head</Th>
+              <Th>Head</Th>
+              <Th right>Closing Balance</Th>
+            </THead>
+            <TBody>
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i}>
@@ -218,8 +216,8 @@ export default function RojmelBook() {
                   </td>
                 </tr>
               )}
-            </tbody>
-          </table>
+            </TBody>
+          </Table>
         </div>
       </Card>
     </div>

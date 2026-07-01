@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { X, ArrowRight } from "lucide-react";
-import { Button, Input, CustomSelect, CustomDatePicker } from "@/components/ui";
+import { Button, Input, CustomSelect, CustomDatePicker, Field } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import { inr, todayISO, sanitizeAmount } from "@/lib/format";
 
@@ -107,20 +107,20 @@ export default function AllocateFundsSheet({
           </button>
         </div>
 
-        <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Amount</label>
-        <Input
-          autoFocus
-          type="text"
-          inputMode="decimal"
-          value={amount}
-          onChange={(e) => setAmount(sanitizeAmount(e.target.value))}
-          placeholder="0"
-          className={`!py-3 !text-3xl !font-bold ${overBudget ? "!border-danger !ring-danger/20" : ""}`}
-        />
+        <Field label="Amount" required>
+          <Input
+            autoFocus
+            type="text"
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => setAmount(sanitizeAmount(e.target.value))}
+            placeholder="0"
+            className={`!py-3 !text-3xl !font-bold ${overBudget ? "!border-danger !ring-danger/20" : ""}`}
+          />
+        </Field>
 
         <div className="mt-4 space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-muted-foreground">From Account</label>
+          <Field label="From Account" required>
             <CustomSelect
               value={sourceId}
               onChange={(val) => setSourceId(val)}
@@ -148,9 +148,8 @@ export default function AllocateFundsSheet({
             {accounts.length === 0 && (
               <p className="mt-1 text-xs text-warning">No account has available balance to add.</p>
             )}
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-muted-foreground">To Site</label>
+          </Field>
+          <Field label="To Site" required>
             <CustomSelect
               value={projectId}
               onChange={(val) => setProjectId(val)}
@@ -164,7 +163,7 @@ export default function AllocateFundsSheet({
             {presetProjectId && (
               <p className="mt-1 text-xs text-muted-foreground">Locked to the selected site</p>
             )}
-          </div>
+          </Field>
         </div>
 
         {/* Confirmation preview */}

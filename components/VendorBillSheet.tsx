@@ -124,10 +124,10 @@ export default function VendorBillSheet({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Date">
+          <Field label="Date" required>
             <CustomDatePicker value={form.txn_date} onChange={(v) => setField("txn_date", v)} />
           </Field>
-          <Field label="Site">
+          <Field label="Site" required>
             <CustomSelect
               value={form.project_id}
               onChange={(v) => setField("project_id", v)}
@@ -135,7 +135,7 @@ export default function VendorBillSheet({
               placeholder="Select site"
             />
           </Field>
-          <Field label="Amount">
+          <Field label="Amount" required>
             <Input
               autoFocus
               inputMode="decimal"

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { X, Trash2, Info, Download } from "lucide-react";
 import Link from "next/link";
-import { Card, Button, CustomSelect, CustomDatePicker, EmptyState } from "@/components/ui";
+import { Card, Button, CustomSelect, CustomDatePicker, EmptyState, Table, THead, TBody, Th } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import { inr, formatDate } from "@/lib/format";
 import { downloadCsv } from "@/lib/csv";
@@ -304,21 +304,19 @@ export default function AccountBook({
       {/* Payment register */}
       <Card className="overflow-hidden !p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2.5 text-left font-medium">#</th>
-                <th className="px-3 py-2.5 text-left font-medium">Date</th>
-                <th className="px-3 py-2.5 text-left font-medium">Party Name</th>
-                <th className="px-3 py-2.5 text-left font-medium">{isBank ? "Particular / Bill Details" : "Particular"}</th>
-                {isBank && <th className="px-3 py-2.5 text-left font-medium">Bank</th>}
-                <th className="px-3 py-2.5 text-right font-medium">Net Payment</th>
-                <th className="px-3 py-2.5 text-left font-medium">Head</th>
-                <th className="px-3 py-2.5 text-left font-medium">Types of Head</th>
-                <th className="px-3 py-2.5"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
+          <Table>
+            <THead>
+              <Th>#</Th>
+              <Th>Date</Th>
+              <Th>Party Name</Th>
+              <Th>{isBank ? "Particular / Bill Details" : "Particular"}</Th>
+              {isBank && <Th>Bank</Th>}
+              <Th right>Net Payment</Th>
+              <Th>Head</Th>
+              <Th>Types of Head</Th>
+              <Th></Th>
+            </THead>
+            <TBody>
               {loading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i}>
@@ -363,7 +361,7 @@ export default function AccountBook({
                   </td>
                 </tr>
               )}
-            </tbody>
+            </TBody>
             {!loading && filtered.length > 0 && (
               <tfoot className="border-t-2 border-border bg-muted/40 font-semibold">
                 <tr>
@@ -375,7 +373,7 @@ export default function AccountBook({
                 </tr>
               </tfoot>
             )}
-          </table>
+          </Table>
         </div>
       </Card>
     </div>

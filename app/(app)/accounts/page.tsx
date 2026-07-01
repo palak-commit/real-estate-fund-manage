@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2, Check, X, Plus, RefreshCw } from "lucide-react";
-import { Card, Button, Input, CustomSelect, Field, Label, Skeleton, EmptyState } from "@/components/ui";
+import { Card, Button, Input, CustomSelect, Field, Label, Skeleton, EmptyState, Table, THead, TBody, Th } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import AddFundsSheet from "@/components/AddFundsSheet";
 import { inr, ACCOUNT_TYPE_LABELS } from "@/lib/format";
@@ -213,16 +213,14 @@ export default function AccountsPage() {
 
       {/* Desktop: table */}
       <Card className="hidden overflow-hidden lg:block">
-        <table className="w-full text-sm">
-          <thead className="bg-muted text-left text-muted-foreground">
-            <tr>
-              <th className="px-4 py-2.5 font-medium">Name</th>
-              <th className="px-4 py-2.5 font-medium">Type</th>
-              <th className="px-4 py-2.5 text-right font-medium">Current Balance</th>
-              <th className="px-4 py-2.5"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
+        <Table>
+          <THead>
+            <Th>Name</Th>
+            <Th>Type</Th>
+            <Th right>Current Balance</Th>
+            <Th></Th>
+          </THead>
+          <TBody>
             {!accounts ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i}>
@@ -293,8 +291,8 @@ export default function AccountsPage() {
                 )
               )
             )}
-          </tbody>
-        </table>
+          </TBody>
+        </Table>
       </Card>
 
       <AddFundsSheet

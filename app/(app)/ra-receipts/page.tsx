@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, FileText, RotateCcw, Wallet, X, ChevronDown, SlidersHorizontal, Download } from "lucide-react";
-import { Card, Button, Input, Label, CustomSelect, CustomDatePicker, Skeleton, EmptyState } from "@/components/ui";
+import { Card, Button, Input, Label, CustomSelect, CustomDatePicker, Skeleton, EmptyState, Table, THead, TBody, Th, Td } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import RaReceiptSheet, { type RaReceipt } from "@/components/RaReceiptSheet";
 import RaPaymentsSheet from "@/components/RaPaymentsSheet";
@@ -279,34 +279,32 @@ export default function RaReceiptsPage() {
       </div>
 
       <Card className="overflow-x-auto">
-        <table className="w-full min-w-[1800px] text-sm">
-          <thead className="bg-muted text-left text-xs text-muted-foreground">
-            <tr>
-              <Th>Sr. No.</Th>
-              <Th>Date</Th>
-              <Th>Site</Th>
-              <Th>Paid To</Th>
-              <Th>Received In</Th>
-              <Th>Status</Th>
-              <Th right>Amount</Th>
-              <Th right>GST @ {rates.gst}%</Th>
-              <Th right>Total Bill</Th>
-              <Th right>TDS @ {rates.tds}%</Th>
-              <Th right>TDS on GST @ {rates.tdsGst}%</Th>
-              <Th right>SD @ {rates.sd}%</Th>
-              <Th right>Workman Cess @ {rates.cess}%</Th>
-              <Th right>Withheld Amt</Th>
-              <Th right>Royalty</Th>
-              <Th right>Total Deduction</Th>
-              <Th right>Cheque Amt</Th>
-              <Th right>Agency Charge</Th>
-              <Th right>Net Receivable</Th>
-              <Th right>Sub Let Bill</Th>
-              <Th right>Sub-GST @ {rates.subletGst}%</Th>
-              <Th right></Th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
+        <Table minWidth={1800}>
+          <THead>
+            <Th>Sr. No.</Th>
+            <Th>Date</Th>
+            <Th>Site</Th>
+            <Th>Paid To</Th>
+            <Th>Received In</Th>
+            <Th>Status</Th>
+            <Th right>Amount</Th>
+            <Th right>GST @ {rates.gst}%</Th>
+            <Th right>Total Bill</Th>
+            <Th right>TDS @ {rates.tds}%</Th>
+            <Th right>TDS on GST @ {rates.tdsGst}%</Th>
+            <Th right>SD @ {rates.sd}%</Th>
+            <Th right>Workman Cess @ {rates.cess}%</Th>
+            <Th right>Withheld Amt</Th>
+            <Th right>Royalty</Th>
+            <Th right>Total Deduction</Th>
+            <Th right>Cheque Amt</Th>
+            <Th right>Agency Charge</Th>
+            <Th right>Net Receivable</Th>
+            <Th right>Sub Let Bill</Th>
+            <Th right>Sub-GST @ {rates.subletGst}%</Th>
+            <Th right></Th>
+          </THead>
+          <TBody>
             {!rows ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i}>
@@ -383,7 +381,7 @@ export default function RaReceiptsPage() {
                 </tr>
               ))
             )}
-          </tbody>
+          </TBody>
           {/* Totals row — shown at the bottom, like the Bank / Cashbook registers. */}
           {computed.length > 0 && (
             <tfoot className="border-t-2 border-border bg-muted/60 font-semibold">
@@ -408,7 +406,7 @@ export default function RaReceiptsPage() {
               </tr>
             </tfoot>
           )}
-        </table>
+        </Table>
       </Card>
 
       <RaReceiptSheet
@@ -433,17 +431,3 @@ export default function RaReceiptsPage() {
   );
 }
 
-function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <th className={`whitespace-nowrap px-3 py-2.5 font-medium ${right ? "text-right" : ""}`}>{children}</th>;
-}
-function Td({
-  children,
-  right,
-  className = "",
-}: {
-  children?: React.ReactNode;
-  right?: boolean;
-  className?: string;
-}) {
-  return <td className={`whitespace-nowrap px-3 py-2.5 ${right ? "text-right" : ""} ${className}`}>{children}</td>;
-}

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { Button, Input, CustomDatePicker } from "@/components/ui";
+import { Button, Input, CustomDatePicker, Field } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import { inr, todayISO, sanitizeAmount } from "@/lib/format";
 
@@ -77,25 +77,28 @@ export default function AddFundsSheet({
         </div>
         <p className="mb-4 text-xs text-muted-foreground">Adds money directly to this account</p>
 
-        <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Amount</label>
-        <Input
-          autoFocus
-          type="text"
-          inputMode="decimal"
-          value={amount}
-          onChange={(e) => setAmount(sanitizeAmount(e.target.value))}
-          placeholder="0"
-          className="!py-3 !text-3xl !font-bold"
-        />
+        <Field label="Amount" required>
+          <Input
+            autoFocus
+            type="text"
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => setAmount(sanitizeAmount(e.target.value))}
+            placeholder="0"
+            className="!py-3 !text-3xl !font-bold"
+          />
+        </Field>
 
         <div className="mt-4">
-          <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Date</label>
-          <CustomDatePicker value={date} onChange={(val) => setDate(val)} />
+          <Field label="Date" required>
+            <CustomDatePicker value={date} onChange={(val) => setDate(val)} />
+          </Field>
         </div>
 
         <div className="mt-4">
-          <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Note (optional)</label>
-          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Short description" />
+          <Field label="Note (optional)">
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Short description" />
+          </Field>
         </div>
 
         {err && <p className="mt-3 rounded-lg bg-danger/10 p-2.5 text-sm text-danger">{err}</p>}

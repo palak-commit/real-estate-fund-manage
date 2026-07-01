@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { X, ChevronDown, RotateCcw } from "lucide-react";
-import { Button, Input, CustomSelect, CustomDatePicker } from "@/components/ui";
+import { Button, Input, CustomSelect, CustomDatePicker, Field } from "@/components/ui";
 import { useUI } from "@/components/UIProvider";
 import { inr, todayISO, sanitizeAmount, ACCOUNT_TYPE_LABELS } from "@/lib/format";
 import CategoryPicker from "@/components/CategoryPicker";
@@ -201,17 +201,18 @@ export default function QuickExpenseSheet({
         )}
 
         {/* Amount */}
-        <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Amount</label>
-        <Input
-          ref={amountRef as any}
-          autoFocus
-          type="text"
-          inputMode="decimal"
-          value={amount}
-          onChange={(e) => setAmount(sanitizeAmount(e.target.value))}
-          placeholder="0"
-          className={`!py-3 !text-3xl !font-bold ${overBudget ? "!border-danger !ring-danger/20" : ""}`}
-        />
+        <Field label="Amount" required>
+          <Input
+            ref={amountRef as any}
+            autoFocus
+            type="text"
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => setAmount(sanitizeAmount(e.target.value))}
+            placeholder="0"
+            className={`!py-3 !text-3xl !font-bold ${overBudget ? "!border-danger !ring-danger/20" : ""}`}
+          />
+        </Field>
         {overBudget && (
           <p className="mt-1.5 text-xs font-medium text-danger">
             {fromSite ? "Insufficient funds" : "Insufficient balance"} — only {inr(available)} available in {sourceName}.
@@ -219,11 +220,11 @@ export default function QuickExpenseSheet({
         )}
 
         {/* Category chips */}
-        <p className="mb-1.5 mt-4 text-sm font-medium text-muted-foreground">Head</p>
+        <p className="mb-1.5 mt-4 text-sm font-medium text-muted-foreground">Head <span className="text-danger">*</span></p>
         <CategoryPicker value={categoryId} onChange={setCategoryId} />
 
         {/* Site */}
-        <p className="mb-1.5 mt-4 text-sm font-medium text-muted-foreground">Site</p>
+        <p className="mb-1.5 mt-4 text-sm font-medium text-muted-foreground">Site <span className="text-danger">*</span></p>
         <CustomSelect
           value={projectId}
           onChange={(val) => setProjectId(val)}
@@ -239,7 +240,7 @@ export default function QuickExpenseSheet({
         )}
 
         {/* Paid From — site funds or a bank/cash account */}
-        <p className="mb-1.5 mt-4 text-sm font-medium text-muted-foreground">Paid From</p>
+        <p className="mb-1.5 mt-4 text-sm font-medium text-muted-foreground">Paid From <span className="text-danger">*</span></p>
         <CustomSelect
           value={payFrom}
           onChange={(val) => setPayFrom(val)}
@@ -281,18 +282,16 @@ export default function QuickExpenseSheet({
 
         {showMore && (
           <div className="mt-3 space-y-3">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Date</label>
+            <Field label="Date">
               <CustomDatePicker value={date} onChange={(val) => setDate(val)} />
-            </div>
+            </Field>
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Paid To</label>
+              <p className="mb-1.5 text-sm font-medium text-muted-foreground">Paid To</p>
               <PaidToPicker value={paidTo} onChange={setPaidTo} />
             </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Note</label>
+            <Field label="Note">
               <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Short description" />
-            </div>
+            </Field>
           </div>
         )}
 

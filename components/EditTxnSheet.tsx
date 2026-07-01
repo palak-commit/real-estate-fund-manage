@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { Button, Input, CustomDatePicker } from "@/components/ui";
+import { Button, Input, CustomDatePicker, Field } from "@/components/ui";
 import CategoryPicker from "@/components/CategoryPicker";
 import PaidToPicker from "@/components/PaidToPicker";
 import { useUI } from "@/components/UIProvider";
@@ -84,28 +84,28 @@ export default function EditTxnSheet({
         </p>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Date</label>
+          <Field label="Date" required>
             <CustomDatePicker value={date} onChange={(val) => setDate(val)} />
-          </div>
+          </Field>
 
           {isExpense && (
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Paid To (optional)</label>
+              <p className="mb-1.5 text-sm font-medium text-muted-foreground">Paid To (optional)</p>
               <PaidToPicker value={paidTo} onChange={setPaidTo} placeholder="Select or add a payee" />
             </div>
           )}
 
           {isExpense && (
             <div className="sm:col-span-2">
-              <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Head</label>
+              <p className="mb-1.5 text-sm font-medium text-muted-foreground">Head</p>
               <CategoryPicker value={categoryId} onChange={(id) => setCategoryId(id)} />
             </div>
           )}
 
           <div className="sm:col-span-2">
-            <label className="mb-1.5 block text-sm font-medium text-muted-foreground">Note (optional)</label>
-            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Short description" />
+            <Field label="Note (optional)">
+              <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Short description" />
+            </Field>
           </div>
         </div>
 
