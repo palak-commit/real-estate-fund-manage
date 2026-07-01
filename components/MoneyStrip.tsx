@@ -36,20 +36,21 @@ export default function MoneyStrip({ d }: { d: MoneyStripData }) {
           </div>
         </div>
         <div className="border-t border-white/10 pt-4 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/40">Spent (from accounts, cash, partner)</p>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/40" title="Includes both actual expenses and money allocated to sites">Money Out (Expenses + Site Funds)</p>
           <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4 lg:grid-cols-2">
             <Strip label="Bank" value={inr(d.spentBank)} />
             <Strip label="Cash" value={inr(d.spentCash)} />
             <Strip label="Partner" value={inr(d.spentPartner)} />
-            <Strip label="Total Spent" value={inr(d.spentTotal)} valueClassName="text-danger" />
+            <Strip label="Total Outflow" title="Actual Expenses + In Sites Balance" value={inr(d.spentTotal)} valueClassName="text-danger" />
           </div>
         </div>
       </div>
 
-      {/* Footer: time-boxed spend + income earned + overall profit/loss. */}
-      <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-sm sm:grid-cols-4">
+      {/* Footer: time-boxed spend + total expenses + income earned + overall profit/loss. */}
+      <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-sm sm:grid-cols-3 lg:grid-cols-5">
         <Strip label="Spent Today" value={inr(d.todayExpense)} />
         <Strip label="This Month" value={inr(d.monthExpense)} />
+        <Strip label="Total Expenses" title="Total money actually spent across all sites" value={inr(d.totalIncome - d.totalProfit)} valueClassName="text-danger" />
         <Strip label="Revenue Earned" value={inr(d.totalIncome)} valueClassName="text-success" />
         <Strip
           label="Profit / Loss"
