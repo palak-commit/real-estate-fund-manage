@@ -14,6 +14,7 @@ import RaPaymentsSheet from "@/components/RaPaymentsSheet";
 import VendorBillSheet, { type VendorBill } from "@/components/VendorBillSheet";
 import VendorPaymentsSheet from "@/components/VendorPaymentsSheet";
 import RojmelBook from "@/components/RojmelBook";
+import SiteActivity from "@/components/SiteActivity";
 import { computeRa, DEFAULT_RA_RATES, type RaRates } from "@/lib/ra";
 
 const STATUS_COLOR: Record<string, string> = { active: "green", on_hold: "amber", completed: "blue" };
@@ -22,7 +23,7 @@ const STATUS_LABEL: Record<string, string> = { active: "Active", on_hold: "On Ho
 const PAY_STATUS_LABEL: Record<string, string> = { pending: "Pending", partial: "Partially Paid", complete: "Complete" };
 const PAY_STATUS_COLOR: Record<string, string> = { pending: "amber", partial: "blue", complete: "green" };
 
-type TabKey = "transactions" | "books" | "rojmel" | "heads" | "ra" | "vendor";
+type TabKey = "transactions" | "books" | "rojmel" | "heads" | "ra" | "vendor" | "activity";
 type BookType = "bank" | "cash" | "partner";
 type SiteHead = { id: number; name: string; spent: number; subheads: { id: number; name: string; spent: number }[] };
 const PROFIT_STYLE: Record<ProfitLevel, string> = {
@@ -458,6 +459,7 @@ export default function ProjectDetail() {
           ["heads", "Heads"],
           ["ra", "Receipt of RA"],
           ["vendor", "Vendor Bills"],
+          ["activity", "Activity"],
         ] as [TabKey, string][]).map(([key, label]) => (
           <button
             key={key}
@@ -778,6 +780,9 @@ export default function ProjectDetail() {
 
       {/* Rojmel tab — the cash daybook (its own cash-account picker). */}
       {tab === "rojmel" && <RojmelBook />}
+
+      {/* Activity tab — this site's audit feed (transactions, RA, vendor bills, site edits). */}
+      {tab === "activity" && <SiteActivity projectId={Number(id)} />}
 
       {/* Heads tab — this site's spend broken down by Head / Type of Head. */}
       {tab === "heads" && (

@@ -16,6 +16,11 @@ export async function GET(req: NextRequest) {
     where.push("entity = ?");
     args.push(searchParams.get("entity"));
   }
+  // Scope to one site's feed (used by the site-detail Activity tab).
+  if (searchParams.get("project_id")) {
+    where.push("project_id = ?");
+    args.push(Number(searchParams.get("project_id")));
+  }
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
   const countRows = await query<{ total: number }>(

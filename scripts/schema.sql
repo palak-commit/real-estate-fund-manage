@@ -44,11 +44,15 @@ CREATE TABLE IF NOT EXISTS activity_log (
   action ENUM('created','updated','deleted','recompute') NOT NULL,
   entity ENUM('transaction','account','site','category','system','ra_receipt','vendor_bill') NOT NULL,
   entity_id INT NULL,
+  -- The site this activity belongs to (when applicable), so a site can show its own feed.
+  -- Populated at log time; NULL for account/category/system events.
+  project_id INT NULL,
   title VARCHAR(255) NOT NULL,
   amount DECIMAL(15,2) NULL,
   meta JSON NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_activity_created (created_at)
+  INDEX idx_activity_created (created_at),
+  INDEX idx_activity_project (project_id)
 );
 
 -- Running Account (RA) bill receipts — a standalone register that mirrors the Excel

@@ -38,6 +38,6 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return fail(zErr(parsed.error));
   const { name, status } = parsed.data;
   const [res]: any = await pool.query("INSERT INTO projects (name, status) VALUES (?, ?)", [name, status]);
-  await logActivity({ action: "created", entity: "site", entityId: res.insertId, title: `Site "${name}" created`, meta: { status } });
+  await logActivity({ action: "created", entity: "site", entityId: res.insertId, projectId: res.insertId, title: `Site "${name}" created`, meta: { status } });
   return ok({ id: res.insertId }, "Project created", {}, 201);
 }

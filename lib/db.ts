@@ -273,6 +273,30 @@ async function initialize(): Promise<void> {
       );
     }
 
+    // Add activity_log.project_id (the site an event belongs to) so a site can show its own
+    // feed, then backfill existing rows from the live entity tables.
+    const [alProj]: any = await admin.query(
+      `SELECT 1 FROM information_schema.columns
+        WHERE table_schema = ? AND table_name = 'activity_log' AND column_name = 'project_id'`,
+      [dbName]
+    );
+    if (!alProj.length) {
+      await admin.query("ALTER TABLE activity_log ADD COLUMN project_id INT NULL AFTER entity_id");
+      await admin.query("ALTER TABLE activity_log ADD INDEX idx_activity_project (project_id)");
+      // Backfill: transaction / ra_receipt / vendor_bill events inherit their entity's site;
+      // a 'site' event's project_id is the site id itself. Deleted entities can't be resolved.
+      await admin.query(
+        `UPDATE activity_log a
+           LEFT JOIN transactions t ON a.entity = 'transaction' AND t.id = a.entity_id
+           LEFT JOIN ra_receipts r  ON a.entity = 'ra_receipt'  AND r.id = a.entity_id
+           LEFT JOIN vendor_bills b ON a.entity = 'vendor_bill' AND b.id = a.entity_id
+            SET a.project_id = COALESCE(
+              t.project_id, r.project_id, b.project_id,
+              CASE WHEN a.entity = 'site' THEN a.entity_id END)
+          WHERE a.project_id IS NULL`
+      );
+    }
+
     // Add vendor_bills.payment_type (normal/advance) onto older databases.
     const [vbPayType]: any = await admin.query(
       `SELECT 1 FROM information_schema.columns

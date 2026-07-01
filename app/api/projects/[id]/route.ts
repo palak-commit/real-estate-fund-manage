@@ -90,7 +90,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!parsed.success) return fail(zErr(parsed.error));
   const { name, status } = parsed.data;
   await pool.query("UPDATE projects SET name = ?, status = ? WHERE id = ?", [name, status, id]);
-  await logActivity({ action: "updated", entity: "site", entityId: id, title: `Site "${name}" updated`, meta: { status } });
+  await logActivity({ action: "updated", entity: "site", entityId: id, projectId: id, title: `Site "${name}" updated`, meta: { status } });
   return ok(null, "Project updated");
 }
 
@@ -127,6 +127,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   const proj = await query<{ name: string }>("SELECT name FROM projects WHERE id = ?", [id]);
   await pool.query("DELETE FROM projects WHERE id = ?", [id]);
-  await logActivity({ action: "deleted", entity: "site", entityId: id, title: `Site "${proj[0]?.name ?? id}" deleted` });
+  await logActivity({ action: "deleted", entity: "site", entityId: id, projectId: id, title: `Site "${proj[0]?.name ?? id}" deleted` });
   return ok(null, "Project deleted");
 }

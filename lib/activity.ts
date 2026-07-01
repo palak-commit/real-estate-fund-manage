@@ -11,6 +11,7 @@ export type ActivityEntry = {
   action: ActivityAction;
   entity: ActivityEntity;
   entityId?: number | null;
+  projectId?: number | null; // the site this event belongs to (for the per-site feed)
   title: string;
   amount?: number | null;
   meta?: Record<string, unknown> | null;
@@ -25,12 +26,13 @@ export async function logActivity(entry: ActivityEntry, conn?: Runner): Promise<
   const runner: Runner = conn ?? pool;
   try {
     await runner.query(
-      `INSERT INTO activity_log (action, entity, entity_id, title, amount, meta)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO activity_log (action, entity, entity_id, project_id, title, amount, meta)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         entry.action,
         entry.entity,
         entry.entityId ?? null,
+        entry.projectId ?? null,
         entry.title,
         entry.amount ?? null,
         entry.meta ? JSON.stringify(entry.meta) : null,

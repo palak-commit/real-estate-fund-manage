@@ -75,6 +75,7 @@ export async function POST(req: NextRequest) {
         action: "created",
         entity: "ra_receipt",
         entityId: receiptId,
+        projectId: d.project_id ?? null,
         title: `RA receipt added${d.paid_to ? ` · ${d.paid_to}` : ""}`,
         amount: d.amount,
         meta: { net_receivable: net, status: d.status, fully_received: fullyReceived },

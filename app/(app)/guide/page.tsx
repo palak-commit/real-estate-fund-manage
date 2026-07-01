@@ -22,6 +22,9 @@ import {
   ClipboardList,
   ActivitySquare,
   FileText,
+  LayoutDashboard,
+  PieChart,
+  Edit,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -32,14 +35,17 @@ const t = (lang: Lang, en: string, gu: string) => lang === "en" ? en : gu;
 /* ─── TOC items ─────────────────────────────────────────────── */
 const getTOC = (lang: Lang) => [
   { id: "setup-steps",       label: t(lang, "Setup Steps", "શરૂઆતના સ્ટેપ્સ") },
+  { id: "dashboard",         label: t(lang, "Dashboard (Command Center)", "ડેશબોર્ડ (Dashboard)") },
   { id: "transaction-types", label: t(lang, "Transaction Types", "ટ્રાન્ઝેક્શન ના પ્રકાર") },
   { id: "category-paidto",   label: t(lang, "Category & Paid To", "કેટેગરી અને પેઇડ ટુ (Paid To)") },
   { id: "add-money",         label: t(lang, "Add Money", "પૈસા ઉમેરો (Add Money)") },
+  { id: "edit-transactions", label: t(lang, "Editing Transactions safely", "ટ્રાન્ઝેક્શન કેવી રીતે સુધારવું (Edit)") },
   { id: "site-page",         label: t(lang, "Site Page (Project Detail)", "સાઇટ પેજ (પ્રોજેક્ટની વિગતો)") },
   { id: "bank-cashbook",     label: t(lang, "Books (Bank, Cashbook & Partner)", "બુક્સ (બેંક, કેશબુક અને પાર્ટનર)") },
   { id: "rojmel",            label: t(lang, "Rojmel (Cash Daybook)", "રોજમેળ (Rojmel)") },
   { id: "ra-receipts",       label: t(lang, "Receipt of RA", "RA બિલ રસીદ (Receipt of RA)") },
   { id: "vendor-bills",      label: t(lang, "Vendor Bills", "વેન્ડર બિલ (Vendor Bills)") },
+  { id: "reports",           label: t(lang, "Reports & Aging", "રિપોર્ટ્સ અને એજિંગ (Reports & Aging)") },
   { id: "activity-log",      label: t(lang, "Activity Log", "એક્ટિવિટી લોગ (Activity Log)") },
   { id: "recheck-balances",  label: t(lang, "Recheck Balances", "Recheck Balances (બેલેન્સ ચેક કરો)") },
 ];
@@ -304,6 +310,78 @@ export default function GuidePage() {
             </p>
           </div>
         </div>
+      </section>
+
+      {/* ── Dashboard ── */}
+      <section id="dashboard">
+        <h2 className="mb-1 text-base font-semibold text-foreground">
+          {t(lang, "Dashboard (Command Center)", "ડેશબોર્ડ (Dashboard)")}
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {lang === "en" ? (
+            <>
+              The <Link href="/" className="font-semibold text-primary hover:underline">Dashboard</Link> is your daily command center. It gives you instant answers about your liquid cash and what needs attention today.
+            </>
+          ) : (
+            <>
+              <Link href="/" className="font-semibold text-primary hover:underline">ડેશબોર્ડ (Dashboard)</Link> તમારું દૈનિક કમાન્ડ સેન્ટર છે. તે તમને તમારી પાસેની રોકડ અને આજે કયા કામ પર ધ્યાન આપવાની જરૂર છે તેનો તરત જ હિસાબ આપે છે.
+            </>
+          )}
+        </p>
+        <Card className="p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-primary/10">
+              <LayoutDashboard className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{t(lang, "The 5 Decision Cards", "5 મુખ્ય ડિસિઝન કાર્ડ્સ")}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
+                {lang === "en" ? (
+                  <>
+                    <span className="font-semibold">Pending Payable:</span> How much money you urgently owe to vendors. It turns red if you don't have enough Bank+Cash to pay them.<br/>
+                    <span className="font-semibold">Pending Receivable:</span> How much money is due from your RA Bills.<br/>
+                    <span className="font-semibold">Spent Yesterday:</span> A quick check on yesterday's total expenses.<br/>
+                    <span className="font-semibold">Needs Funds:</span> Shows exactly which active sites have run out of budget (balance ≤ 0).<br/>
+                    <span className="font-semibold">Profit Leaders:</span> Quickly see your best and worst performing sites.
+                  </>
+                ) : (
+                  <>
+                    <span className="font-semibold">Pending Payable (ચૂકવવાના બાકી):</span> તમારે વેન્ડરને કેટલા પૈસા આપવાના બાકી છે. જો તમારી પાસે પૂરતું બેલેન્સ નહીં હોય તો આ લાલ રંગનું દેખાશે.<br/>
+                    <span className="font-semibold">Pending Receivable (લેવાના બાકી):</span> RA બિલના કેટલા પૈસા લેવાના બાકી છે.<br/>
+                    <span className="font-semibold">Spent Yesterday (ગઈકાલનો ખર્ચ):</span> ગઈકાલે ટોટલ કેટલો ખર્ચ થયો.<br/>
+                    <span className="font-semibold">Needs Funds (ફંડની જરૂર):</span> કઈ સાઇટ પર બેલેન્સ પૂરું થઈ ગયું છે (બેલેન્સ ≤ 0).<br/>
+                    <span className="font-semibold">Profit Leaders:</span> નફામાં કઈ સાઇટ આગળ છે અને કઈ પાછળ તે જુઓ.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="my-4 border-t border-border" />
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-warning/30 bg-warning/5 p-3.5">
+              <p className="text-sm font-semibold text-warning">{t(lang, "Cash Runway Alert", "ફંડ ખતમ થવાનું એલર્ટ")}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {lang === "en" ? (
+                  <>The system looks at your average daily spend and warns you if a site is going to run out of money soon (e.g., "Site A runs out of funds in ~3 days").</>
+                ) : (
+                  <>સિસ્ટમ તમારા રોજના ખર્ચની ગણતરી કરીને તમને પહેલેથી જ એલર્ટ આપશે કે કઈ સાઇટ પર ફંડ પૂરું થવા આવ્યું છે (દા.ત. "સાઇટ A નું ફંડ 3 દિવસમાં પૂરું થઈ જશે").</>
+                )}
+              </p>
+            </div>
+            <div className="rounded-xl border border-danger/30 bg-danger/5 p-3.5">
+              <p className="text-sm font-semibold text-danger">{t(lang, "Aging Summary", "એજિંગ સમરી (Aging Summary)")}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {lang === "en" ? (
+                  <>A quick breakdown of how old your pending bills are. E.g., if a vendor bill has been unpaid for over 90 days, it shows up here in red.</>
+                ) : (
+                  <>તમારા બાકી બિલો કેટલા જૂના છે તેનો હિસાબ. દા.ત. જો કોઈ વેન્ડરનું બિલ 90 દિવસથી વધુ સમયથી બાકી હોય, તો તે અહીં લાલ રંગમાં દેખાશે.</>
+                )}
+              </p>
+            </div>
+          </div>
+        </Card>
       </section>
 
       {/* ── Features Explained ── */}
@@ -866,6 +944,61 @@ export default function GuidePage() {
             </p>
           </div>
 
+        </Card>
+      </section>
+
+      {/* ── Editing Transactions ── */}
+      <section id="edit-transactions">
+        <h2 className="mb-1 text-base font-semibold text-foreground">
+          {t(lang, "Editing Transactions safely", "ટ્રાન્ઝેક્શન કેવી રીતે સુધારવું (Edit)")}
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {lang === "en" ? (
+            <>
+              Made a mistake? You can edit transactions without messing up your accounts. Just look for the <span className="font-semibold">Pencil</span> icon next to any transaction.
+            </>
+          ) : (
+            <>
+              કોઈ ભૂલ થઈ ગઈ? તમે તમારા એકાઉન્ટના બેલેન્સમાં ગડબડ કર્યા વગર એન્ટ્રી સુધારી શકો છો. કોઈપણ ટ્રાન્ઝેક્શનની બાજુમાં આપેલા <span className="font-semibold">Pencil (પેન્સિલ)</span> આઇકોન પર ક્લિક કરો.
+            </>
+          )}
+        </p>
+
+        <Card className="p-5">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-info/10">
+              <Edit className="h-5 w-5 text-info" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{t(lang, "What you CAN edit", "તમે શું સુધારી શકો છો?")}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
+                {lang === "en" ? (
+                  <>You can safely change the <span className="font-semibold">Date, Category (Head/Type), Paid To (Person), and Note</span>. Editing these will never change your account balances.</>
+                ) : (
+                  <>તમે <span className="font-semibold">તારીખ, કેટેગરી (Head), Paid To (વ્યક્તિનું નામ), અને નોંધ (Note)</span> સુધારી શકો છો. આ સુધારવાથી તમારા બેંક બેલેન્સમાં કોઈ ફરક પડશે નહીં.</>
+                )}
+              </p>
+            </div>
+          </div>
+          
+          <div className="my-4 border-t border-border" />
+          
+          <div className="flex items-start gap-2 rounded-lg border border-warning/20 bg-warning/5 p-3">
+            <Info className="mt-0.5 h-4 w-4 flex-none text-warning" />
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {lang === "en" ? (
+                <>
+                  <span className="font-semibold text-foreground">Important: What if the Amount or Account is wrong? </span>
+                  You cannot edit the money amount, or the "Paid From" / "To" accounts. If you made a mistake with the money itself, you must <span className="font-semibold">Delete</span> the transaction completely and recreate it. This strict rule ensures your balance mathematically never breaks.
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold text-foreground">ધ્યાન રાખો: જો રકમ કે એકાઉન્ટ ખોટું હોય તો શું કરવું? </span>
+                  તમે પૈસાની રકમ અથવા કયા ખાતામાંથી પેમેન્ટ કર્યું છે તે બદલી શકતા નથી. જો પૈસા લખવામાં જ ભૂલ થઈ હોય, તો તમારે તે ટ્રાન્ઝેક્શન <span className="font-semibold">Delete (ડિલીટ)</span> કરીને નવેસરથી જ બનાવવું પડશે. આ નિયમ એટલા માટે છે જેથી તમારા હિસાબની ગણતરી ક્યારેય ખોટી ન પડે.
+                </>
+              )}
+            </p>
+          </div>
         </Card>
       </section>
 
@@ -1485,6 +1618,56 @@ export default function GuidePage() {
                   )}
                 </p>
               </div>
+            </div>
+          </div>
+        </Card>
+      </section>
+
+      {/* ── Reports & Aging ── */}
+      <section id="reports">
+        <h2 className="mb-1 text-base font-semibold text-foreground">
+          {t(lang, "Reports & Aging", "રિપોર્ટ્સ અને એજિંગ (Reports & Aging)")}
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {lang === "en" ? (
+            <>
+              The <Link href="/reports" className="font-semibold text-primary hover:underline">Reports</Link> page gives you a bird's eye view of your business health, broken down by Site, Category, and Aging.
+            </>
+          ) : (
+            <>
+              <Link href="/reports" className="font-semibold text-primary hover:underline">Reports (રિપોર્ટ્સ)</Link> પેજ પરથી તમે સાઇટ, કેટેગરી અને એજિંગ (Aging) મુજબ તમારા આખા બિઝનેસનો હિસાબ એકસાથે જોઈ શકો છો.
+            </>
+          )}
+        </p>
+        
+        <Card className="p-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-border bg-muted/40 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <PieChart className="h-4 w-4 text-primary" />
+                <p className="text-sm font-semibold text-foreground">{t(lang, "By Site & By Category", "સાઇટ અને કેટેગરી મુજબ")}</p>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {lang === "en" ? (
+                  <>Compare how much money is spent across all your sites. In the Category tab, you can see exactly which Heads (like Material vs Labour) are costing you the most.</>
+                ) : (
+                  <>બધી સાઇટ પર કેટલો ખર્ચ થયો છે તે સરખાવો. Category ટેબમાં તમે જોઈ શકશો કે કઈ કેટેગરીમાં (જેમ કે Material કે Labour) સૌથી વધુ ખર્ચ થઈ રહ્યો છે.</>
+                )}
+              </p>
+            </div>
+            
+            <div className="rounded-xl border border-border bg-muted/40 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="h-4 w-4 text-danger" />
+                <p className="text-sm font-semibold text-foreground">{t(lang, "Aging Report", "એજિંગ રિપોર્ટ (Aging)")}</p>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {lang === "en" ? (
+                  <>The Aging tab takes all your Pending Vendor Bills and RA Receipts and buckets them by age: <span className="font-semibold">Current, 31–60 days, 61–90 days, and 90+ days</span>. It makes it crystal clear who you need to call today for payments.</>
+                ) : (
+                  <>Aging ટેબ તમારા બાકી વેન્ડર બિલ અને RA બિલને તેમના દિવસો મુજબ અલગ પાડે છે: <span className="font-semibold">ચાલુ (Current), 31–60 દિવસ, 61–90 દિવસ, અને 90+ દિવસ</span>. આનાથી તરત ખબર પડે છે કે કોનું પેમેન્ટ સૌથી વધુ લેટ ચાલી રહ્યું છે.</>
+                )}
+              </p>
             </div>
           </div>
         </Card>

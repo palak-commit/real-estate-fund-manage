@@ -49,6 +49,7 @@ export async function postIncome(d: IncomeData, conn?: PoolConnection): Promise<
       action: "created",
       entity: "transaction",
       entityId: r.insertId,
+      projectId: d.project_id ?? null,
       title: "RA receipt payment",
       amount: d.amount,
       meta: { source: "ra_payment", detail },
@@ -96,11 +97,14 @@ export async function incomeReversalBlock(txnIds: number[]): Promise<string | nu
 }
 
 export async function deleteIncome(txnId: number): Promise<void> {
+  const [pr]: any = await pool.query("SELECT project_id FROM transactions WHERE id = ?", [txnId]);
+  const projectId = pr[0]?.project_id ?? null;
   await pool.query("DELETE FROM transactions WHERE id = ?", [txnId]);
   await logActivity({
     action: "deleted",
     entity: "transaction",
     entityId: txnId,
+    projectId,
     title: "RA receipt payment removed",
     meta: { source: "ra_payment" },
   });

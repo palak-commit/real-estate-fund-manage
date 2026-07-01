@@ -50,6 +50,7 @@ export async function postExpense(d: ExpenseData, conn?: PoolConnection): Promis
       action: "created",
       entity: "transaction",
       entityId: r.insertId,
+      projectId: d.project_id ?? null,
       title: "Vendor bill payment",
       amount: d.amount,
       meta: { source: "vendor_payment", detail },
@@ -60,11 +61,14 @@ export async function postExpense(d: ExpenseData, conn?: PoolConnection): Promis
 }
 
 export async function deleteExpense(txnId: number): Promise<void> {
+  const [pr]: any = await pool.query("SELECT project_id FROM transactions WHERE id = ?", [txnId]);
+  const projectId = pr[0]?.project_id ?? null;
   await pool.query("DELETE FROM transactions WHERE id = ?", [txnId]);
   await logActivity({
     action: "deleted",
     entity: "transaction",
     entityId: txnId,
+    projectId,
     title: "Vendor bill payment removed",
     meta: { source: "vendor_payment" },
   });

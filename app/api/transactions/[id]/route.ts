@@ -52,6 +52,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     action: "updated",
     entity: "transaction",
     entityId: id,
+    projectId: txn.project_id ?? null,
     title: `${describeTxn(txn.type, { hasProject: txn.project_id != null, hasDest: txn.dest_account_id != null })} edited`,
     meta: { type: txn.type, note: b.note || null, paid_to: b.paid_to || null },
   });
@@ -158,6 +159,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         action: "deleted",
         entity: "transaction",
         entityId: id,
+        projectId: txn.project_id ?? null,
         title: `${describeTxn(txn.type, { hasProject: txn.project_id != null, hasDest: txn.dest_account_id != null })} deleted`,
         amount: Number(txn.amount),
         meta: { type: txn.type, detail },

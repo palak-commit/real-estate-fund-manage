@@ -64,6 +64,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     action: "updated",
     entity: "vendor_bill",
     entityId: id,
+    projectId: d.project_id ?? null,
     title: `Vendor bill updated${d.paid_to ? ` · ${d.paid_to}` : ""}${d.payment_type === "advance" ? " (advance)" : ""}`,
     amount: total,
     meta: { status, payment_type: d.payment_type },
@@ -75,8 +76,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   await ready();
   const id = parseId((await params).id);
   if (!id) return fail("Invalid vendor bill id", 400);
-  const existing = await query<{ total_bill: number; paid_to: string | null }>(
-    "SELECT total_bill, paid_to FROM vendor_bills WHERE id = ?",
+  const existing = await query<{ total_bill: number; paid_to: string | null; project_id: number | null }>(
+    "SELECT total_bill, paid_to, project_id FROM vendor_bills WHERE id = ?",
     [id]
   );
   if (!existing.length) return fail("Vendor bill not found", 404);
@@ -98,6 +99,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     action: "deleted",
     entity: "vendor_bill",
     entityId: id,
+    projectId: existing[0].project_id ?? null,
     title: `Vendor bill deleted${existing[0].paid_to ? ` · ${existing[0].paid_to}` : ""}`,
     amount: existing[0].total_bill ?? null,
   });

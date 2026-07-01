@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
     action: "created",
     entity: "vendor_bill",
     entityId: res.insertId,
+    projectId: d.project_id ?? null,
     title: `Vendor bill added${d.paid_to ? ` · ${d.paid_to}` : ""}${d.payment_type === "advance" ? " (advance)" : ""}`,
     amount: total,
     meta: { total_bill: total, status: d.status, payment_type: d.payment_type },

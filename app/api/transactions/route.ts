@@ -240,6 +240,7 @@ export async function POST(req: NextRequest) {
         action: "created",
         entity: "transaction",
         entityId: res.insertId,
+        projectId: P,
         title: describeTxn(type, { hasProject: !!P, hasDest: !!D }),
         amount,
         meta: { type, detail, note: b.note || null, paid_to: b.paid_to || null },

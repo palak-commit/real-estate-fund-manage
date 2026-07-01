@@ -73,6 +73,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     action: "updated",
     entity: "ra_receipt",
     entityId: id,
+    projectId: d.project_id ?? null,
     title: `RA receipt updated${d.paid_to ? ` · ${d.paid_to}` : ""}`,
     amount: d.amount,
     meta: { status: d.status },
@@ -84,8 +85,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   await ready();
   const id = parseId((await params).id);
   if (!id) return fail("Invalid RA receipt id", 400);
-  const existing = await query<{ txn_id: number | null; amount: number; paid_to: string | null }>(
-    "SELECT txn_id, amount, paid_to FROM ra_receipts WHERE id = ?",
+  const existing = await query<{ txn_id: number | null; amount: number; paid_to: string | null; project_id: number | null }>(
+    "SELECT txn_id, amount, paid_to, project_id FROM ra_receipts WHERE id = ?",
     [id]
   );
   if (!existing.length) return fail("RA receipt not found", 404);
@@ -112,6 +113,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     action: "deleted",
     entity: "ra_receipt",
     entityId: id,
+    projectId: existing[0].project_id ?? null,
     title: `RA receipt deleted${existing[0].paid_to ? ` · ${existing[0].paid_to}` : ""}`,
     amount: existing[0].amount ?? null,
   });
