@@ -24,6 +24,8 @@ import {
   FileText,
   LayoutDashboard,
   PieChart,
+  BookOpen,
+  Database,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -34,6 +36,7 @@ const t = (lang: Lang, en: string, gu: string) => lang === "en" ? en : gu;
 /* ─── TOC items ─────────────────────────────────────────────── */
 const getTOC = (lang: Lang) => [
   { id: "setup-steps",       label: t(lang, "Setup Steps", "શરૂઆતના સ્ટેપ્સ") },
+  { id: "menu-guide",        label: t(lang, "Menu Guide (Sidebar)", "મેનુ ગાઈડ (Sidebar)") },
   { id: "dashboard",         label: t(lang, "Dashboard (Command Center)", "ડેશબોર્ડ (Dashboard)") },
   { id: "transaction-types", label: t(lang, "Transaction Types", "ટ્રાન્ઝેક્શન ના પ્રકાર") },
   { id: "category-paidto",   label: t(lang, "Category & Paid To", "કેટેગરી અને પેઇડ ટુ (Paid To)") },
@@ -94,6 +97,186 @@ const getSteps = (lang: Lang) => [
     icon: Receipt,
     actionLabel: null,
     actionHref: null,
+  },
+];
+
+/* ─── Sidebar menu guide — every nav item, short "what it does" + its features ─── */
+const getMenuGuide = (lang: Lang) => [
+  {
+    group: t(lang, "Main Menu", "મુખ્ય મેનુ"),
+    items: [
+      {
+        icon: LayoutDashboard,
+        color: "text-primary",
+        bg: "bg-primary/10",
+        label: t(lang, "Dashboard", "ડેશબોર્ડ (Dashboard)"),
+        href: "/",
+        jump: "dashboard",
+        short: t(lang, "Your daily command center — total money and what needs attention today.", "તમારું રોજનું કમાન્ડ સેન્ટર — કુલ પૈસા અને આજે શેના પર ધ્યાન આપવું."),
+        features: [
+          t(lang, "Total Money strip (Bank + Cash + Partner + In Sites)", "કુલ પૈસાની પટ્ટી (બેંક + કેશ + પાર્ટનર + સાઇટમાં)"),
+          t(lang, "5 decision cards: Pending Payable / Receivable, Spent Yesterday, Needs Funds, Profit Leaders", "5 ડિસિઝન કાર્ડ: ચૂકવવાના/લેવાના બાકી, ગઈકાલનો ખર્ચ, ફંડની જરૂર, પ્રોફિટ લીડર્સ"),
+          t(lang, "Cash runway alert + Outstanding-by-age summary", "ફંડ ખતમ થવાનું એલર્ટ + બાકી બિલની ઉંમરનો હિસાબ"),
+          t(lang, "Active site cards and recent transactions", "એક્ટિવ સાઇટ કાર્ડ અને છેલ્લા ટ્રાન્ઝેક્શન"),
+        ],
+      },
+      {
+        icon: Receipt,
+        color: "text-info",
+        bg: "bg-info/10",
+        label: t(lang, "Transactions", "ટ્રાન્ઝેક્શન"),
+        href: "/transactions",
+        jump: "transaction-types",
+        short: t(lang, "One ledger of every money movement, with powerful filters.", "દરેક પૈસાની હેરફેરનું એક લિસ્ટ, સાથે ફિલ્ટર."),
+        features: [
+          t(lang, "Filter by type, site, head, account, Paid To, and date range", "પ્રકાર, સાઇટ, હેડ, ખાતું, Paid To અને તારીખ મુજબ ફિલ્ટર"),
+          t(lang, "Edit a row's date / note / head (money never moves)", "એન્ટ્રીની તારીખ / નોંધ / હેડ બદલો (પૈસા ખસતા નથી)"),
+          t(lang, "Delete with safety checks, and Export all filtered rows to Excel/CSV", "સેફ્ટી ચેક સાથે ડિલીટ, અને બધી એન્ટ્રી Excel/CSV માં એક્સપોર્ટ"),
+        ],
+      },
+      {
+        icon: Building2,
+        color: "text-primary",
+        bg: "bg-primary/10",
+        label: t(lang, "Sites", "સાઇટ્સ (Sites)"),
+        href: "/projects",
+        jump: "site-page",
+        short: t(lang, "Every project's budget, spend, and profit — each site is a mini-app.", "દરેક પ્રોજેક્ટનું બજેટ, ખર્ચ અને પ્રોફિટ — દરેક સાઇટ એક મીની-એપ."),
+        features: [
+          t(lang, "Site list with balance & profit badge", "બેલેન્સ અને પ્રોફિટ બેજ સાથે સાઇટનું લિસ્ટ"),
+          t(lang, "Site detail sub-tabs: Transactions · Expenses · Rojmel · Heads · Receipt of RA · Vendor Bills · Activity", "સાઇટ ડિટેલ સબ-ટેબ: Transactions · Expenses · Rojmel · Heads · RA · Vendor Bills · Activity"),
+          t(lang, "Add Site Fund and Transfer Fund buttons", "Add Site Fund અને Transfer Fund બટન"),
+        ],
+      },
+      {
+        icon: Tag,
+        color: "text-warning",
+        bg: "bg-warning/10",
+        label: t(lang, "Expense Heads", "ખર્ચ હેડ (Expense Heads)"),
+        href: "/heads",
+        jump: "category-paidto",
+        short: t(lang, "Manage the Head → Type of Head list used to tag every expense.", "દરેક ખર્ચને ટેગ કરવા માટેની Head → Type of Head યાદી મેનેજ કરો."),
+        features: [
+          t(lang, "Add / rename / delete a Head (main category)", "Head (મુખ્ય કેટેગરી) ઉમેરો / બદલો / કાઢો"),
+          t(lang, "Add / rename / delete a Type of Head (sub-category)", "Type of Head (પેટા-કેટેગરી) ઉમેરો / બદલો / કાઢો"),
+          t(lang, "See total spent against each head — powers the Reports breakdown", "દરેક હેડ સામે કુલ ખર્ચ જુઓ — રિપોર્ટ્સનો આધાર"),
+        ],
+      },
+      {
+        icon: Landmark,
+        color: "text-info",
+        bg: "bg-info/10",
+        label: t(lang, "Accounts", "ખાતાં (Accounts)"),
+        href: "/accounts",
+        jump: "add-money",
+        short: t(lang, "Where your money lives — bank, cash, and partner accounts.", "તમારા પૈસા ક્યાં છે — બેંક, કેશ અને પાર્ટનર ખાતાં."),
+        features: [
+          t(lang, "Add bank / cash / partner accounts", "બેંક / કેશ / પાર્ટનર ખાતાં ઉમેરો"),
+          t(lang, '"+ Add Money" to record incoming funds', 'આવેલા પૈસા નોંધવા "+ Add Money"'),
+          t(lang, "Recheck balance, and click a row to open its ledger", "બેલેન્સ ફરી ચેક કરો, અને ખાતાનું લિસ્ટ ખોલવા રો પર ક્લિક કરો"),
+        ],
+      },
+      {
+        icon: BookOpen,
+        color: "text-primary",
+        bg: "bg-primary/10",
+        label: t(lang, "User Guide", "યુઝર ગાઈડ"),
+        href: "/guide",
+        jump: null,
+        short: t(lang, "This help book — bilingual (English / ગુજરાતી) explanations of every feature.", "આ મદદ પુસ્તક — દરેક ફીચરની બે ભાષામાં સમજ (English / ગુજરાતી)."),
+        features: [
+          t(lang, "Setup steps and this menu guide", "શરૂઆતના સ્ટેપ્સ અને આ મેનુ ગાઈડ"),
+          t(lang, "Detailed explanation of every page and transaction type", "દરેક પેજ અને ટ્રાન્ઝેક્શન પ્રકારની વિગતવાર સમજ"),
+          t(lang, "Switch language any time with the toggle at the top", "ઉપરના ટૉગલથી ગમે ત્યારે ભાષા બદલો"),
+        ],
+      },
+    ],
+  },
+  {
+    group: t(lang, "Manage", "મેનેજ (Manage)"),
+    items: [
+      {
+        icon: Banknote,
+        color: "text-primary",
+        bg: "bg-primary/10",
+        label: t(lang, "Expenses", "ખર્ચ (Expenses)"),
+        href: "/books",
+        jump: "bank-cashbook",
+        short: t(lang, "The Excel-style payment registers, all in one hub.", "Excel જેવા પેમેન્ટ રજિસ્ટર, બધા એક જગ્યાએ."),
+        features: [
+          t(lang, "Bank · Cashbook · Partner · Rojmel tabs", "Bank · Cashbook · Partner · Rojmel ટેબ"),
+          t(lang, "Auto-filled from your Site Expenses & Add Site Fund entries", "તમારા Site Expense અને Add Site Fund માંથી આપમેળે ભરાય"),
+          t(lang, "Filter by account, date, party, site, head — and Export", "ખાતું, તારીખ, પાર્ટી, સાઇટ, હેડ મુજબ ફિલ્ટર — અને Export"),
+        ],
+      },
+      {
+        icon: FileText,
+        color: "text-success",
+        bg: "bg-success/10",
+        label: t(lang, "Receipt of RA", "RA બિલ રસીદ"),
+        href: "/ra-receipts",
+        jump: "ra-receipts",
+        short: t(lang, "Money you are OWED — Running Account (RA) bill receipts.", "તમને મળવાના પૈસા — Running Account (RA) બિલ રસીદ."),
+        features: [
+          t(lang, "Auto-calculated deductions (GST, TDS, SD, Cess…) → Net Receivable", "આપમેળે કપાત (GST, TDS, SD, Cess…) → Net Receivable"),
+          t(lang, "Record partial payments received (into an account or Site Fund)", "મળેલા આંશિક પેમેન્ટ નોંધો (ખાતામાં કે Site Fund માં)"),
+          t(lang, "Status badge (Pending / Partial / Complete) and CSV export", "સ્ટેટસ બેજ (Pending / Partial / Complete) અને CSV એક્સપોર્ટ"),
+        ],
+      },
+      {
+        icon: ClipboardList,
+        color: "text-danger",
+        bg: "bg-danger/10",
+        label: t(lang, "Vendor Bills", "વેન્ડર બિલ"),
+        href: "/vendor-bills",
+        jump: "vendor-bills",
+        short: t(lang, "Money you OWE vendors — Accounts Payable.", "તમારે વેન્ડરને આપવાના પૈસા — Accounts Payable."),
+        features: [
+          t(lang, "Record a bill (Amount + GST% = Total Bill), no money moves yet", "બિલ નોંધો (Amount + GST% = Total Bill), પૈસા હજુ ખસતા નથી"),
+          t(lang, "Pay in installments from an account or Site funds", "ખાતામાંથી કે Site funds માંથી હપ્તે-હપ્તે ચૂકવો"),
+          t(lang, "Advance workflow, status auto-derives, filter & export", "એડવાન્સ વર્કફ્લો, સ્ટેટસ આપમેળે, ફિલ્ટર અને એક્સપોર્ટ"),
+        ],
+      },
+      {
+        icon: ActivitySquare,
+        color: "text-info",
+        bg: "bg-info/10",
+        label: t(lang, "Activity", "એક્ટિવિટી (Activity)"),
+        href: "/activity",
+        jump: "activity-log",
+        short: t(lang, "A read-only history of every create, edit, and delete.", "દરેક નવી, બદલેલી અને કાઢેલી એન્ટ્રીનો રેકોર્ડ (ફક્ત જોવા માટે)."),
+        features: [
+          t(lang, "Newest first, grouped by day", "નવામાં નવું પહેલા, દિવસ મુજબ ગોઠવેલું"),
+          t(lang, "Filter by entity, action, and date range", "એન્ટિટી, એક્શન અને તારીખ મુજબ ફિલ્ટર"),
+        ],
+      },
+      {
+        icon: PieChart,
+        color: "text-warning",
+        bg: "bg-warning/10",
+        label: t(lang, "Reports", "રિપોર્ટ્સ (Reports)"),
+        href: "/reports",
+        jump: "reports",
+        short: t(lang, "Spending and outstanding money, sliced by site, category, and age.", "ખર્ચ અને બાકી પૈસા — સાઇટ, કેટેગરી અને ઉંમર મુજબ."),
+        features: [
+          t(lang, "By Site and By Category breakdowns with date presets", "તારીખ પ્રીસેટ સાથે By Site અને By Category હિસાબ"),
+          t(lang, "Aging tab: payables & receivables bucketed by overdue age", "Aging ટેબ: ચૂકવવાના/લેવાના પૈસા ઉંમર મુજબ"),
+        ],
+      },
+      {
+        icon: Database,
+        color: "text-muted-foreground",
+        bg: "bg-muted",
+        label: t(lang, "Backup", "બેકઅપ (Backup)"),
+        href: "/backup",
+        jump: null,
+        short: t(lang, "One-click download of your whole database as a re-importable file.", "તમારો આખો ડેટા એક ક્લિકમાં ડાઉનલોડ કરો (ફરી ઇમ્પોર્ટ થઈ શકે)."),
+        features: [
+          t(lang, "Preview included tables and row counts", "કઈ ટેબલ અને કેટલી એન્ટ્રી છે તે જુઓ"),
+          t(lang, "Download a .sql file and see restore instructions", ".sql ફાઇલ ડાઉનલોડ કરો અને રિસ્ટોરની રીત જુઓ"),
+        ],
+      },
+    ],
   },
 ];
 
@@ -198,6 +381,7 @@ export default function GuidePage() {
 
   const TOC = getTOC(lang);
   const steps = getSteps(lang);
+  const menuGuide = getMenuGuide(lang);
   const features = getFeatures(lang);
 
   useEffect(() => {
@@ -311,6 +495,75 @@ export default function GuidePage() {
               )}
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* ── Menu Guide (Sidebar map) ── */}
+      <section id="menu-guide">
+        <h2 className="mb-1 text-base font-semibold text-foreground">
+          {t(lang, "Menu Guide — What each sidebar item does", "મેનુ ગાઈડ — સાઇડબારનું દરેક બટન શું કરે છે")}
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {lang === "en" ? (
+            <>
+              This is the <span className="font-semibold">left sidebar menu</span>. First is a short line on what each menu does, then the main features it gives you. Tap a card to open that page, or use "Learn more" to jump to its detailed guide below.
+            </>
+          ) : (
+            <>
+              આ <span className="font-semibold">ડાબી બાજુનું મેનુ (sidebar)</span> છે. પહેલા દરેક મેનુ શું કરે છે તેની ટૂંકી લાઇન, પછી તે આપતાં મુખ્ય ફીચર્સ. પેજ ખોલવા કાર્ડ પર ક્લિક કરો, અથવા "Learn more" થી નીચેની વિગતવાર માહિતી પર જાવ.
+            </>
+          )}
+        </p>
+
+        <div className="space-y-6">
+          {menuGuide.map((section) => (
+            <div key={section.group}>
+              <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {section.group}
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Card key={item.href} className="p-4">
+                      {/* Menu header row */}
+                      <div className="flex items-start gap-3">
+                        <div className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${item.bg}`}>
+                          <Icon className={`h-5 w-5 ${item.color}`} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <Link href={item.href} className="text-sm font-semibold text-foreground hover:text-primary hover:underline">
+                            {item.label}
+                          </Link>
+                          <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">{item.short}</p>
+                        </div>
+                      </div>
+
+                      {/* Sub-features */}
+                      <ul className="mt-3 space-y-1.5 border-t border-border pt-3">
+                        {item.features.map((f, i) => (
+                          <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                            <span className={`mt-1 h-1.5 w-1.5 flex-none rounded-full ${item.bg}`} />
+                            <span>{f}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      {/* Jump to detailed guide */}
+                      {item.jump && (
+                        <a
+                          href={`#${item.jump}`}
+                          className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                        >
+                          {t(lang, "Learn more", "વધુ જાણો")} ↓
+                        </a>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
