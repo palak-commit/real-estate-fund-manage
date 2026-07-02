@@ -126,7 +126,7 @@ export default function RaReceiptsPage() {
   // Build the filtered RA register (raw inputs + all derived columns) for export.
   function exportData() {
     const headers = [
-      "Sr. No", "Date", "Site", "Paid To", "Received In", "Status", "Amount", "GST", "Total Bill",
+      "Sr. No", "Date", "Site", "Received From", "Received In", "Status", "Amount", "GST", "Total Bill",
       "TDS", "TDS on GST", "SD", "Workman Cess", "Withheld", "Royalty", "Total Deduction",
       "Cheque Amt", "Agency Charge", "Net Receivable", "Sub Let Bill", "Sub-GST",
     ];
@@ -135,7 +135,7 @@ export default function RaReceiptsPage() {
       row.txn_date ? formatDate(row.txn_date) : "",
       row.project_name || "",
       row.paid_to || "",
-      row.account_name || "",
+      row.account_name || (row.project_id ? "Site funds" : ""),
       STATUS_LABEL[row.status] || row.status || "",
       Number(row.amount) || 0,
       c.gst, c.total_bill, c.tds, c.tds_gst, c.sd, c.cess,
@@ -302,7 +302,7 @@ export default function RaReceiptsPage() {
             <Th>Sr. No.</Th>
             <Th>Date</Th>
             <Th>Site</Th>
-            <Th>Paid To</Th>
+            <Th>Received From</Th>
             <Th>Received In</Th>
             <Th>Status</Th>
             <Th right>Amount</Th>
@@ -364,7 +364,7 @@ export default function RaReceiptsPage() {
                   <Td>{row.txn_date ? formatDate(row.txn_date) : "—"}</Td>
                   <Td>{row.project_name || "—"}</Td>
                   <Td>{row.paid_to || "—"}</Td>
-                  <Td>{row.account_name || "—"}</Td>
+                  <Td>{row.account_name || (row.project_id ? "Site funds" : "—")}</Td>
                   <Td><Label color={STATUS_COLOR[row.status]}>{STATUS_LABEL[row.status]}</Label></Td>
                   <Td right>{inr(row.amount)}</Td>
                   <Td right>{inr(c.gst)}<RateTag row={rr.gst} site={rates.gst} /></Td>

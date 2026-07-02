@@ -27,9 +27,10 @@ export async function POST(req: NextRequest) {
   const d = parsed.data;
   const net = netReceivableFrom(d, d.rates); // server-computed, not the client-sent net_receivable
   // Money is credited only when the admin marks the bill Complete AND picks a Received In
-  // account — that means "received in full now". Pending (even with an account) credits
-  // nothing; the account is just a tag and money is tracked via partial payments later.
-  const fullyReceived = !!(d.account_id && net > 0 && d.status === "complete");
+  // target — an account, or (no account + a site) the site's own funds — meaning "received in
+  // full now". Pending credits nothing; the target is just a tag and money is tracked via
+  // partial payments later.
+  const fullyReceived = net > 0 && d.status === "complete" && !!(d.account_id || d.project_id);
 
   // The receipt, its (optional) full-receipt income transaction, the linking payment row, and
   // the audit entry are written in ONE transaction — a mid-flow failure can no longer leave a

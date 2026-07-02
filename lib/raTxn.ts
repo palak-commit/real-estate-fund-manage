@@ -1,6 +1,7 @@
 import type { PoolConnection } from "mysql2/promise";
 import { pool, query } from "@/lib/db";
 import { recomputeBalances, toPaisa, toRupees } from "@/lib/ledger";
+import { RECEIVED_SQL, SPENT_SQL } from "@/lib/queries";
 import { inr } from "@/lib/format";
 import { logActivity } from "@/lib/activity";
 
@@ -21,29 +22,34 @@ export type IncomeData = {
 const dateOf = (d: IncomeData) => d.txn_date || new Date().toISOString().slice(0, 10);
 
 /**
- * Post a payment as an `income` transaction crediting its account. Returns the new txn id,
- * or null when there's nothing to credit (no account, or non-positive amount). The caller
- * stores the id and then calls `recompute()`. Pass an open transaction connection as `conn`
- * to make the income insert + its audit row atomic with the caller's own writes.
+ * Post a payment as an `income` transaction. With an `account_id` it credits that account;
+ * with no account but a `project_id` it credits the **site's own funds** (income with no
+ * dest account, which RECEIVED_SQL counts as money into the site) — the "Received In: Site
+ * Fund" case. Returns the new txn id, or null when there's nothing to credit (no target, or
+ * non-positive amount). The caller stores the id and then calls `recompute()`. Pass an open
+ * transaction connection as `conn` to make the income insert + audit row atomic.
  */
 export async function postIncome(d: IncomeData, conn?: PoolConnection): Promise<number | null> {
-  if (!d.account_id || !(Number(d.amount) > 0)) return null;
+  if (!(Number(d.amount) > 0) || (!d.account_id && !d.project_id)) return null;
   const db = conn ?? pool;
   const [r]: any = await db.query(
     `INSERT INTO transactions (type, txn_date, project_id, dest_account_id, amount, paid_to, note)
      VALUES ('income', ?, ?, ?, ?, ?, ?)`,
-    [dateOf(d), d.project_id || null, d.account_id, d.amount, d.paid_to || null, d.note || "RA bill payment"]
+    [dateOf(d), d.project_id || null, d.account_id || null, d.amount, d.paid_to || null, d.note || "RA bill payment"]
   );
   // Look up names for a readable "from → into" detail line in the activity feed.
-  const [acc]: any = await db.query("SELECT name FROM accounts WHERE id = ?", [d.account_id]);
-  const accountName = acc[0]?.name ?? "account";
   let projectName: string | null = null;
   if (d.project_id) {
     const [pr]: any = await db.query("SELECT name FROM projects WHERE id = ?", [d.project_id]);
     projectName = pr[0]?.name ?? null;
   }
-  // e.g. "River View → Axis Bank · jayesh kaka" (from the site, into the account, paid by)
-  const detail = `${projectName ? `${projectName} ` : ""}→ ${accountName}${d.paid_to ? ` · ${d.paid_to}` : ""}`;
+  let targetName = "site funds";
+  if (d.account_id) {
+    const [acc]: any = await db.query("SELECT name FROM accounts WHERE id = ?", [d.account_id]);
+    targetName = acc[0]?.name ?? "account";
+  }
+  // e.g. "River View → Axis Bank · jayesh kaka" (into an account) or "River View → site funds"
+  const detail = `${projectName ? `${projectName} ` : ""}→ ${targetName}${d.paid_to ? ` · ${d.paid_to}` : ""}`;
   await logActivity(
     {
       action: "created",
@@ -91,6 +97,40 @@ export async function incomeReversalBlock(txnIds: number[]): Promise<string | nu
     const creditP = perAccount.get(a.id) ?? 0;
     if (toPaisa(Number(a.current_balance)) < creditP) {
       return `Cannot delete — ${a.name} only has ${inr(Number(a.current_balance))} left, but this credited it ${inr(toRupees(creditP))}. That money has already been used; delete the payments/expenses that spent it first.`;
+    }
+  }
+  return siteFundReversalBlock(ids);
+}
+
+// Site-fund income (income with no dest account, tagged to a site — the "Received In: Site
+// Fund" case) raises the site's derived funds; reversing it lowers them. Refuse if the site's
+// remaining funds (received − site-fund spend) are already below what we'd remove — that
+// money has been spent from the site, and reversing would push the balance negative. Mirrors
+// the account guard above for the site-fund flavour.
+async function siteFundReversalBlock(ids: number[]): Promise<string | null> {
+  const rows = await query<{ project_id: number; amount: number }>(
+    `SELECT project_id, amount FROM transactions
+      WHERE id IN (${ids.map(() => "?").join(",")}) AND type = 'income'
+        AND dest_account_id IS NULL AND project_id IS NOT NULL`,
+    ids
+  );
+  if (!rows.length) return null;
+  const perSite = new Map<number, number>();
+  for (const r of rows) {
+    perSite.set(r.project_id, (perSite.get(r.project_id) ?? 0) + toPaisa(Number(r.amount)));
+  }
+  const siteIds = [...perSite.keys()];
+  const balances = await query<{ id: number; name: string; balance: number }>(
+    `SELECT p.id, p.name, (${RECEIVED_SQL} - ${SPENT_SQL}) AS balance
+       FROM projects p LEFT JOIN transactions t ON t.project_id = p.id
+      WHERE p.id IN (${siteIds.map(() => "?").join(",")})
+      GROUP BY p.id, p.name`,
+    siteIds
+  );
+  for (const b of balances) {
+    const removeP = perSite.get(b.id) ?? 0;
+    if (toPaisa(Number(b.balance)) < removeP) {
+      return `Cannot delete — ${b.name} only has ${inr(Number(b.balance))} of site funds left, but this added ${inr(toRupees(removeP))}. That money has already been spent from the site; delete the site-funded expenses first.`;
     }
   }
   return null;

@@ -41,7 +41,7 @@ export const RA_STATUS_OPTIONS = [
 ];
 
 type Account = { id: number; name: string; account_type: string; current_balance: number };
-type Project = { id: number; name: string };
+type Project = { id: number; name: string; balance?: number };
 
 const blank = {
   txn_date: "", project_id: "", account_id: "", paid_to: "", status: "pending",
@@ -102,7 +102,8 @@ export default function RaReceiptSheet({
         ? {
             txn_date: receipt.txn_date || "",
             project_id: receipt.project_id ? String(receipt.project_id) : "",
-            account_id: receipt.account_id ? String(receipt.account_id) : "",
+            // No account but a site → it was received into the site's funds ("site" sentinel).
+            account_id: receipt.account_id ? String(receipt.account_id) : receipt.project_id ? "site" : "",
             paid_to: receipt.paid_to || "",
             status: receipt.status || "pending",
             amount: String(receipt.amount ?? ""),
@@ -132,8 +133,15 @@ export default function RaReceiptSheet({
 
   const setField = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  // Accounts grouped by type (Bank / Cash / Partner), each showing its available balance.
+  // Received In options: the selected site's own funds ("Site Fund", value "site" — needs a
+  // site, labelled with the site name + its fund balance) then accounts grouped by type
+  // (Bank / Cash / Partner), each showing its available balance.
+  const selectedProject = projects.find((p) => String(p.id) === form.project_id);
+  const siteFundLabel = `${selectedProject?.name ?? "Site"} · Site Fund${
+    selectedProject?.balance != null ? ` (${inr(selectedProject.balance)})` : ""
+  }`;
   const accountOptions = [
+    ...(form.project_id ? [{ group: "Site", items: [{ label: siteFundLabel, value: "site" }] }] : []),
     ...(["bank", "cash", "partner"] as const)
       .map((t) => ({
         group: ACCOUNT_TYPE_LABELS[t],
@@ -143,6 +151,7 @@ export default function RaReceiptSheet({
       }))
       .filter((g) => g.items.length > 0),
   ];
+  const intoLabel = form.account_id === "site" ? "this site's funds" : "this account";
 
   async function submit() {
     setErr("");
@@ -150,10 +159,12 @@ export default function RaReceiptSheet({
     if (!form.amount || Number(form.amount) <= 0) return setErr("Enter a valid amount");
     if (!form.project_id) return setErr("Please select a site");
     if (!form.account_id) return setErr("Please select where it was received");
+    // "site" is the site-fund sentinel → no account (money lands in the site's funds).
+    const accountId = form.account_id === "site" ? null : form.account_id || null;
     const payload = {
       txn_date: form.txn_date || null,
       project_id: form.project_id || null,
-      account_id: form.account_id || null,
+      account_id: accountId,
       paid_to: form.paid_to || null,
       amount: form.amount,
       withheld_amt: form.withheld_amt || 0,
@@ -222,16 +233,16 @@ export default function RaReceiptSheet({
               value={form.account_id}
               onChange={(v) => setField("account_id", v)}
               options={accountOptions}
-              placeholder="Bank / Cash / Partner"
+              placeholder="Bank / Cash / Partner / Site Fund"
             />
             {!receipt && form.account_id && form.status === "complete" && (
               <p className="mt-1 text-xs text-muted-foreground">
-                Status is Complete → saving credits {inr(preview.net_receivable)} into this account.
+                Status is Complete → saving credits {inr(preview.net_receivable)} into {intoLabel}.
               </p>
             )}
             {!receipt && form.account_id && form.status !== "complete" && (
               <p className="mt-1 text-xs text-muted-foreground">
-                Pending → no money is added yet. Set status to Complete (or add payments later) to credit this account.
+                Pending → no money is added yet. Set status to Complete (or add payments later) to credit {intoLabel}.
               </p>
             )}
           </Field>

@@ -10,8 +10,67 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const accountId = parseId(searchParams.get("account_id") || "");
   const accountType = searchParams.get("account_type");
+  const projectId = parseId(searchParams.get("project_id") || "");
   const from = searchParams.get("from");
   const to = searchParams.get("to");
+
+  // Site-fund daybook: the site's own allocated-funds ledger (its Rojmel). Money IN =
+  // site-fund allocations (a `transfer` into the site with no dest account) plus RA money
+  // received into site funds (an `income` with no dest account); money OUT = expenses paid
+  // from site funds (an `expense` with no source account). Direct expenses (paid from an
+  // account) don't move the site-fund balance. Sites have no opening balance, so the running
+  // balance starts at 0 and equals the site's funds (matching RECEIVED_SQL − SPENT_SQL).
+  if (!accountId && !accountType && projectId) {
+    const projRows = await query<{ id: number; name: string }>(
+      "SELECT id, name FROM projects WHERE id = ?",
+      [projectId]
+    );
+    if (!projRows.length) return fail("Site not found", 404);
+    const rows = await query<any>(
+      `SELECT t.id, DATE_FORMAT(t.txn_date, '%Y-%m-%d') AS txn_date, t.type, t.note, t.paid_to,
+         sa.name AS source_name, da.name AS dest_name, t.project_id, p.name AS project_name,
+         CASE WHEN c.parent_id IS NOT NULL THEN c.name END AS category, COALESCE(pc.name, c.name) AS category_head,
+         CASE WHEN t.type IN ('transfer','income') AND t.dest_account_id IS NULL THEN t.amount ELSE 0 END AS debit,
+         CASE WHEN t.type = 'expense' AND t.source_account_id IS NULL THEN t.amount ELSE 0 END AS credit
+       FROM transactions t
+       LEFT JOIN accounts sa ON sa.id = t.source_account_id
+       LEFT JOIN accounts da ON da.id = t.dest_account_id
+       LEFT JOIN projects p ON p.id = t.project_id
+       LEFT JOIN categories c ON c.id = t.category_id
+       LEFT JOIN categories pc ON pc.id = c.parent_id
+       WHERE t.project_id = ?
+         AND ((t.type IN ('transfer','income') AND t.dest_account_id IS NULL) OR (t.type = 'expense' AND t.source_account_id IS NULL))
+       ORDER BY t.txn_date ASC, t.id ASC`,
+      [projectId]
+    );
+    let running = 0;
+    let opening = 0;
+    let totalIn = 0;
+    let totalOut = 0;
+    const out: any[] = [];
+    for (const r of rows) {
+      const debit = Number(r.debit);
+      const credit = Number(r.credit);
+      if (from && r.txn_date < from) {
+        running += debit - credit;
+        opening = running;
+        continue;
+      }
+      if (to && r.txn_date > to) break;
+      running += debit - credit;
+      totalIn += debit;
+      totalOut += credit;
+      out.push({ ...r, debit, credit, balance: running });
+    }
+    return ok(
+      {
+        account: { id: 0, name: `${projRows[0].name} · Site Fund`, account_type: "site", opening_balance: 0, current_balance: running },
+        rows: out,
+        summary: { opening, totalIn, totalOut, closing: running },
+      },
+      out.length ? "Site fund book fetched" : "No entries in range"
+    );
+  }
 
   // No specific account → aggregate every payment (expense) out of all accounts of this
   // type (all bank accounts, or all cash accounts). Running balance is meaningless across

@@ -57,7 +57,9 @@ export default function RaPaymentsSheet({
     setDate(todayISO());
     setAmount("");
     setNote("");
-    setAccountId(receipt.account_id ? String(receipt.account_id) : "");
+    // Default the "Received In" to the receipt's own target — its account, or its site's
+    // funds ("site" sentinel) when the receipt had no account.
+    setAccountId(receipt.account_id ? String(receipt.account_id) : receipt.project_id ? "site" : "");
     setStatus(receipt.status);
     load();
     fetch("/api/accounts").then((r) => r.json()).then((j) => setAccounts(j.data ?? []));
@@ -85,6 +87,9 @@ export default function RaPaymentsSheet({
   }, [payments, paid, netReceivable, open]);
 
   const accountOptions = [
+    ...(receipt?.project_id
+      ? [{ group: "Site", items: [{ label: `${receipt.project_name ?? "Site"} · Site Fund`, value: "site" }] }]
+      : []),
     ...(["bank", "cash", "partner"] as const)
       .map((t) => ({
         group: ACCOUNT_TYPE_LABELS[t],
@@ -109,7 +114,8 @@ export default function RaPaymentsSheet({
     const res = await fetch(`/api/ra-receipts/${receipt!.id}/payments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ txn_date: date, amount, account_id: accountId || null, note: note || null }),
+      // "site" sentinel → no account (money lands in the site's funds).
+      body: JSON.stringify({ txn_date: date, amount, account_id: accountId === "site" ? null : accountId || null, note: note || null }),
     });
     setSaving(false);
     if (!res.ok) return setErr((await res.json()).message || "Could not add payment");
@@ -187,7 +193,7 @@ export default function RaPaymentsSheet({
                   <p className="font-semibold">{inr(p.amount)}</p>
                   <p className="truncate text-xs text-muted-foreground">
                     {formatDate(p.txn_date)}
-                    {p.account_name ? ` · ${p.account_name}` : ""}
+                    {` · ${p.account_name || "Site funds"}`}
                     {p.note ? ` · ${p.note}` : ""}
                   </p>
                 </div>
@@ -229,7 +235,7 @@ export default function RaPaymentsSheet({
                   onChange={setAccountId}
                   onClear={() => setAccountId("")}
                   options={accountOptions}
-                  placeholder="Bank / Cash / Partner"
+                  placeholder="Bank / Cash / Partner / Site Fund"
                 />
               </Field>
             </div>

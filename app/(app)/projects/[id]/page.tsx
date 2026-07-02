@@ -778,8 +778,8 @@ export default function ProjectDetail() {
         </div>
       )}
 
-      {/* Rojmel tab — the cash daybook (its own cash-account picker). */}
-      {tab === "rojmel" && <RojmelBook />}
+      {/* Rojmel tab — the cash daybook (its own picker; defaults to this site's Site Fund). */}
+      {tab === "rojmel" && <RojmelBook projectId={Number(id)} />}
 
       {/* Activity tab — this site's audit feed (transactions, RA, vendor bills, site edits). */}
       {tab === "activity" && <SiteActivity projectId={Number(id)} />}

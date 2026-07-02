@@ -40,25 +40,32 @@ type Day = {
 // Rojmel = a running daybook for one account (bank / cash / partner). Unlike the flat payment
 // registers, it groups by day with a per-day Opening Balance → Received → Expenses → Closing
 // Balance, exactly like the Excel "ROJMEL" sheet.
-export default function RojmelBook() {
+export default function RojmelBook({ projectId }: { projectId?: number }) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountId, setAccountId] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
+  // On a site page: the site's name + derived site-fund balance, for the "Site Fund" option.
+  const [site, setSite] = useState<{ name: string; balance: number } | null>(null);
 
-  // All accounts (bank / cash / partner). Default to the first cash account (the classic
-  // Rojmel use), else the first account of any type.
+  // All accounts (bank / cash / partner). On a site page the picker also offers the site's
+  // own "Site Fund" daybook (value "site"), which is the default there; otherwise default to
+  // the first cash account (the classic Rojmel use), else the first account of any type.
   const loadAccounts = useCallback(() => {
     fetch("/api/accounts")
       .then((r) => r.json())
       .then((j) => {
         const all = j.data as Account[];
         setAccounts(all);
-        setAccountId((cur) => cur || (all.find((a) => a.account_type === "cash") ?? all[0])?.id.toString() || "");
+        setAccountId(
+          (cur) =>
+            cur ||
+            (projectId ? "site" : (all.find((a) => a.account_type === "cash") ?? all[0])?.id.toString() || "")
+        );
       });
-  }, []);
+  }, [projectId]);
 
   useEffect(() => {
     loadAccounts();
@@ -67,6 +74,22 @@ export default function RojmelBook() {
     return () => window.removeEventListener("txn:created", h);
   }, [loadAccounts]);
 
+  // Site name + site-fund balance for the "Site Fund" option (site page only). Refreshes on
+  // any mutation so the shown balance stays current.
+  useEffect(() => {
+    if (!projectId) return;
+    const loadSite = () =>
+      fetch("/api/projects")
+        .then((r) => r.json())
+        .then((j) => {
+          const p = (j.data as { id: number; name: string; balance: number }[] | undefined)?.find((x) => x.id === projectId);
+          if (p) setSite({ name: p.name, balance: Number(p.balance) });
+        });
+    loadSite();
+    window.addEventListener("txn:created", loadSite);
+    return () => window.removeEventListener("txn:created", loadSite);
+  }, [projectId]);
+
   const load = useCallback(() => {
     if (!accountId) {
       setBook(null);
@@ -74,14 +97,16 @@ export default function RojmelBook() {
       return;
     }
     setLoading(true);
-    const qs = new URLSearchParams({ account_id: accountId });
+    const qs = new URLSearchParams();
+    if (accountId === "site" && projectId) qs.set("project_id", String(projectId));
+    else qs.set("account_id", accountId);
     if (from) qs.set("from", from);
     if (to) qs.set("to", to);
     fetch(`/api/accountbook?${qs}`)
       .then((r) => r.json())
       .then((j) => setBook(j.data ?? null))
       .finally(() => setLoading(false));
-  }, [accountId, from, to]);
+  }, [accountId, from, to, projectId]);
 
   useEffect(() => {
     load();
@@ -122,14 +147,20 @@ export default function RojmelBook() {
   const COLS = 9;
 
   // Account options grouped by type (Bank / Cash / Partner), each showing its balance.
-  const accountOptions = (["bank", "cash", "partner"] as const)
-    .map((t) => ({
-      group: ACCOUNT_TYPE_LABELS[t],
-      items: accounts
-        .filter((a) => a.account_type === t)
-        .map((a) => ({ label: `${a.name} (${inr(a.current_balance)})`, value: String(a.id) })),
-    }))
-    .filter((g) => g.items.length > 0);
+  // On a site page, the first group is the site's own "Site Fund" daybook.
+  const accountOptions = [
+    ...(projectId
+      ? [{ group: "Site", items: [{ label: `${site?.name ?? "Site"} · Site Fund (${inr(site?.balance ?? 0)})`, value: "site" }] }]
+      : []),
+    ...(["bank", "cash", "partner"] as const)
+      .map((t) => ({
+        group: ACCOUNT_TYPE_LABELS[t],
+        items: accounts
+          .filter((a) => a.account_type === t)
+          .map((a) => ({ label: `${a.name} (${inr(a.current_balance)})`, value: String(a.id) })),
+      }))
+      .filter((g) => g.items.length > 0),
+  ];
 
   return (
     <div className="space-y-4">
