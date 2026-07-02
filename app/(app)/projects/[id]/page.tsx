@@ -25,6 +25,7 @@ const PAY_STATUS_LABEL: Record<string, string> = { pending: "Pending", partial: 
 const PAY_STATUS_COLOR: Record<string, string> = { pending: "amber", partial: "blue", complete: "green" };
 
 type TabKey = "transactions" | "books" | "rojmel" | "heads" | "ra" | "vendor" | "activity";
+const TAB_KEYS: TabKey[] = ["transactions", "books", "rojmel", "heads", "ra", "vendor", "activity"];
 type BookType = "bank" | "cash" | "partner" | "site";
 type SiteHead = { id: number; name: string; spent: number; subheads: { id: number; name: string; spent: number }[] };
 const PROFIT_STYLE: Record<ProfitLevel, string> = {
@@ -70,7 +71,22 @@ export default function ProjectDetail() {
   const [sumAmount, setSumAmount] = useState(0);
 
   // Sub-tabs on the site: the transaction ledger + site-scoped Heads / RA / Vendor Bills.
+  // The active tab is mirrored in the URL hash (e.g. #heads) so it survives a refresh /
+  // deep-link. Start on "transactions"; the hash is read on mount to avoid an SSR/hydration
+  // mismatch (server has no window).
   const [tab, setTab] = useState<TabKey>("transactions");
+  const selectTab = useCallback((k: TabKey) => {
+    setTab(k);
+    if (typeof window !== "undefined") {
+      const url = k === "transactions" ? window.location.pathname + window.location.search : `#${k}`;
+      window.history.replaceState(null, "", url);
+    }
+  }, []);
+  // On mount, restore the tab from the URL hash if present.
+  useEffect(() => {
+    const h = window.location.hash.replace("#", "") as TabKey;
+    if (TAB_KEYS.includes(h)) setTab(h);
+  }, []);
   const [siteHeads, setSiteHeads] = useState<SiteHead[] | null>(null);
   // Heads tab drills down: null = the head list; a head id = that head's expense entries.
   const [selectedHead, setSelectedHead] = useState<number | null>(null);
@@ -494,7 +510,7 @@ export default function ProjectDetail() {
         ] as [TabKey, string][]).map(([key, label]) => (
           <button
             key={key}
-            onClick={() => setTab(key)}
+            onClick={() => selectTab(key)}
             className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition ${
               tab === key
                 ? "border-primary text-primary"
@@ -623,10 +639,10 @@ export default function ProjectDetail() {
                 hideSite
                 onRowClick={(row) => {
                   // Jump to the tab that owns this transaction (and highlight the exact row).
-                  if (row.bill_id) { setBillHighlight(row.bill_id); setTab("vendor"); }
-                  else if (row.receipt_id) { setRaHighlight(row.receipt_id); setTab("ra"); }
-                  else if (row.source_type === "cash") { setTab("rojmel"); }
-                  else { setTab("books"); }
+                  if (row.bill_id) { setBillHighlight(row.bill_id); selectTab("vendor"); }
+                  else if (row.receipt_id) { setRaHighlight(row.receipt_id); selectTab("ra"); }
+                  else if (row.source_type === "cash") { selectTab("rojmel"); }
+                  else { selectTab("books"); }
                 }}
               />
             ))}
@@ -919,7 +935,7 @@ export default function ProjectDetail() {
                           onClick={() => {
                             if (!t.bill_id) return;
                             setBillHighlight(t.bill_id);
-                            setTab("vendor");
+                            selectTab("vendor");
                           }}
                           className={`transition-colors ${t.bill_id ? "cursor-pointer hover:bg-muted/40" : ""}`}
                           title={t.bill_id ? "Open this bill in Vendor Bills" : "Not linked to a vendor bill"}
