@@ -177,11 +177,15 @@ export default function ProjectDetail() {
     const h = () => {
       loadSite();
       loadTxns();
-      // Refresh whichever sub-tab is open so its data stays current after a change.
-      if (tab === "heads") loadHeads();
-      if (tab === "ra") loadRa();
-      if (tab === "vendor") loadVendor();
-      if (tab === "books") loadBooks();
+      // Refresh whichever sub-tab is open so its data stays current after a change, and
+      // INVALIDATE the caches of the tabs that aren't open (set them back to null) so they
+      // refetch fresh when next opened. Without this, e.g. paying a vendor bill on the Vendor
+      // tab left the Expenses/Rojmel caches stale — the new expense wouldn't appear there until
+      // a full page reload. (The books/expenses tab also drives the site-fund Rojmel data.)
+      tab === "heads" ? loadHeads() : setSiteHeads(null);
+      tab === "ra" ? loadRa() : setRaRows(null);
+      tab === "vendor" ? loadVendor() : setVendorRows(null);
+      tab === "books" ? loadBooks() : setBookRows(null);
     };
     window.addEventListener("txn:created", h);
     return () => window.removeEventListener("txn:created", h);
