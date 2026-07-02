@@ -141,7 +141,7 @@ export default function QuickExpenseSheet({
         type: "expense",
         project_id: projectId,
         source_account_id: fromSite ? "" : String(sourceAccount!.id),
-        category_id: categoryId,
+        category_id: categoryId || null, // "" (no Head) or 0 (deselected) → null, not an invalid id
         amount,
         txn_date: date,
         paid_to: paidTo,

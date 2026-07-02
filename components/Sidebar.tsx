@@ -21,6 +21,7 @@ import {
   ClipboardList,
   Settings,
   ChevronDown,
+  Database,
 } from "lucide-react";
 import { useActions } from "@/components/ActionsProvider";
 
@@ -38,6 +39,7 @@ const MANAGE = [
   { href: "/vendor-bills", label: "Vendor Bills", icon: ClipboardList },
   { href: "/activity", label: "Activity", icon: Activity },
   { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/backup", label: "Backup", icon: Database },
 ];
 
 export default function Sidebar() {

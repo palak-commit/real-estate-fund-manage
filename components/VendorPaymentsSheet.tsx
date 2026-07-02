@@ -314,7 +314,7 @@ export default function VendorPaymentsSheet({
 
               <div className="mt-3">
                 <p className="mb-1.5 text-sm font-medium text-foreground">Head (optional)</p>
-                <CategoryPicker value={categoryId} onChange={(id) => setCategoryId(String(id))} />
+                <CategoryPicker value={categoryId} onChange={(id) => setCategoryId(id ? String(id) : "")} />
               </div>
 
               {/* Step-wise effect of this payment on the balance due. */}

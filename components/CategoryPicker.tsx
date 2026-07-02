@@ -66,9 +66,16 @@ export default function CategoryPicker({
   const trimmed = name.trim();
 
   function selectHead(h: Head) {
-    setHeadId(h.id);
     setAddMode(null);
     setName("");
+    // Toggle: clicking the already-open Head again clears the whole selection (Head + any
+    // Type of Head under it). onChange(0) signals "no category".
+    if (headId === h.id) {
+      setHeadId(null);
+      onChange(0);
+      return;
+    }
+    setHeadId(h.id);
     onChange(h.id); // head-only selection; picking a Type of Head below is optional
   }
 

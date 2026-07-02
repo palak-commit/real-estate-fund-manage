@@ -255,7 +255,7 @@ export default function VendorBillSheet({
 
         <div className="mt-3">
           <p className="mb-1.5 text-sm font-medium text-foreground">Head (optional)</p>
-          <CategoryPicker value={form.category_id} onChange={(id) => setField("category_id", String(id))} />
+          <CategoryPicker value={form.category_id} onChange={(id) => setField("category_id", id ? String(id) : "")} />
         </div>
 
         <div className="mt-3">

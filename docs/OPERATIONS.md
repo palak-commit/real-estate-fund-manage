@@ -21,23 +21,48 @@ Practical ops notes for running this single-admin app in production. Keep it sho
 
 ## Database backups (do this before launch)
 
-The entire app state lives in one MySQL database. **Back it up on a schedule.**
+The entire app state lives in one MySQL database, so a single logical dump is a **complete**
+backup. Use the bundled script — it reads `DB_*` from `.env.local`, writes a gzipped,
+InnoDB-consistent dump to `backups/`, and prunes old copies.
 
 ```bash
-# Nightly logical backup (cron, e.g. 0 2 * * *)
-mysqldump --single-transaction --routines \
-  -h "$DB_HOST" -P "${DB_PORT:-3306}" -u "$DB_USER" -p"$DB_PASSWORD" \
-  "${DB_NAME:-real_estate_money}" | gzip > "backup-$(date +\%F).sql.gz"
+npm run db:backup            # → backups/real_estate_money_<date>.sql.gz
+# or directly, with overrides:
+BACKUP_DIR=/mnt/nas BACKUP_RETAIN=24 ./scripts/backup-db.sh
 ```
 
-Keep at least 7 daily + 4 weekly copies **off the app server**. Test a restore at least once:
+`backups/` is git-ignored (it contains real data — never commit it).
+
+### Monthly schedule (the plan)
+
+Run it **monthly** via cron — 02:00 on the 1st of each month:
+
+```cron
+# crontab -e   (as the deploy user)
+0 2 1 * * cd /path/to/real-estate-money-manage && /usr/bin/npm run db:backup >> /var/log/fund-backup.log 2>&1
+```
+
+- **Retention:** the script keeps the newest **12** dumps by default (≈ one year of monthly
+  backups); override with `BACKUP_RETAIN`. On a shared money system, monthly is the floor —
+  step up to weekly (`0 2 * * 1`) or nightly (`0 2 * * *`) if data changes daily; the same
+  script works at any cadence.
+- **Off-site copy (important):** a backup on the same machine as the DB protects against
+  *mistakes*, not *disk loss*. Sync `backups/` to separate storage (object store / NAS / another
+  host) — e.g. add `&& rclone copy backups remote:fund-backups` to the cron line, or point
+  `BACKUP_DIR` at a mounted off-site volume.
+- **Managed MySQL?** If the DB is on a managed provider (PlanetScale, RDS, etc.), enable its
+  automated snapshots **as well** — treat this script as a portable, provider-independent copy.
+
+### Restore
 
 ```bash
-gunzip < backup-YYYY-MM-DD.sql.gz | \
-  mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASSWORD" "${DB_NAME:-real_estate_money}"
+gunzip -c backups/real_estate_money_<date>.sql.gz \
+  | mysql -h "$DB_HOST" -P "${DB_PORT:-3306}" -u "$DB_USER" -p "${DB_NAME:-real_estate_money}"
 ```
 
-The schema auto-creates/migrates on first request (`lib/db.ts`), so restoring data into a fresh DB is enough — no manual DDL needed.
+The schema auto-creates/migrates on first request (`lib/db.ts`), so restoring data into a fresh
+empty DB is enough — no manual DDL needed. **Test a restore at least once** (into a scratch DB)
+so you know the process works *before* you need it — an untested backup is not a backup.
 
 ## Money integrity
 

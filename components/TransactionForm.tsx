@@ -131,7 +131,7 @@ export default function TransactionForm({
 
     if (f.type === "site_expense") {
       payload.type = "expense";
-      payload.category_id = f.category; // holds the selected Sub-Head (leaf) id
+      payload.category_id = f.category || null; // Sub-Head/Head id, or null when no Head chosen
       payload.project_id = f.project_id;
       payload.source_account_id = siteExpenseFrom === "site" ? "" : siteExpenseFrom.slice(4);
     } else if (f.type === "site_fund") {
@@ -273,7 +273,7 @@ export default function TransactionForm({
             <p className="mb-1.5 text-sm font-medium text-muted-foreground">
               Head <span className="text-xs font-normal text-muted-foreground/70">(optional)</span>
             </p>
-            <CategoryPicker value={f.category} onChange={(id) => set({ category: String(id) })} />
+            <CategoryPicker value={f.category} onChange={(id) => set({ category: id ? String(id) : "" })} />
           </div>
         )}
 
