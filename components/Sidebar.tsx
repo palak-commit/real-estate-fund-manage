@@ -28,7 +28,7 @@ const PRIMARY = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/transactions", label: "Transactions", icon: Receipt },
   { href: "/projects", label: "Sites", icon: Building2 },
-  { href: "/heads", label: "Heads", icon: Tag },
+  { href: "/heads", label: "Expense Heads", icon: Tag },
   { href: "/accounts", label: "Accounts", icon: Landmark },
   { href: "/guide", label: "User Guide", icon: BookOpen },
 ];
@@ -137,7 +137,7 @@ export default function Sidebar() {
           </div>
           <div className="min-w-0 flex-1 leading-tight">
             <p className="truncate text-xs font-medium text-white">Admin</p>
-            <p className="truncate text-[11px] text-white/50">admin@gmail.com</p>
+            <p className="truncate text-[11px] text-white/50">Signed in</p>
           </div>
           <button
             onClick={logout}

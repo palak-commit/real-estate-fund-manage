@@ -15,6 +15,7 @@ import VendorBillSheet, { type VendorBill } from "@/components/VendorBillSheet";
 import VendorPaymentsSheet from "@/components/VendorPaymentsSheet";
 import RojmelBook from "@/components/RojmelBook";
 import SiteActivity from "@/components/SiteActivity";
+import HelpTip from "@/components/HelpTip";
 import { computeRa, DEFAULT_RA_RATES, type RaRates } from "@/lib/ra";
 
 const STATUS_COLOR: Record<string, string> = { active: "green", on_hold: "amber", completed: "blue" };
@@ -459,7 +460,7 @@ export default function ProjectDetail() {
           ["transactions", "Transactions"],
           ["books", "Expenses"],
           ["rojmel", "Rojmel"],
-          ["heads", "Heads"],
+          ["heads", "Expense Heads"],
           ["ra", "Receipt of RA"],
           ["vendor", "Vendor Bills"],
           ["activity", "Activity"],
@@ -1421,8 +1422,9 @@ function Mini({
 }) {
   return (
     <div>
-      <p className="text-xs text-muted-foreground" title={hint}>
+      <p className="flex items-center gap-1 text-xs text-muted-foreground">
         {label}
+        {hint && <HelpTip text={hint} label={label} />}
       </p>
       <p className={`mt-0.5 font-semibold ${className}`}>{value}</p>
     </div>

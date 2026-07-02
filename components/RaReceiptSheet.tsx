@@ -228,7 +228,7 @@ export default function RaReceiptSheet({
               disabled={!receipt && defaultProjectId != null}
             />
           </Field>
-          <Field label="Received In" required>
+          <Field label="Received In" required hint="receivedIn">
             <CustomSelect
               value={form.account_id}
               onChange={(v) => setField("account_id", v)}

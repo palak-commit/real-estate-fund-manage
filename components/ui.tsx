@@ -4,6 +4,8 @@ import { Loader2 } from "lucide-react";
 import { CustomSelect } from "./CustomSelect";
 import { Calendar } from "./Calendar";
 import { CustomDatePicker } from "./CustomDatePicker";
+import HelpTip from "./HelpTip";
+import type { GlossaryTerm } from "@/lib/glossary";
 
 export { CustomSelect, Calendar, CustomDatePicker };
 
@@ -73,17 +75,20 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
 export function Field({
   label,
   required,
+  hint,
   children,
 }: {
   label: string;
   required?: boolean;
+  hint?: GlossaryTerm; // optional inline "?" help pulled from lib/glossary
   children: ReactNode;
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-sm font-medium text-muted-foreground">
+      <span className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
         {label}
-        {required && <span className="ml-0.5 text-danger">*</span>}
+        {required && <span className="text-danger">*</span>}
+        {hint && <HelpTip term={hint} label={`What is ${label}?`} />}
       </span>
       {children}
     </label>

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { X, Info } from "lucide-react";
 import Link from "next/link";
 import { Card, CustomSelect, CustomDatePicker, EmptyState, Table, THead, TBody, Th } from "@/components/ui";
+import HelpTip from "@/components/HelpTip";
 import { inr, formatDate, ACCOUNT_TYPE_LABELS } from "@/lib/format";
 
 type Account = { id: number; name: string; account_type: string; current_balance: number };
@@ -166,7 +167,9 @@ export default function RojmelBook({ projectId }: { projectId?: number }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Rojmel (Daybook)</h1>
+        <h1 className="flex items-center gap-1.5 text-2xl font-semibold tracking-tight">
+          Rojmel (Daybook) <HelpTip term="rojmel" label="What is Rojmel?" />
+        </h1>
         {book?.account && (
           <div className="rounded-lg bg-success/10 px-4 py-2 text-right">
             <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Closing Balance</p>

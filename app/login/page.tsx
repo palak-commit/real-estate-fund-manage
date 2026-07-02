@@ -38,7 +38,10 @@ export default function LoginPage() {
             <HomeIcon className="h-6 w-6" />
           </div>
           <h1 className="mt-3 text-xl font-semibold">Fund Manager</h1>
-          <p className="text-sm text-muted-foreground">Sign in to continue</p>
+          <p className="mt-1 max-w-xs text-sm font-medium text-foreground/80">
+            Track every rupee across your construction sites — in real time.
+          </p>
+          <p className="mt-1.5 text-xs text-muted-foreground">Sign in to continue</p>
         </div>
 
         <form onSubmit={submit} className="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-sm">

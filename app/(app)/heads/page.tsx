@@ -103,10 +103,12 @@ export default function HeadsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-          <Tag className="h-6 w-6 text-muted-foreground" /> Heads
+          <Tag className="h-6 w-6 text-muted-foreground" /> Expense Heads
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage your expense <strong>Heads</strong> and their <strong>Types of Head</strong> (sub-categories).
+          Expense <strong>Heads</strong> are your spending categories — the kind of expense you track, like
+          <em> Material</em>, <em>Labour</em>, or <em>Transport</em>. Each Head can have{" "}
+          <strong>Types of Head</strong> (sub-categories) under it — e.g. Material → Cement, Steel, Sand.
         </p>
       </div>
 

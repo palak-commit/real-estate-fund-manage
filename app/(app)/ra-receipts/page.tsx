@@ -9,6 +9,7 @@ import { inr, formatDate, ACCOUNT_TYPE_LABELS } from "@/lib/format";
 import { computeRa, DEFAULT_RA_RATES, type RaRates } from "@/lib/ra";
 import { downloadCsv } from "@/lib/csv";
 import { downloadPdf } from "@/lib/pdf";
+import HelpTip from "@/components/HelpTip";
 
 const STATUS_LABEL: Record<string, string> = { pending: "Pending", partial: "Partially Paid", complete: "Complete" };
 const STATUS_COLOR: Record<string, string> = { pending: "amber", partial: "blue", complete: "green" };
@@ -185,7 +186,9 @@ export default function RaReceiptsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Receipt of RA</h1>
+        <h1 className="flex items-center gap-1.5 text-2xl font-semibold tracking-tight">
+          Receipt of RA <HelpTip term="ra" label="What is RA?" />
+        </h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={exportCsv} disabled={!computed.length}>
             <Download className="h-4 w-4" /> Export CSV
@@ -260,7 +263,9 @@ export default function RaReceiptsPage() {
           />
         </div>
         <div className="space-y-1">
-          <p className="text-xs font-medium text-muted-foreground">Received In</p>
+          <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+            Received In <HelpTip term="receivedIn" label="What is Received In?" />
+          </p>
           <CustomSelect
             value={fAccount}
             onChange={setFAccount}

@@ -88,7 +88,9 @@ export default function Home() {
     fetch("/api/dashboard")
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
       .then((j) => setD(j.data))
-      .catch(() => setErr("Could not load data. Make sure the database is running."));
+      .catch(() =>
+        setErr("Unable to load data. Please try again. If the problem continues, contact support.")
+      );
   }, []);
 
   useEffect(() => {
@@ -219,7 +221,7 @@ export default function Home() {
         )}
       </div>
 
-      {/* Today's Action Plan (AI Synthesis) - moved after Sites per user request */}
+      {/* Today's Action Plan — a rule-based checklist of the most urgent pending items */}
       {d && <TodaysAction d={d} />}
 
       {/* Recent activity */}
