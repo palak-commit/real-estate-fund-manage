@@ -8,7 +8,7 @@ import CategoryPicker from "@/components/CategoryPicker";
 import PaidToPicker from "@/components/PaidToPicker";
 
 type Account = { id: number; name: string; account_type: string; current_balance: number };
-type Project = { id: number; name: string; balance: number };
+type Project = { id: number; name: string; balance: number; status?: string };
 
 // "income" tab is intentionally hidden from the New Transaction form (income now arrives via
 // RA receipt payments / Add Money). The income save-path below is kept for legacy/other use.
@@ -65,7 +65,11 @@ export default function TransactionForm({
     setF(init);
     setErr("");
     fetch("/api/accounts").then((r) => r.json()).then((j) => setAccounts(j.data));
-    fetch("/api/projects").then((r) => r.json()).then((j) => setProjects(j.data));
+    // Only Active sites can be a source/destination for new transactions — On-Hold /
+    // Completed sites are locked (existing RA & vendor bills settle via their own flows).
+    fetch("/api/projects")
+      .then((r) => r.json())
+      .then((j) => setProjects((j.data as Project[]).filter((p) => p.status === "active")));
   }, [open, preset?.type, preset?.projectId]);
 
   if (!open) return null;

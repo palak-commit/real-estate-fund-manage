@@ -384,19 +384,42 @@ export default function ProjectDetail() {
               <Pencil className="h-4 w-4" />
             </button>
             <div className="ml-auto flex gap-2">
-              <Button variant="outline" onClick={() => transferFund(Number(id))}>
+              <Button variant="outline" onClick={() => transferFund(Number(id))} disabled={p.status !== "active"}>
                 <ArrowLeftRight className="h-4 w-4" /> Transfer Fund
               </Button>
-              <Button variant="outline" onClick={() => allocateFunds(Number(id))}>
+              <Button variant="outline" onClick={() => allocateFunds(Number(id))} disabled={p.status !== "active"}>
                 <ArrowDownToLine className="h-4 w-4" /> Add Site Fund
               </Button>
-              <Button onClick={() => recordExpense(Number(id))}>
+              <Button onClick={() => recordExpense(Number(id))} disabled={p.status !== "active"}>
                 <Plus className="h-4 w-4" /> Add Expense
               </Button>
             </div>
           </>
         )}
       </div>
+
+      {/* Locked-site banner — Completed / On-Hold sites don't accept new money. */}
+      {p.status !== "active" && !editing && (
+        <div
+          className={`flex flex-wrap items-center gap-2 rounded-xl border p-3 text-sm ${
+            p.status === "completed" ? "border-info/30 bg-info/10" : "border-warning/30 bg-warning/10"
+          }`}
+        >
+          <AlertTriangle
+            className={`h-4 w-4 shrink-0 ${p.status === "completed" ? "text-info" : "text-warning"}`}
+          />
+          <span className="text-foreground/80">
+            This site is <span className="font-semibold">{STATUS_LABEL[p.status]}</span>. New expenses, fund
+            allocations and transfers are locked — you can still settle its existing RA &amp; vendor bills.
+          </span>
+          <button
+            onClick={startEdit}
+            className="ml-auto rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted"
+          >
+            Reactivate
+          </button>
+        </div>
+      )}
 
       {/* Balance hero */}
       <Card className="p-5">
@@ -663,7 +686,11 @@ export default function ProjectDetail() {
                 </button>
               ))}
             </div>
-            <Button onClick={() => recordExpense(Number(id))} className="!py-1.5 text-sm">
+            <Button
+              onClick={() => recordExpense(Number(id))}
+              disabled={p.status !== "active"}
+              className="!py-1.5 text-sm"
+            >
               <Plus className="h-4 w-4" /> Add Expense
             </Button>
           </div>
@@ -944,7 +971,11 @@ export default function ProjectDetail() {
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-semibold">Receipt of RA</h2>
-            <Button onClick={() => setRaSheetOpen(true)} className="!py-1.5 text-sm">
+            <Button
+              onClick={() => setRaSheetOpen(true)}
+              disabled={p.status !== "active"}
+              className="!py-1.5 text-sm"
+            >
               <Plus className="h-4 w-4" /> Add Receipt of RA — {p.name}
             </Button>
           </div>
@@ -1160,7 +1191,11 @@ export default function ProjectDetail() {
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <h2 className="font-semibold">Vendor Bills</h2>
-            <Button onClick={() => setVendorSheetOpen(true)} className="!py-1.5 text-sm">
+            <Button
+              onClick={() => setVendorSheetOpen(true)}
+              disabled={p.status !== "active"}
+              className="!py-1.5 text-sm"
+            >
               <Plus className="h-4 w-4" /> Add Vendor Bill — {p.name}
             </Button>
           </div>

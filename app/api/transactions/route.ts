@@ -189,6 +189,24 @@ export async function POST(req: NextRequest) {
     if (!S) return fail("Partner account is required");
   }
 
+  // Locked-site guard: Completed / On-Hold sites don't accept NEW money through the New
+  // Transaction flows (site expenses, fund allocations, transfers). Existing RA / vendor bills
+  // can still be settled — those post via lib/raTxn & lib/vendorTxn, not this route — so you can
+  // close a site and still collect/pay its outstanding bills. Reactivate the site (set it back to
+  // Active) to record new transactions on it.
+  const involvedSites = [P, DP].filter((x): x is number => x != null);
+  if (involvedSites.length) {
+    const siteStatuses = await query<{ id: number; name: string; status: string }>(
+      `SELECT id, name, status FROM projects WHERE id IN (${involvedSites.map(() => "?").join(",")})`,
+      involvedSites
+    );
+    const locked = siteStatuses.find((s) => s.status !== "active");
+    if (locked) {
+      const label = locked.status === "completed" ? "Completed" : "On Hold";
+      return fail(`"${locked.name}" is ${label}. Reactivate the site to record new transactions on it.`);
+    }
+  }
+
   // Site→site fund transfer: no account moves money, so it's posted as a PAIR of rows —
   // an OUTGOING `transfer` on the source site (project_id = P, dest_project_id = DP, no
   // accounts → counted by SITE_XFER_OUT_SQL, lowering the source site) and an INCOMING

@@ -33,6 +33,7 @@ type Site = {
   burn: number;
   runway: number | null;
   level: SiteLevel; // funding health (ok / low / critical / none) from lib/format siteStatus
+  status: string; // active / on_hold / completed — locks new money when not active
 };
 
 type Aging = { b0: number; b30: number; b60: number; b90: number; total: number };
@@ -207,10 +208,19 @@ export default function Home() {
                   </Link>
 
                   <div className="mt-4 flex gap-2">
-                    <Button variant="outline" onClick={() => allocateFunds(s.id)} className="flex-1 !py-1.5 text-xs">
+                    <Button
+                      variant="outline"
+                      onClick={() => allocateFunds(s.id)}
+                      disabled={s.status !== "active"}
+                      className="flex-1 !py-1.5 text-xs"
+                    >
                       <ArrowDownToLine className="h-3.5 w-3.5" /> Add Site Fund
                     </Button>
-                    <Button onClick={() => recordExpense(s.id)} className="flex-1 !py-1.5 text-xs">
+                    <Button
+                      onClick={() => recordExpense(s.id)}
+                      disabled={s.status !== "active"}
+                      className="flex-1 !py-1.5 text-xs"
+                    >
                       <Plus className="h-3.5 w-3.5" /> Expense
                     </Button>
                   </div>

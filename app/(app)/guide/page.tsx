@@ -583,13 +583,15 @@ export default function GuidePage() {
                 <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
                   {lang === "en" ? (
                     <>
-                      A label that describes <span className="font-semibold">what type of work or purchase</span> the expense is for.
-                      This is required for every Site Expense so you can see exactly where your money is going.
+                      An <span className="font-semibold">Expense Head</span> — a label that describes
+                      <span className="font-semibold"> what type of work or purchase</span> the expense is for.
+                      It is <span className="font-semibold">optional</span>, but adding one lets you see exactly where your money is going.
                     </>
                   ) : (
                     <>
-                      એક એવું નામ જે બતાવે છે કે ખર્ચો <span className="font-semibold">કયા કામ માટે</span> થયો છે.
-                      દરેક ખર્ચ માટે આ જરૂરી છે જેથી ખબર પડે કે તમારા પૈસા ક્યાં જઈ રહ્યા છે.
+                      <span className="font-semibold">ખર્ચ હેડ (Expense Head)</span> — એક એવું નામ જે બતાવે છે કે ખર્ચો
+                      <span className="font-semibold"> કયા કામ માટે</span> થયો છે.
+                      આ <span className="font-semibold">ઓપ્શનલ</span> છે, પણ તે ઉમેરવાથી ખબર પડે કે તમારા પૈસા ક્યાં જઈ રહ્યા છે.
                     </>
                   )}
                 </p>
@@ -1089,9 +1091,9 @@ export default function GuidePage() {
                 </p>
               </div>
               <div className="rounded-xl border border-border bg-muted/40 p-3">
-                <p className="text-sm font-semibold text-foreground">Heads</p>
+                <p className="text-sm font-semibold text-foreground">Expense Heads</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {t(lang, "Site spend grouped by Category (Head). Click a Head to see every expense under it.", "કેટેગરી (Head) મુજબ સાઇટનો કુલ ખર્ચ. ખર્ચ જોવા માટે Head પર ક્લિક કરો.")}
+                  {t(lang, "Site spend grouped by Expense Head (spending category). Click a Head to see every expense under it.", "ખર્ચ હેડ (ખર્ચની કેટેગરી) મુજબ સાઇટનો કુલ ખર્ચ. ખર્ચ જોવા માટે Head પર ક્લિક કરો.")}
                 </p>
               </div>
               <div className="rounded-xl border border-border bg-muted/40 p-3">

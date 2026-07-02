@@ -6,7 +6,7 @@ import { useUI } from "@/components/UIProvider";
 import { inr, todayISO, sanitizeAmount } from "@/lib/format";
 
 type Account = { id: number; name: string; account_type: string; current_balance: number };
-type Project = { id: number; name: string; balance: number };
+type Project = { id: number; name: string; balance: number; status?: string };
 
 const LAST_SRC_KEY = "lastSourceAccountId";
 
@@ -35,7 +35,8 @@ export default function AllocateFundsSheet({
     setDate(todayISO());
     setErr("");
     fetch("/api/projects").then((r) => r.json()).then((j) => {
-      const ps: Project[] = j.data;
+      // Only Active sites accept new fund allocations — On-Hold / Completed are locked.
+      const ps: Project[] = (j.data as Project[]).filter((p) => p.status === "active");
       setProjects(ps);
       setProjectId(presetProjectId?.toString() || (ps[0] ? String(ps[0].id) : ""));
     });

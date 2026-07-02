@@ -33,6 +33,21 @@ export async function POST(req: NextRequest) {
   const parsed = vendorBillSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return fail(zErr(parsed.error));
   const d = parsed.data;
+
+  // A new vendor bill is a NEW commitment on the site — only Active sites accept one.
+  // (Editing/paying an EXISTING bill on a locked site is still allowed, so outstanding
+  // payables can be settled after a site is put On Hold / Completed.)
+  if (d.project_id) {
+    const rows = await query<{ name: string; status: string }>(
+      "SELECT name, status FROM projects WHERE id = ? LIMIT 1",
+      [d.project_id]
+    );
+    if (rows[0] && rows[0].status !== "active") {
+      const label = rows[0].status === "completed" ? "Completed" : "On Hold";
+      return fail(`"${rows[0].name}" is ${label}. Reactivate the site to add a new vendor bill.`);
+    }
+  }
+
   // Total owed is computed server-side; the client value isn't trusted.
   const total = Math.round((d.amount + d.gst) * 100) / 100;
 

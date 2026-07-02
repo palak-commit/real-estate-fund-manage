@@ -27,7 +27,7 @@ export type VendorBill = {
   payment_count?: number; // number of payments (installments) recorded
 };
 
-type Project = { id: number; name: string; balance?: number };
+type Project = { id: number; name: string; balance?: number; status?: string };
 type Account = { id: number; name: string; account_type: string; current_balance: number };
 
 // advance_amount / advance_from capture an optional first payment made when the bill is
@@ -202,7 +202,14 @@ export default function VendorBillSheet({
             <CustomSelect
               value={form.project_id}
               onChange={(v) => setField("project_id", v)}
-              options={[{ label: "Select site", value: "" }, ...projects.map((p) => ({ label: p.name, value: String(p.id) }))]}
+              // On CREATE only Active sites can take a new bill; on EDIT keep the bill's
+              // existing site listed even if it's since gone On-Hold / Completed.
+              options={[
+                { label: "Select site", value: "" },
+                ...projects
+                  .filter((p) => bill || p.status === "active")
+                  .map((p) => ({ label: p.name, value: String(p.id) })),
+              ]}
               placeholder="Select site"
               // Locked to the current site when opened from a site page (create only).
               disabled={!bill && defaultProjectId != null}

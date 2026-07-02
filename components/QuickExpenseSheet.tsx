@@ -7,7 +7,7 @@ import { inr, todayISO, sanitizeAmount, ACCOUNT_TYPE_LABELS } from "@/lib/format
 import CategoryPicker from "@/components/CategoryPicker";
 import PaidToPicker from "@/components/PaidToPicker";
 
-type Project = { id: number; name: string; balance: number };
+type Project = { id: number; name: string; balance: number; status?: string };
 type Account = { id: number; name: string; account_type: string; current_balance: number };
 
 const LAST_SITE_KEY = "lastSiteId";
@@ -71,7 +71,8 @@ export default function QuickExpenseSheet({
     fetch("/api/projects")
       .then((r) => r.json())
       .then((j) => {
-        const ps: Project[] = j.data;
+        // Only Active sites accept new expenses — On-Hold / Completed sites are locked.
+        const ps: Project[] = (j.data as Project[]).filter((p) => p.status === "active");
         setProjects(ps);
         const last = typeof window !== "undefined" ? localStorage.getItem(LAST_SITE_KEY) : null;
         const pick =

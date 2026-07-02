@@ -25,6 +25,21 @@ export async function POST(req: NextRequest) {
   const parsed = raReceiptSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return fail(zErr(parsed.error));
   const d = parsed.data;
+
+  // A new RA receipt is a NEW receivable on the site — only Active sites accept one.
+  // (Recording payments against an EXISTING receipt on a locked site stays allowed, so
+  // outstanding RA money can still be collected after a site is put On Hold / Completed.)
+  if (d.project_id) {
+    const siteRows = await query<{ name: string; status: string }>(
+      "SELECT name, status FROM projects WHERE id = ? LIMIT 1",
+      [d.project_id]
+    );
+    if (siteRows[0] && siteRows[0].status !== "active") {
+      const label = siteRows[0].status === "completed" ? "Completed" : "On Hold";
+      return fail(`"${siteRows[0].name}" is ${label}. Reactivate the site to add a new RA receipt.`);
+    }
+  }
+
   const net = netReceivableFrom(d, d.rates); // server-computed, not the client-sent net_receivable
   // Money is credited only when the admin marks the bill Complete AND picks a Received In
   // target — an account, or (no account + a site) the site's own funds — meaning "received in
