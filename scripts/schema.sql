@@ -163,6 +163,9 @@ CREATE TABLE IF NOT EXISTS transactions (
   type ENUM('transfer','expense','income','partner_contribution','partner_withdrawal') NOT NULL,
   txn_date DATE NOT NULL,
   project_id INT NULL,
+  -- Counterparty site for a site→site fund transfer (a `transfer`/`income` pair that moves
+  -- allocated funds from one site to another). NULL for every other shape.
+  dest_project_id INT NULL,
   source_account_id INT NULL,
   dest_account_id INT NULL,
   amount DECIMAL(15,2) NOT NULL,
@@ -179,7 +182,9 @@ CREATE TABLE IF NOT EXISTS transactions (
   INDEX idx_source (source_account_id),
   INDEX idx_dest (dest_account_id),
   INDEX idx_category (category_id),
+  INDEX idx_dest_project (dest_project_id),
   FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL,
+  FOREIGN KEY (dest_project_id) REFERENCES projects(id) ON DELETE SET NULL,
   FOREIGN KEY (source_account_id) REFERENCES accounts(id) ON DELETE SET NULL,
   FOREIGN KEY (dest_account_id) REFERENCES accounts(id) ON DELETE SET NULL,
   CONSTRAINT fk_txn_category FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL

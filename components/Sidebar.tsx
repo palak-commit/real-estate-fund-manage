@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Receipt,
@@ -19,23 +19,25 @@ import {
   Tag,
   FileText,
   ClipboardList,
+  Settings,
+  ChevronDown,
 } from "lucide-react";
 import { useActions } from "@/components/ActionsProvider";
 
 const PRIMARY = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/transactions", label: "Transactions", icon: Receipt },
-  { href: "/books", label: "Books", icon: Banknote },
+  { href: "/projects", label: "Sites", icon: Building2 },
+  { href: "/heads", label: "Heads", icon: Tag },
+  { href: "/accounts", label: "Accounts", icon: Landmark },
+  { href: "/guide", label: "User Guide", icon: BookOpen },
+];
+const MANAGE = [
+  { href: "/books", label: "Expenses", icon: Banknote },
   { href: "/ra-receipts", label: "Receipt of RA", icon: FileText },
   { href: "/vendor-bills", label: "Vendor Bills", icon: ClipboardList },
   { href: "/activity", label: "Activity", icon: Activity },
   { href: "/reports", label: "Reports", icon: BarChart3 },
-];
-const MANAGE = [
-  { href: "/projects", label: "Sites", icon: Building2 },
-  { href: "/accounts", label: "Accounts", icon: Landmark },
-  { href: "/heads", label: "Heads", icon: Tag },
-  { href: "/guide", label: "User Guide", icon: BookOpen },
 ];
 
 export default function Sidebar() {
@@ -51,6 +53,14 @@ export default function Sidebar() {
   }
 
   const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
+
+  // "Manage" is a collapsible dropdown. It opens automatically whenever the current page is
+  // one of its items, and can be toggled by hand.
+  const manageActive = MANAGE.some((m) => isActive(m.href));
+  const [manageOpen, setManageOpen] = useState(manageActive);
+  useEffect(() => {
+    if (manageActive) setManageOpen(true);
+  }, [manageActive]);
 
   const navLink = (l: { href: string; label: string; icon: any }) => {
     const Icon = l.icon;
@@ -95,8 +105,29 @@ export default function Sidebar() {
 
       <div className="mt-4 flex-1 px-3">
         <nav className="space-y-1">{PRIMARY.map(navLink)}</nav>
+
+        {/* Section label after the primary items. */}
         <p className="px-3 pb-1 pt-5 text-[11px] font-semibold uppercase tracking-wider text-white/35">Manage</p>
-        <nav className="space-y-1">{MANAGE.map(navLink)}</nav>
+
+        {/* Manage — collapsible dropdown revealing its sub-items. */}
+        <div>
+          <button
+            onClick={() => setManageOpen((v) => !v)}
+            aria-expanded={manageOpen}
+            className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+              manageActive ? "text-white" : "text-white/65 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <span className="flex items-center gap-3">
+              <Settings className="h-[18px] w-[18px]" />
+              Manage
+            </span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${manageOpen ? "rotate-180" : ""}`} />
+          </button>
+          {manageOpen && (
+            <nav className="mt-1 space-y-1 border-l border-white/10 pl-3">{MANAGE.map(navLink)}</nav>
+          )}
+        </div>
       </div>
 
       <div className="border-t border-white/10 px-4 py-4">

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { query, pool, ready } from "@/lib/db";
-import { RECEIVED_SQL, SPENT_SQL } from "@/lib/queries";
+import { RECEIVED_SQL, SPENT_SQL, SITE_OUT_SQL, SITE_XFER_OUT_SQL } from "@/lib/queries";
 import { accountEffects, toPaisa } from "@/lib/ledger";
 import { inr } from "@/lib/format";
 import { ok, fail } from "@/lib/api";
@@ -12,6 +12,7 @@ const SELECT = `
     sa.name AS source_name, sa.account_type AS source_type,
     da.name AS dest_name, da.account_type AS dest_type,
     p.name AS project_name,
+    dp.name AS dest_project_name,
     CASE WHEN c.parent_id IS NOT NULL THEN c.name END AS category,
     COALESCE(pc.name, c.name) AS category_head,
     vp.bill_id AS bill_id,
@@ -20,6 +21,7 @@ const SELECT = `
   LEFT JOIN accounts sa ON sa.id = t.source_account_id
   LEFT JOIN accounts da ON da.id = t.dest_account_id
   LEFT JOIN projects p ON p.id = t.project_id
+  LEFT JOIN projects dp ON dp.id = t.dest_project_id
   LEFT JOIN categories c ON c.id = t.category_id
   LEFT JOIN categories pc ON pc.id = c.parent_id
   LEFT JOIN vendor_payments vp ON vp.txn_id = t.id
@@ -40,7 +42,9 @@ export async function GET(req: NextRequest) {
     // `income` and `funds_added` are the same DB type, split by whether a site is tagged:
     // income earned FROM a site (has project_id) vs plain outside money added to an account.
     if (t === "income") {
-      where.push("t.type = 'income' AND t.project_id IS NOT NULL");
+      // Revenue earned from a site — exclude the incoming leg of a site→site transfer
+      // (income tagged with a dest_project_id, which is internal, not earned revenue).
+      where.push("t.type = 'income' AND t.project_id IS NOT NULL AND t.dest_project_id IS NULL");
     } else if (t === "funds_added") {
       where.push("t.type = 'income' AND t.project_id IS NULL");
     } else {
@@ -63,9 +67,16 @@ export async function GET(req: NextRequest) {
     args.push(searchParams.get("paid_to"));
   }
   if (searchParams.get("account")) {
-    // Matches the account as either source or destination.
-    where.push("(t.source_account_id = ? OR t.dest_account_id = ?)");
-    args.push(searchParams.get("account"), searchParams.get("account"));
+    const acc = searchParams.get("account")!;
+    if (acc === "site") {
+      // "Site Fund" — money drawn from / added to a site's own funds, with no real account
+      // involved (site-funded expenses, RA-into-fund, site→site legs).
+      where.push("t.source_account_id IS NULL AND t.dest_account_id IS NULL AND t.project_id IS NOT NULL");
+    } else {
+      // Matches the account as either source or destination.
+      where.push("(t.source_account_id = ? OR t.dest_account_id = ?)");
+      args.push(acc, acc);
+    }
   }
   if (searchParams.get("from")) {
     where.push("t.txn_date >= ?");
@@ -124,38 +135,51 @@ export async function POST(req: NextRequest) {
   const S = b.source_account_id ? Number(b.source_account_id) : null;
   const D = b.dest_account_id ? Number(b.dest_account_id) : null;
   const P = b.project_id ? Number(b.project_id) : null;
+  // Destination site for a site→site fund transfer (source site is P, no accounts).
+  const DP = b.dest_project_id ? Number(b.dest_project_id) : null;
   const txnDate = b.txn_date || new Date().toLocaleDateString("en-CA");
   let categoryId: number | null = null;
   let categoryName: string | null = null;
 
   // Per-type validation
   if (type === "transfer") {
-    if (!S) return fail("Source account is required");
-    if (!D && !P) return fail("Destination account or project is required");
-    if (D && D === S) return fail("Source and destination must be different");
-  } else if (type === "expense") {
-    // Expenses are tagged to a Head, optionally narrowed to one of its Sub-Heads (Type of
-    // Head). Prefer category_id; fall back to a name lookup for legacy callers. The category
-    // can be a Head (head-only) or a Sub-Head — the Type of Head is optional.
-    let cat: { id: number; name: string; parent_id: number | null } | undefined;
-    if (b.category_id) {
-      const rows = await query<{ id: number; name: string; parent_id: number | null }>(
-        "SELECT id, name, parent_id FROM categories WHERE id = ? LIMIT 1",
-        [Number(b.category_id)]
-      );
-      cat = rows[0];
-    } else if (b.category) {
-      const rows = await query<{ id: number; name: string; parent_id: number | null }>(
-        "SELECT id, name, parent_id FROM categories WHERE name = ? LIMIT 1",
-        [b.category]
-      );
-      cat = rows[0];
+    // Four shapes: account→account (S + D), account→site "Add Fund" (S + P, no D),
+    // site→account withdrawal (P + D, no S — money moved back out of a site's funds),
+    // and site→site fund transfer (P + DP, no accounts — funds moved between two sites).
+    if (!S && !P) return fail("Source account or site is required");
+    if (S) {
+      if (!D && !P) return fail("Destination account or project is required");
+      if (D && D === S) return fail("Source and destination must be different");
+    } else if (DP) {
+      // Source is a site's funds → another site's funds (site→site).
+      if (DP === P) return fail("Source and destination sites must be different");
     } else {
-      return fail("Category is required");
+      // Source is a site's funds → it must go into an account.
+      if (!D) return fail("Destination account or site is required");
     }
-    if (!cat) return fail("Unknown category");
-    categoryId = cat.id;
-    categoryName = cat.name;
+  } else if (type === "expense") {
+    // The category (Head / Type of Head) is OPTIONAL — an expense may have no category at
+    // all. When one IS supplied, prefer category_id (fall back to a name lookup for legacy
+    // callers) and it must resolve; a bad id/name is rejected rather than silently dropped.
+    if (b.category_id || b.category) {
+      let cat: { id: number; name: string; parent_id: number | null } | undefined;
+      if (b.category_id) {
+        const rows = await query<{ id: number; name: string; parent_id: number | null }>(
+          "SELECT id, name, parent_id FROM categories WHERE id = ? LIMIT 1",
+          [Number(b.category_id)]
+        );
+        cat = rows[0];
+      } else {
+        const rows = await query<{ id: number; name: string; parent_id: number | null }>(
+          "SELECT id, name, parent_id FROM categories WHERE name = ? LIMIT 1",
+          [b.category]
+        );
+        cat = rows[0];
+      }
+      if (!cat) return fail("Unknown category");
+      categoryId = cat.id;
+      categoryName = cat.name;
+    }
     if (!P && !S) return fail("Project (site) or account is required");
   } else if (type === "income") {
     if (!D && !P) return fail("Destination account or project is required");
@@ -163,6 +187,74 @@ export async function POST(req: NextRequest) {
     if (!S) return fail("Partner account is required");
   } else if (type === "partner_withdrawal") {
     if (!S) return fail("Partner account is required");
+  }
+
+  // Site→site fund transfer: no account moves money, so it's posted as a PAIR of rows —
+  // an OUTGOING `transfer` on the source site (project_id = P, dest_project_id = DP, no
+  // accounts → counted by SITE_XFER_OUT_SQL, lowering the source site) and an INCOMING
+  // `income` on the destination site (project_id = DP, dest_project_id = P, no dest account
+  // → counted by RECEIVED_SQL, raising the destination site). Total money is conserved.
+  if (type === "transfer" && !S && P && DP) {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+
+      // Source site must have enough allocated funds (lock the ledger read implicitly via txn).
+      const [siteRows]: any = await conn.query(
+        `SELECT (${RECEIVED_SQL} - ${SPENT_SQL} - ${SITE_OUT_SQL} - ${SITE_XFER_OUT_SQL}) AS bal
+           FROM transactions t WHERE t.project_id = ?`,
+        [P]
+      );
+      const bal = Number(siteRows[0]?.bal || 0);
+      if (toPaisa(bal) < toPaisa(amount)) {
+        await conn.rollback();
+        return fail(`Insufficient site funds — only ${inr(bal)} available. Add funds to the site first.`);
+      }
+
+      const [names]: any = await conn.query(
+        `SELECT (SELECT name FROM projects WHERE id = ?) AS src, (SELECT name FROM projects WHERE id = ?) AS dst`,
+        [P, DP]
+      );
+      const srcName = names[0]?.src ?? `Site ${P}`;
+      const dstName = names[0]?.dst ?? `Site ${DP}`;
+
+      // OUT leg — reduces the source site's funds.
+      const [outRes]: any = await conn.query(
+        `INSERT INTO transactions
+          (type, txn_date, project_id, dest_project_id, source_account_id, dest_account_id, amount, paid_to, note)
+         VALUES ('transfer', ?, ?, ?, NULL, NULL, ?, ?, ?)`,
+        [txnDate, P, DP, amount, b.paid_to || null, b.note || null]
+      );
+      // IN leg — raises the destination site's funds.
+      await conn.query(
+        `INSERT INTO transactions
+          (type, txn_date, project_id, dest_project_id, source_account_id, dest_account_id, amount, paid_to, note)
+         VALUES ('income', ?, ?, ?, NULL, NULL, ?, ?, ?)`,
+        [txnDate, DP, P, amount, b.paid_to || null, b.note || null]
+      );
+
+      await logActivity(
+        {
+          action: "created",
+          entity: "transaction",
+          entityId: outRes.insertId,
+          projectId: P,
+          title: "Site funds transferred",
+          amount,
+          meta: { type: "transfer", detail: `${srcName} → ${dstName}`, note: b.note || null, site_transfer: true },
+        },
+        conn
+      );
+
+      await conn.commit();
+      return ok({ id: outRes.insertId }, "Transaction saved", {}, 201);
+    } catch (e: any) {
+      await conn.rollback();
+      console.error("POST /api/transactions (site→site) failed:", e);
+      return fail("Something went wrong. Please try again.", 500);
+    } finally {
+      conn.release();
+    }
   }
 
   const effects = accountEffects({ type, amount, source_account_id: S, dest_account_id: D });
@@ -190,10 +282,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Site-funded expense (no source account): the site's own funds must cover it.
-    if (type === "expense" && !S && P) {
+    // Site funds must cover money drawn from them: a site-funded expense (no source account),
+    // or a transfer OUT of the site's funds into an account (no source account + a dest account).
+    const drawsSiteFunds = !S && !!P && (type === "expense" || (type === "transfer" && !!D));
+    if (drawsSiteFunds) {
       const [siteRows]: any = await conn.query(
-        `SELECT (${RECEIVED_SQL} - ${SPENT_SQL}) AS bal FROM transactions t WHERE t.project_id = ?`,
+        `SELECT (${RECEIVED_SQL} - ${SPENT_SQL} - ${SITE_OUT_SQL}) AS bal FROM transactions t WHERE t.project_id = ?`,
         [P]
       );
       const bal = Number(siteRows[0]?.bal || 0);

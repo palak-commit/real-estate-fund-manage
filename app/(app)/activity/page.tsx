@@ -13,16 +13,18 @@ import {
   Pencil,
   Trash2,
   FileText,
+  ReceiptText,
   Info,
+  X,
 } from "lucide-react";
-import { Card, Button, EmptyState, CustomSelect } from "@/components/ui";
+import { Card, Button, EmptyState, CustomSelect, CustomDatePicker } from "@/components/ui";
 import { inr, formatDate } from "@/lib/format";
 
 type ActivityMeta = { detail?: string; note?: string | null } | null;
 type ActivityRow = {
   id: number;
   action: "created" | "updated" | "deleted" | "recompute";
-  entity: "transaction" | "account" | "site" | "category" | "system" | "ra_receipt";
+  entity: "transaction" | "account" | "site" | "category" | "system" | "ra_receipt" | "vendor_bill";
   entity_id: number | null;
   title: string;
   amount: number | null;
@@ -58,6 +60,7 @@ const ENTITY_ICON: Record<ActivityRow["entity"], any> = {
   category: Tag,
   system: RefreshCw,
   ra_receipt: FileText,
+  vendor_bill: ReceiptText,
 };
 const ACTION_ICON: Record<ActivityRow["action"], any> = {
   created: Plus,
@@ -87,21 +90,27 @@ export default function ActivityPage() {
   const [rows, setRows] = useState<ActivityRow[] | null>(null);
   const [pg, setPg] = useState<Pagination | null>(null);
   const [entity, setEntity] = useState("");
+  const [action, setAction] = useState("");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [page, setPage] = useState(1);
 
-  useEffect(() => setPage(1), [entity]);
+  useEffect(() => setPage(1), [entity, action, from, to]);
 
   const load = useCallback(() => {
     setRows(null);
     const qs = new URLSearchParams({ limit: String(PAGE_SIZE), page: String(page) });
     if (entity) qs.set("entity", entity);
+    if (action) qs.set("action", action);
+    if (from) qs.set("from", from);
+    if (to) qs.set("to", to);
     fetch(`/api/activity?${qs}`)
       .then((r) => r.json())
       .then((res) => {
         setRows(res.data ?? []);
         setPg(res.pagination ?? null);
       });
-  }, [entity, page]);
+  }, [entity, action, from, to, page]);
 
   useEffect(() => {
     load();
@@ -137,22 +146,60 @@ export default function ActivityPage() {
             </p>
           </div>
         </div>
-        <div className="w-44">
-          <CustomSelect
-            value={entity}
-            onChange={setEntity}
-            onClear={() => setEntity("")}
-            options={[
-              { label: "All Activity", value: "" },
-              { label: "Transactions", value: "transaction" },
-              { label: "Accounts", value: "account" },
-              { label: "Sites", value: "site" },
-              { label: "Categories", value: "category" },
-              { label: "RA Receipts", value: "ra_receipt" },
-              { label: "System", value: "system" },
-            ]}
-            placeholder="All Activity"
-          />
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Activity</p>
+            <CustomSelect
+              value={entity}
+              onChange={setEntity}
+              onClear={() => setEntity("")}
+              options={[
+                { label: "All Activity", value: "" },
+                { label: "Transactions", value: "transaction" },
+                { label: "Accounts", value: "account" },
+                { label: "Sites", value: "site" },
+                { label: "Categories", value: "category" },
+                { label: "RA Receipts", value: "ra_receipt" },
+                { label: "Vendor Bills", value: "vendor_bill" },
+                { label: "System", value: "system" },
+              ]}
+              placeholder="All Activity"
+              className="w-44"
+            />
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">Action</p>
+            <CustomSelect
+              value={action}
+              onChange={setAction}
+              onClear={() => setAction("")}
+              options={[
+                { label: "All Actions", value: "" },
+                { label: "Created", value: "created" },
+                { label: "Updated", value: "updated" },
+                { label: "Deleted", value: "deleted" },
+                { label: "Recheck", value: "recompute" },
+              ]}
+              placeholder="All Actions"
+              className="w-40"
+            />
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">From</p>
+            <CustomDatePicker value={from} onChange={setFrom} onClear={() => setFrom("")} maxDate={to || undefined} className="w-40" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs font-medium text-muted-foreground">To</p>
+            <CustomDatePicker value={to} onChange={setTo} onClear={() => setTo("")} minDate={from || undefined} className="w-40" align="right" />
+          </div>
+          {(entity || action || from || to) && (
+            <button
+              onClick={() => { setEntity(""); setAction(""); setFrom(""); setTo(""); }}
+              className="flex h-[42px] items-center gap-1.5 rounded-lg border border-border px-3 text-sm text-muted-foreground transition hover:bg-muted"
+            >
+              <X className="h-4 w-4" /> Clear
+            </button>
+          )}
         </div>
       </div>
 

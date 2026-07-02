@@ -150,6 +150,17 @@ async function initialize(): Promise<void> {
       );
     }
 
+    // Add transactions.dest_project_id (the counterparty site for a site→site fund transfer)
+    // to databases created before it existed. CREATE TABLE IF NOT EXISTS won't alter them.
+    if (!(await hasColumn("dest_project_id"))) {
+      await admin.query("ALTER TABLE transactions ADD COLUMN dest_project_id INT NULL AFTER project_id");
+      await admin.query("ALTER TABLE transactions ADD INDEX idx_dest_project (dest_project_id)");
+      await admin.query(
+        `ALTER TABLE transactions ADD CONSTRAINT fk_txn_dest_project
+           FOREIGN KEY (dest_project_id) REFERENCES projects(id) ON DELETE SET NULL`
+      );
+    }
+
     // Migrate categories (flat, global-unique name) -> two-level Head/Sub-Head tree.
     // Databases created before this change have a single VARCHAR(40) UNIQUE column.
     const [nameCol]: any = await admin.query(

@@ -65,17 +65,22 @@ export default function RaPaymentsSheet({
     fetch("/api/accounts").then((r) => r.json()).then((j) => setAccounts(j.data ?? []));
   }, [open, receipt, load]);
 
-  const paid = useMemo(() => (payments ?? []).reduce((s, p) => s + Number(p.amount), 0), [payments]);
-  const balance = netReceivable - paid;
+  // All money math is done in integer paisa so binary-float drift can never make an
+  // exact-balance payment look like it "exceeds" the balance due.
   const paisa = (n: number) => Math.round(n * 100);
-  const fullyPaid = payments !== null && paisa(paid) >= paisa(netReceivable) && paisa(netReceivable) > 0;
-  const over = Number(amount) > 0 && paisa(Number(amount)) > paisa(balance);
+  const paidPaisa = useMemo(() => (payments ?? []).reduce((s, p) => s + paisa(Number(p.amount)), 0), [payments]);
+  const netPaisa = paisa(netReceivable);
+  const balancePaisa = netPaisa - paidPaisa;
+  const paid = paidPaisa / 100;
+  const balance = balancePaisa / 100;
+  const fullyPaid = payments !== null && paidPaisa >= netPaisa && netPaisa > 0;
+  const over = Number(amount) > 0 && paisa(Number(amount)) > balancePaisa;
 
   // Auto-set the bill status from what's actually been received: nothing → pending,
   // part → partial, full → complete. Persists via PATCH and refreshes the receipts list.
   useEffect(() => {
     if (!open || !receipt || payments === null) return;
-    const desired = paisa(paid) <= 0 ? "pending" : paisa(paid) >= paisa(netReceivable) ? "complete" : "partial";
+    const desired = paidPaisa <= 0 ? "pending" : paidPaisa >= netPaisa ? "complete" : "partial";
     if (desired === status) return;
     setStatus(desired);
     fetch(`/api/ra-receipts/${receipt.id}`, {
@@ -108,8 +113,8 @@ export default function RaPaymentsSheet({
     const amt = Number(amount);
     if (!amount || amt <= 0) return setErr("Enter a valid amount");
     if (!accountId) return setErr("Select where the payment was received");
-    if (balance <= 0) return setErr("This bill is already fully received.");
-    if (amt > balance) return setErr(`Amount can't exceed the balance due (${inr(balance)}).`);
+    if (balancePaisa <= 0) return setErr("This bill is already fully received.");
+    if (paisa(amt) > balancePaisa) return setErr(`Amount can't exceed the balance due (${inr(balance)}).`);
     setSaving(true);
     const res = await fetch(`/api/ra-receipts/${receipt!.id}/payments`, {
       method: "POST",
@@ -246,7 +251,7 @@ export default function RaPaymentsSheet({
             </div>
           </div>
           {err && <p className="mt-3 rounded-lg bg-danger/10 p-2.5 text-sm text-danger">{err}</p>}
-          <Button onClick={addPayment} loading={saving} disabled={over || balance <= 0 || !accountId} className="mt-4 w-full">
+          <Button onClick={addPayment} loading={saving} disabled={over || balancePaisa <= 0 || !accountId} className="mt-4 w-full">
             <Plus className="h-4 w-4" /> Add Payment
           </Button>
           </>

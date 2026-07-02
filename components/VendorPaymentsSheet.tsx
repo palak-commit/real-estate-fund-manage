@@ -76,11 +76,16 @@ export default function VendorPaymentsSheet({
       });
   }, [open, bill, load]);
 
-  const paid = useMemo(() => (payments ?? []).reduce((s, p) => s + Number(p.amount), 0), [payments]);
-  const balance = totalBill - paid;
+  // All money math is done in integer paisa so binary-float drift (e.g. 5.6 − 4.0 =
+  // 1.5999999…) can never make an exact-balance payment look like it "exceeds" the balance.
   const paisa = (n: number) => Math.round(n * 100);
-  const fullyPaid = payments !== null && paisa(paid) >= paisa(totalBill) && paisa(totalBill) > 0;
-  const over = Number(amount) > 0 && paisa(Number(amount)) > paisa(balance);
+  const paidPaisa = useMemo(() => (payments ?? []).reduce((s, p) => s + paisa(Number(p.amount)), 0), [payments]);
+  const totalPaisa = paisa(totalBill);
+  const balancePaisa = totalPaisa - paidPaisa;
+  const paid = paidPaisa / 100;
+  const balance = balancePaisa / 100;
+  const fullyPaid = payments !== null && paidPaisa >= totalPaisa && totalPaisa > 0;
+  const over = Number(amount) > 0 && paisa(Number(amount)) > balancePaisa;
   // Funds guard (mirrors the server): the chosen source — an account or the site's funds —
   // must hold enough for this payment.
   const selectedAccount = accountId ? accounts.find((a) => String(a.id) === accountId) ?? null : null;
@@ -92,7 +97,7 @@ export default function VendorPaymentsSheet({
   // part → partial, full → complete. Persists via PATCH and refreshes the bills list.
   useEffect(() => {
     if (!open || !bill || payments === null) return;
-    const desired = paisa(paid) <= 0 ? "pending" : paisa(paid) >= paisa(totalBill) ? "complete" : "partial";
+    const desired = paidPaisa <= 0 ? "pending" : paidPaisa >= totalPaisa ? "complete" : "partial";
     if (desired === status) return;
     setStatus(desired);
     fetch(`/api/vendor-bills/${bill.id}`, {
@@ -129,8 +134,8 @@ export default function VendorPaymentsSheet({
     if (!date) return setErr("Select a date");
     const amt = Number(amount);
     if (!amount || amt <= 0) return setErr("Enter a valid amount");
-    if (balance <= 0) return setErr("This bill is already fully paid.");
-    if (amt > balance) return setErr(`Amount can't exceed the balance due (${inr(balance)}).`);
+    if (balancePaisa <= 0) return setErr("This bill is already fully paid.");
+    if (paisa(amt) > balancePaisa) return setErr(`Amount can't exceed the balance due (${inr(balance)}).`);
     if (insufficient) return setErr(`Not enough money in ${fundsLabel} (${inr(fundsAvailable!)} available).`);
     setSaving(true);
     const res = await fetch(`/api/vendor-bills/${bill!.id}/payments`, {
@@ -325,13 +330,13 @@ export default function VendorPaymentsSheet({
                   </div>
                   <div className="col-span-2 flex items-center justify-between border-t border-border pt-1.5">
                     <span className="font-semibold">Remaining after</span>
-                    <span className="font-bold">{inr(balance - Number(amount))}</span>
+                    <span className="font-bold">{inr((balancePaisa - paisa(Number(amount))) / 100)}</span>
                   </div>
                 </div>
               )}
 
               {err && <p className="mt-3 rounded-lg bg-danger/10 p-2.5 text-sm text-danger">{err}</p>}
-              <Button onClick={addPayment} loading={saving} disabled={over || insufficient || balance <= 0} className="mt-4 w-full">
+              <Button onClick={addPayment} loading={saving} disabled={over || insufficient || balancePaisa <= 0} className="mt-4 w-full">
                 <Plus className="h-4 w-4" /> Add Payment
               </Button>
             </>

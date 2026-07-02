@@ -6,7 +6,12 @@ import { inr, formatDate, CATEGORY_ICON, TYPE_LABELS, TYPE_COLOR, TYPE_ICON } fr
 // Income split: money earned FROM a site (tagged with a project) reads as "Income";
 // plain outside money added to an account (no site) keeps the "Funds Added" label.
 function typeLabel(t: any): string {
+  // Site→site fund transfer: the OUT leg is a transfer, the IN leg an income — both carry a
+  // dest_project_id (the counterparty site) and move funds between two sites.
+  if (t.dest_project_id) return t.type === "transfer" ? "Site Fund Out" : "Site Fund In";
   if (t.type === "income" && t.project_id) return "Revenue Earned";
+  // A transfer with a site AND a dest account is money moved back OUT of the site's funds.
+  if (t.type === "transfer" && t.project_id && t.dest_account_id) return "Site Fund Out";
   return TYPE_LABELS[t.type];
 }
 
@@ -18,10 +23,22 @@ function signOf(type: string) {
 }
 
 function flow(t: any): string {
+  // Site→site fund transfer — show "Source site → Destination site" on both legs. The OUT
+  // leg has project_name = source, dest_project_name = destination; the IN leg is mirrored.
+  if (t.dest_project_id) {
+    const [src, dst] =
+      t.type === "transfer"
+        ? [t.project_name, t.dest_project_name]
+        : [t.dest_project_name, t.project_name];
+    return `${src || "?"} → ${dst || "?"}`;
+  }
   const dest = t.dest_name || (t.project_name ? t.project_name : null);
   switch (t.type) {
-    case "transfer":
-      return `${t.source_name || "?"} → ${dest || "?"}`;
+    case "transfer": {
+      // A transfer out of a site's funds has no source account — the site is the source.
+      const src = t.source_name || (t.project_name && t.dest_name ? t.project_name : null);
+      return `${src || "?"} → ${dest || "?"}`;
+    }
     case "expense": {
       // Where the money came from: a bank/cash account, or the site's own funds.
       const paidFrom = t.source_name ? t.source_name : "Site funds";
@@ -54,7 +71,8 @@ export function TxnRow({
   onRowClick?: (t: any) => void;
   hideSite?: boolean; // hide the site tag (e.g. on a site's own page where it's redundant)
 }) {
-  const sign = signOf(t.type);
+  // A site→site fund transfer is internal (money just moves between sites), so it's signless.
+  const sign = t.dest_project_id ? 0 : signOf(t.type);
   // Expense title shows the full "Head › Sub-category" path (collapsing to one when the
   // head and sub-head share a name, e.g. single-line heads). Icon is keyed by the Head.
   const catLabel =

@@ -16,6 +16,19 @@ export async function GET(req: NextRequest) {
     where.push("entity = ?");
     args.push(searchParams.get("entity"));
   }
+  if (searchParams.get("action")) {
+    where.push("action = ?");
+    args.push(searchParams.get("action"));
+  }
+  // Date range over the event day (created_at is a timestamp; compare on its date part).
+  if (searchParams.get("from")) {
+    where.push("DATE(created_at) >= ?");
+    args.push(searchParams.get("from"));
+  }
+  if (searchParams.get("to")) {
+    where.push("DATE(created_at) <= ?");
+    args.push(searchParams.get("to"));
+  }
   // Scope to one site's feed (used by the site-detail Activity tab).
   if (searchParams.get("project_id")) {
     where.push("project_id = ?");

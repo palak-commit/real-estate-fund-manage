@@ -24,7 +24,6 @@ import {
   FileText,
   LayoutDashboard,
   PieChart,
-  Edit,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -39,9 +38,9 @@ const getTOC = (lang: Lang) => [
   { id: "transaction-types", label: t(lang, "Transaction Types", "ટ્રાન્ઝેક્શન ના પ્રકાર") },
   { id: "category-paidto",   label: t(lang, "Category & Paid To", "કેટેગરી અને પેઇડ ટુ (Paid To)") },
   { id: "add-money",         label: t(lang, "Add Money", "પૈસા ઉમેરો (Add Money)") },
-  { id: "edit-transactions", label: t(lang, "Editing Transactions safely", "ટ્રાન્ઝેક્શન કેવી રીતે સુધારવું (Edit)") },
+  { id: "transfer-funds",    label: t(lang, "Moving Site Funds (Transfer)", "સાઇટ ફંડ ખસેડવું (Transfer)") },
   { id: "site-page",         label: t(lang, "Site Page (Project Detail)", "સાઇટ પેજ (પ્રોજેક્ટની વિગતો)") },
-  { id: "bank-cashbook",     label: t(lang, "Books (Bank, Cashbook & Partner)", "બુક્સ (બેંક, કેશબુક અને પાર્ટનર)") },
+  { id: "bank-cashbook",     label: t(lang, "Expenses (Bank, Cashbook & Partner)", "Expenses (બેંક, કેશબુક અને પાર્ટનર)") },
   { id: "rojmel",            label: t(lang, "Rojmel (Cash Daybook)", "રોજમેળ (Rojmel)") },
   { id: "ra-receipts",       label: t(lang, "Receipt of RA", "RA બિલ રસીદ (Receipt of RA)") },
   { id: "vendor-bills",      label: t(lang, "Vendor Bills", "વેન્ડર બિલ (Vendor Bills)") },
@@ -129,7 +128,7 @@ const getFeatures = (lang: Lang) => [
     ),
     when: t(lang, "Use this every time money is spent on a site.", "જ્યારે પણ સાઇટ પર કોઈ ખર્ચો થાય ત્યારે આનો ઉપયોગ કરો."),
     fields: [
-      { name: t(lang, "Category", "કેટેગરી"), desc: t(lang, "What type of expense — Labour, Material, Transport, etc.", "કયા પ્રકારનો ખર્ચો છે — મજૂરી, મટીરીયલ, ટ્રાન્સપોર્ટ વગેરે.") },
+      { name: t(lang, "Head (optional)", "હેડ (ઓપ્શનલ)"), desc: t(lang, "What type of expense — Labour, Material, Transport, etc. You can also leave it blank.", "કયા પ્રકારનો ખર્ચો છે — મજૂરી, મટીરીયલ, ટ્રાન્સપોર્ટ વગેરે. તમે આને ખાલી પણ રાખી શકો છો.") },
       { name: t(lang, "Site", "કઈ સાઇટ"), desc: t(lang, "Which site the money was spent on.", "કઈ સાઇટ પર ખર્ચો થયો છે.") },
       { name: t(lang, "Paid From", "ક્યાંથી ચૂકવ્યા"), desc: t(lang, "Choose one of the two payment methods explained below.", "નીચે સમજાવેલી બે પેમેન્ટ રીતમાંથી કોઈ એક સિલેક્ટ કરો.") },
       { name: t(lang, "Paid To (optional)", "કોને ચૂકવ્યા (ઓપ્શનલ)"), desc: t(lang, "The contractor, vendor, or worker who received the money.", "કોન્ટ્રાક્ટર, વેન્ડર કે મજૂર જેને પૈસા આપ્યા તેનું નામ.") },
@@ -154,22 +153,25 @@ const getFeatures = (lang: Lang) => [
   },
 */
   {
-    label: t(lang, "Transfer", "ટ્રાન્સફર (એક ખાતામાંથી બીજામાં)"),
+    label: t(lang, "Transfer", "ટ્રાન્સફર"),
     color: "bg-info/10 text-info border-info/20",
     iconColor: "text-info",
     icon: Repeat2,
     what: t(lang,
-      "Move money between two of your own accounts (e.g., from HDFC Bank to ICICI Bank, or from Bank to Cash).",
-      "પોતાના જ બે ખાતાઓ વચ્ચે પૈસા ટ્રાન્સફર કરવા (જેમ કે HDFC બેંકમાંથી ICICI બેંકમાં, અથવા બેંકમાંથી કેશમાં)."
+      "Move money between two accounts, OR move a site's funds — back to an account, or straight to another site. The Source can be an account or a site's funds; the Destination can be an account or another site.",
+      "બે ખાતાઓ વચ્ચે પૈસા ટ્રાન્સફર કરવા, અથવા સાઇટના ફંડને ખસેડવા — ખાતામાં પાછા, અથવા સીધા બીજી સાઇટ પર. Source માં ખાતું કે સાઇટના ફંડ હોઈ શકે; Destination માં ખાતું કે બીજી સાઇટ હોઈ શકે."
     ),
     example: t(lang,
-      "Example: You withdraw ₹50,000 from HDFC Bank as cash for daily payments. Record it as a Transfer from HDFC Bank → Office Cash.",
-      "દાખલા તરીકે: રોજના ખર્ચ માટે તમે HDFC બેંકમાંથી ₹50,000 રોકડા ઉપાડો છો. તો એની એન્ટ્રી HDFC Bank → Office Cash ટ્રાન્સફર તરીકે કરો."
+      'Examples: (1) ₹50,000 from HDFC Bank → Office Cash. (2) Move leftover funds from "Site A" back to a bank account (Site → Account). (3) Move ₹1,00,000 from "Site A" straight to "Site B" (Site → Site).',
+      'ઉદાહરણ: (1) HDFC બેંકમાંથી ₹50,000 → Office Cash. (2) "સાઇટ A" ના વધેલા ફંડ ખાતામાં પાછા લો (સાઇટ → ખાતું). (3) "સાઇટ A" માંથી ₹1,00,000 સીધા "સાઇટ B" પર મોકલો (સાઇટ → સાઇટ).'
     ),
-    when: t(lang, "Use this when cash moves between your own accounts, not to a site.", "જ્યારે પૈસા પોતાના જ ખાતાઓમાં ફરે ત્યારે આનો ઉપયોગ કરો, સાઇટ પર નહિ."),
+    when: t(lang,
+      'Use it to shuffle money between accounts, pull unused funds out of a site, or shift a site\'s budget to another site. Tip: on a site page, the "Transfer Fund" button opens this form with the Source already locked to that site.',
+      'ખાતાઓ વચ્ચે પૈસા ફેરવવા, સાઇટના વધેલા ફંડ પાછા લેવા, અથવા એક સાઇટનું બજેટ બીજી સાઇટ પર ખસેડવા આનો ઉપયોગ કરો. ટીપ: સાઇટ પેજ પર "Transfer Fund" બટન આ ફોર્મ ખોલે છે જેમાં Source એ સાઇટ પર પહેલેથી સેટ હોય છે.'
+    ),
     fields: [
-      { name: t(lang, "Source Account", "કયા ખાતામાંથી"), desc: t(lang, "The account sending the money.", "જે ખાતામાંથી પૈસા જાય છે.") },
-      { name: t(lang, "Destination Account", "કયા ખાતામાં"), desc: t(lang, "The account receiving the money.", "જે ખાતામાં પૈસા આવે છે.") },
+      { name: t(lang, "Source", "ક્યાંથી (Source)"), desc: t(lang, "The account — or a site's funds — sending the money.", "જે ખાતું — અથવા સાઇટના ફંડ — માંથી પૈસા જાય છે.") },
+      { name: t(lang, "Destination", "ક્યાં (Destination)"), desc: t(lang, "The account or site receiving the money (site → site isn't allowed to the same site).", "જે ખાતું કે સાઇટ પૈસા મેળવે છે (એક જ સાઇટ પર નહિ).") },
     ],
   },
   {
@@ -947,54 +949,78 @@ export default function GuidePage() {
         </Card>
       </section>
 
-      {/* ── Editing Transactions ── */}
-      <section id="edit-transactions">
+      {/* ── Moving Site Funds (Transfer) ── */}
+      <section id="transfer-funds">
         <h2 className="mb-1 text-base font-semibold text-foreground">
-          {t(lang, "Editing Transactions safely", "ટ્રાન્ઝેક્શન કેવી રીતે સુધારવું (Edit)")}
+          {t(lang, "Moving Site Funds (Transfer)", "સાઇટ ફંડ ખસેડવું (Transfer)")}
         </h2>
         <p className="mb-4 text-sm text-muted-foreground">
           {lang === "en" ? (
             <>
-              Made a mistake? You can edit transactions without messing up your accounts. Just look for the <span className="font-semibold">Pencil</span> icon next to any transaction.
+              Once money is sitting in a site's budget, you can move it around. A <span className="font-semibold">Transfer</span> can pull unused funds back to an account, or shift a site's budget straight to another site — without changing your total money.
             </>
           ) : (
             <>
-              કોઈ ભૂલ થઈ ગઈ? તમે તમારા એકાઉન્ટના બેલેન્સમાં ગડબડ કર્યા વગર એન્ટ્રી સુધારી શકો છો. કોઈપણ ટ્રાન્ઝેક્શનની બાજુમાં આપેલા <span className="font-semibold">Pencil (પેન્સિલ)</span> આઇકોન પર ક્લિક કરો.
+              એકવાર પૈસા સાઇટના બજેટમાં આવી જાય, પછી તમે તેને ખસેડી શકો છો. <span className="font-semibold">Transfer</span> વડે વધેલા ફંડ ખાતામાં પાછા લઈ શકો, અથવા એક સાઇટનું બજેટ સીધું બીજી સાઇટ પર મોકલી શકો — તમારા કુલ પૈસા બદલાયા વગર.
             </>
           )}
         </p>
 
-        <Card className="p-5">
+        <Card className="p-5 space-y-4">
+          {/* Transfer Fund button */}
           <div className="flex items-start gap-3">
             <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-info/10">
-              <Edit className="h-5 w-5 text-info" />
+              <ArrowRightLeft className="h-5 w-5 text-info" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-foreground">{t(lang, "What you CAN edit", "તમે શું સુધારી શકો છો?")}</p>
+              <p className="text-sm font-semibold text-foreground">{t(lang, "The \"Transfer Fund\" button", "\"Transfer Fund\" બટન")}</p>
               <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
                 {lang === "en" ? (
-                  <>You can safely change the <span className="font-semibold">Date, Category (Head/Type), Paid To (Person), and Note</span>. Editing these will never change your account balances.</>
+                  <>Open any site and click <span className="font-semibold">Transfer Fund</span> (next to Add Site Fund). The form opens with the <span className="font-semibold">Source locked to that site</span> — you just pick where the money should go.</>
                 ) : (
-                  <>તમે <span className="font-semibold">તારીખ, કેટેગરી (Head), Paid To (વ્યક્તિનું નામ), અને નોંધ (Note)</span> સુધારી શકો છો. આ સુધારવાથી તમારા બેંક બેલેન્સમાં કોઈ ફરક પડશે નહીં.</>
+                  <>કોઈપણ સાઇટ ખોલો અને <span className="font-semibold">Transfer Fund</span> બટન (Add Site Fund ની બાજુમાં) પર ક્લિક કરો. ફોર્મમાં <span className="font-semibold">Source એ સાઇટ પર પહેલેથી સેટ</span> હોય છે — તમારે ફક્ત પૈસા ક્યાં મોકલવા તે પસંદ કરવાનું છે.</>
                 )}
               </p>
             </div>
           </div>
-          
-          <div className="my-4 border-t border-border" />
-          
-          <div className="flex items-start gap-2 rounded-lg border border-warning/20 bg-warning/5 p-3">
-            <Info className="mt-0.5 h-4 w-4 flex-none text-warning" />
+
+          <div className="border-t border-border" />
+
+          {/* Two destinations */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-border bg-muted/40 p-3">
+              <p className="text-sm font-semibold text-foreground">{t(lang, "Site → Account", "સાઇટ → ખાતું")}</p>
+              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                {t(lang,
+                  "Pick a Bank/Cash/Partner account as the destination. Unused site money goes back into that account and the site's budget drops by the same amount.",
+                  "Destination માં બેંક/કેશ/પાર્ટનર ખાતું પસંદ કરો. સાઇટના વધેલા પૈસા એ ખાતામાં પાછા જાય અને સાઇટનું બજેટ એટલું જ ઘટે."
+                )}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-muted/40 p-3">
+              <p className="text-sm font-semibold text-foreground">{t(lang, "Site → Site", "સાઇટ → સાઇટ")}</p>
+              <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
+                {t(lang,
+                  "Pick another site as the destination. The budget moves from one site to the other in a single step (you can't transfer to the same site).",
+                  "Destination માં બીજી સાઇટ પસંદ કરો. બજેટ એક સાઇટમાંથી બીજી સાઇટ પર એક જ સ્ટેપમાં જાય (એક જ સાઇટ પર ટ્રાન્સફર ન થાય)."
+                )}
+              </p>
+            </div>
+          </div>
+
+          {/* Note */}
+          <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+            <Info className="mt-0.5 h-4 w-4 flex-none text-primary" />
             <p className="text-xs text-muted-foreground leading-relaxed">
               {lang === "en" ? (
                 <>
-                  <span className="font-semibold text-foreground">Important: What if the Amount or Account is wrong? </span>
-                  You cannot edit the money amount, or the "Paid From" / "To" accounts. If you made a mistake with the money itself, you must <span className="font-semibold">Delete</span> the transaction completely and recreate it. This strict rule ensures your balance mathematically never breaks.
+                  <span className="font-semibold text-foreground">Good to know: </span>
+                  A transfer never creates or destroys money — it only moves it. The app also stops you from moving more than a site actually has. You can also start a transfer from <span className="font-semibold">+ New Transaction → Transfer</span> and choose a site's funds as the Source there.
                 </>
               ) : (
                 <>
-                  <span className="font-semibold text-foreground">ધ્યાન રાખો: જો રકમ કે એકાઉન્ટ ખોટું હોય તો શું કરવું? </span>
-                  તમે પૈસાની રકમ અથવા કયા ખાતામાંથી પેમેન્ટ કર્યું છે તે બદલી શકતા નથી. જો પૈસા લખવામાં જ ભૂલ થઈ હોય, તો તમારે તે ટ્રાન્ઝેક્શન <span className="font-semibold">Delete (ડિલીટ)</span> કરીને નવેસરથી જ બનાવવું પડશે. આ નિયમ એટલા માટે છે જેથી તમારા હિસાબની ગણતરી ક્યારેય ખોટી ન પડે.
+                  <span className="font-semibold text-foreground">ધ્યાનમાં રાખો: </span>
+                  ટ્રાન્સફર ક્યારેય પૈસા બનાવતું કે નાશ કરતું નથી — ફક્ત ખસેડે છે. સાઇટ પાસે જેટલા પૈસા હોય તેનાથી વધારે ખસેડવા એપ રોકે છે. તમે <span className="font-semibold">+ New Transaction → Transfer</span> માંથી પણ ટ્રાન્સફર શરૂ કરી શકો અને ત્યાં Source માં સાઇટના ફંડ પસંદ કરી શકો.
                 </>
               )}
             </p>
@@ -1051,9 +1077,9 @@ export default function GuidePage() {
                 </p>
               </div>
               <div className="rounded-xl border border-border bg-muted/40 p-3">
-                <p className="text-sm font-semibold text-foreground">Books</p>
+                <p className="text-sm font-semibold text-foreground">Expenses</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {t(lang, "The Bank, Cashbook, and Partner payment registers, filtered strictly for this site.", "બેંક, કેશબુક અને પાર્ટનરનું પેમેન્ટ રજિસ્ટર, જે ફક્ત આ સાઇટનો ખર્ચ બતાવે છે.")}
+                  {t(lang, "The Bank, Cashbook, Partner, and Site Fund payment registers, filtered strictly for this site. The Site Fund tab lists expenses paid from the site's own budget. Use the Add Expense button here to log a new spend.", "બેંક, કેશબુક, પાર્ટનર અને Site Fund નું પેમેન્ટ રજિસ્ટર, જે ફક્ત આ સાઇટનો ખર્ચ બતાવે છે. Site Fund ટેબ સાઇટના પોતાના બજેટમાંથી ચૂકવેલ ખર્ચ બતાવે છે. નવો ખર્ચ ઉમેરવા અહીં Add Expense બટન વાપરો.")}
                 </p>
               </div>
               <div className="rounded-xl border border-border bg-muted/40 p-3">
@@ -1107,16 +1133,16 @@ export default function GuidePage() {
       {/* ── Bank, Cashbook & Partner ── */}
       <section id="bank-cashbook">
         <h2 className="mb-1 text-base font-semibold text-foreground">
-          {t(lang, "Books (Bank, Cashbook & Partner)", "બુક્સ (Books - બેંક, કેશબુક અને પાર્ટનર)")}
+          {t(lang, "Expenses (Bank, Cashbook & Partner)", "Expenses (બેંક, કેશબુક અને પાર્ટનર)")}
         </h2>
         <p className="mb-4 text-sm text-muted-foreground">
           {lang === "en" ? (
             <>
-              The <Link href="/books" className="font-semibold text-primary hover:underline">Books</Link> page is a unified hub containing the Bank, Cashbook, Partner, and Rojmel registers in one place. It gives you a familiar ledger view of money paid out, just like your Excel sheets.
+              The <Link href="/books" className="font-semibold text-primary hover:underline">Expenses</Link> page (shown as <span className="font-semibold">Expenses</span> in the sidebar) is a unified hub containing the Bank, Cashbook, Partner, and Rojmel registers in one place. It gives you a familiar ledger view of money paid out, just like your Excel sheets.
             </>
           ) : (
             <>
-              <Link href="/books" className="font-semibold text-primary hover:underline">Books</Link> પેજ એક જ જગ્યાએ બેંક, કેશબુક, પાર્ટનર અને રોજમેળ રજિસ્ટર બતાવે છે. તે તમને ખર્ચેલા પૈસાનો હિસાબ બતાવે છે, બિલકુલ તમારી Excel શીટની જેમ.
+              <Link href="/books" className="font-semibold text-primary hover:underline">Expenses</Link> પેજ (સાઇડબારમાં <span className="font-semibold">Expenses</span> તરીકે) એક જ જગ્યાએ બેંક, કેશબુક, પાર્ટનર અને રોજમેળ રજિસ્ટર બતાવે છે. તે તમને ખર્ચેલા પૈસાનો હિસાબ બતાવે છે, બિલકુલ તમારી Excel શીટની જેમ.
             </>
           )}
         </p>
@@ -1362,11 +1388,11 @@ export default function GuidePage() {
               <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
                 {lang === "en" ? (
                   <>
-                    Just creating an RA bill <span className="font-semibold">does not</span> add money to your accounts. To actually receive the money, click on the bill row to add a <span className="font-semibold">Partial Payment</span>. When you enter the received amount and select a "Received In" account (like your Bank), that amount is immediately added to your actual bank balance as Income. You can add multiple payments until the full bill amount is recovered.
+                    Just creating an RA bill <span className="font-semibold">does not</span> add money to your accounts. To actually receive the money, click on the bill row to add a <span className="font-semibold">Partial Payment</span>. When you enter the received amount and select a "Received In" target — a Bank/Cash/Partner <span className="font-semibold">account</span> or the <span className="font-semibold">Site Fund</span> (the site's own budget) — that amount is recorded as Income. Either way it counts as the site's <span className="font-semibold">Revenue</span> (it raises Profit); into an account it also grows that account, into Site Fund it grows the site's budget. You can add multiple payments until the full bill amount is recovered.
                   </>
                 ) : (
                   <>
-                    માત્ર RA બિલ બનાવવાથી તમારા ખાતામાં પૈસા જમા <span className="font-semibold">નથી</span> થતા. ખાતામાં પૈસા લાવવા માટે, બિલની હરોળ પર ક્લિક કરો અને <span className="font-semibold">Payment</span> ઉમેરો. જ્યારે તમે પેમેન્ટની રકમ નાખીને "Received In" (કયા ખાતામાં પૈસા આવ્યા) સિલેક્ટ કરશો, ત્યારે એ રકમ તરત જ તમારા બેંક કે કેશ ખાતામાં આવક (Income) તરીકે ઉમેરાઈ જશે. જ્યાં સુધી બિલના પૂરા પૈસા ન મળે ત્યાં સુધી તમે થોડા-થોડા પેમેન્ટ (Partially Pay) ની એન્ટ્રી કરી શકો છો.
+                    માત્ર RA બિલ બનાવવાથી તમારા ખાતામાં પૈસા જમા <span className="font-semibold">નથી</span> થતા. ખાતામાં પૈસા લાવવા માટે, બિલની હરોળ પર ક્લિક કરો અને <span className="font-semibold">Payment</span> ઉમેરો. જ્યારે તમે પેમેન્ટની રકમ નાખીને "Received In" સિલેક્ટ કરશો — બેંક/કેશ/પાર્ટનર <span className="font-semibold">ખાતું</span> અથવા <span className="font-semibold">Site Fund</span> (સાઇટનું પોતાનું બજેટ) — ત્યારે એ રકમ આવક (Income) તરીકે નોંધાય છે. બંને રીતે એ સાઇટની <span className="font-semibold">આવક (Revenue)</span> ગણાય છે (પ્રોફિટ વધે છે); ખાતામાં લો તો ખાતું વધે, Site Fund માં લો તો સાઇટનું બજેટ વધે. જ્યાં સુધી બિલના પૂરા પૈસા ન મળે ત્યાં સુધી તમે થોડા-થોડા પેમેન્ટ ની એન્ટ્રી કરી શકો છો.
                   </>
                 )}
               </p>
@@ -1700,11 +1726,11 @@ export default function GuidePage() {
               <p className="mt-0.5 text-sm text-muted-foreground leading-relaxed">
                 {lang === "en" ? (
                   <>
-                    Every time someone creates, edits, or deletes a transaction, account, site, or RA bill, it is securely logged here with the date and exact details. It is read-only, ensuring a reliable audit trail.
+                    Every time someone creates, edits, or deletes a transaction, account, site, RA bill, or vendor bill, it is securely logged here with the date and exact details. Use the filter bar to narrow the feed by <span className="font-semibold">type</span> (Transactions, Vendor Bills, RA Receipts, …), by <span className="font-semibold">action</span> (Created / Updated / Deleted), and by a <span className="font-semibold">date range</span>. It is read-only, ensuring a reliable audit trail.
                   </>
                 ) : (
                   <>
-                    જ્યારે પણ કોઈ ટ્રાન્ઝેક્શન, ખાતું, સાઇટ કે RA બિલ બનાવે, એડિટ કરે કે ડીલીટ કરે, ત્યારે તેની સંપૂર્ણ વિગતો તારીખ સાથે અહીં નોંધાઈ જાય છે. તેને બદલી શકાતો નથી, જેથી તમારો હિસાબ હંમેશા સુરક્ષિત રહે.
+                    જ્યારે પણ કોઈ ટ્રાન્ઝેક્શન, ખાતું, સાઇટ, RA બિલ કે વેન્ડર બિલ બનાવે, એડિટ કરે કે ડીલીટ કરે, ત્યારે તેની સંપૂર્ણ વિગતો તારીખ સાથે અહીં નોંધાઈ જાય છે. ફિલ્ટર બાર વડે તમે <span className="font-semibold">પ્રકાર</span> (Transactions, Vendor Bills, RA Receipts…), <span className="font-semibold">એક્શન</span> (Created / Updated / Deleted) અને <span className="font-semibold">તારીખ રેન્જ</span> પ્રમાણે લિસ્ટ ફિલ્ટર કરી શકો છો. તેને બદલી શકાતો નથી, જેથી તમારો હિસાબ હંમેશા સુરક્ષિત રહે.
                   </>
                 )}
               </p>

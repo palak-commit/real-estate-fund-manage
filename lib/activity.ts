@@ -55,7 +55,9 @@ const TXN_VERB: Record<string, string> = {
 
 /** A short title like `Site fund added` / `Expense recorded` for a transaction. */
 export function describeTxn(type: string, opts: { hasProject?: boolean; hasDest?: boolean } = {}): string {
-  if (type === "transfer") return opts.hasDest ? "Transfer" : "Site fund added";
+  // transfer + dest + project = money moved back OUT of a site's funds; dest only = a plain
+  // account transfer; project only (no dest) = "Add Site Fund".
+  if (type === "transfer") return opts.hasDest ? (opts.hasProject ? "Site fund withdrawn" : "Transfer") : "Site fund added";
   if (type === "income") return opts.hasProject ? "Income" : "Funds added";
   return TXN_VERB[type] ?? "Transaction";
 }
@@ -72,7 +74,8 @@ export function txnDetail(t: {
 }): string {
   switch (t.type) {
     case "transfer":
-      return `${t.source_name || "?"} → ${t.dest_name || t.project_name || "?"}`;
+      // Source is a site when there's no source account (a site-fund withdrawal).
+      return `${t.source_name || t.project_name || "?"} → ${t.dest_name || t.project_name || "?"}`;
     case "expense": {
       const parts = [`Paid from ${t.source_name || "Site funds"}`];
       if (t.paid_to) parts.push(`→ ${t.paid_to}`);

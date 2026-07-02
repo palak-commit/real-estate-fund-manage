@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { pool, ready } from "@/lib/db";
 import { accountEffects, toPaisa } from "@/lib/ledger";
+import { RECEIVED_SQL, SPENT_SQL, SITE_OUT_SQL, SITE_XFER_OUT_SQL } from "@/lib/queries";
 import { inr } from "@/lib/format";
 import { ok, fail } from "@/lib/api";
 import { parseId, txnEditSchema, zErr } from "@/lib/validation";
@@ -71,13 +72,62 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     // Lock the row so its effects can't change while we reverse them.
     const [rows]: any = await conn.query(
-      "SELECT id, type, amount, project_id, source_account_id, dest_account_id FROM transactions WHERE id = ? FOR UPDATE",
+      "SELECT id, type, amount, project_id, dest_project_id, source_account_id, dest_account_id FROM transactions WHERE id = ? FOR UPDATE",
       [id]
     );
     const txn = rows[0];
     if (!txn) {
       await conn.rollback();
       return fail("Transaction not found", 404);
+    }
+
+    // Site→site fund transfer: a linked pair (an OUT `transfer` on the source site + an IN
+    // `income` on the destination site, both with a dest_project_id and no accounts). Delete
+    // BOTH legs together, guarding that the destination site's funds aren't already spent.
+    const isXferOut = txn.type === "transfer" && txn.source_account_id == null && txn.dest_account_id == null && txn.dest_project_id != null;
+    const isXferIn = txn.type === "income" && txn.dest_account_id == null && txn.dest_project_id != null;
+    if (isXferOut || isXferIn) {
+      // The site that RECEIVED the funds (whose balance would drop when we reverse).
+      const destSite = isXferOut ? txn.dest_project_id : txn.project_id;
+      const [balRows]: any = await conn.query(
+        `SELECT p.name, (${RECEIVED_SQL} - ${SPENT_SQL} - ${SITE_OUT_SQL} - ${SITE_XFER_OUT_SQL}) AS bal
+           FROM projects p LEFT JOIN transactions t ON t.project_id = p.id WHERE p.id = ? GROUP BY p.id, p.name`,
+        [destSite]
+      );
+      const bal = Number(balRows[0]?.bal || 0);
+      if (toPaisa(bal) < toPaisa(Number(txn.amount))) {
+        await conn.rollback();
+        return fail(
+          `Cannot delete — ${balRows[0]?.name ?? "the receiving site"} only has ${inr(bal)} of site funds left, but this transfer added ${inr(Number(txn.amount))}. That money has already been spent; delete the dependent expenses first.`
+        );
+      }
+      // Find the paired leg (opposite type, mirrored project/dest_project, same amount): the
+      // partner's project_id is this row's dest_project_id and vice-versa.
+      const partnerType = isXferOut ? "income" : "transfer";
+      const [partner]: any = await conn.query(
+        `SELECT id FROM transactions
+          WHERE type = ? AND project_id = ? AND dest_project_id = ? AND amount = ?
+            AND source_account_id IS NULL AND dest_account_id IS NULL AND id <> ?
+          LIMIT 1 FOR UPDATE`,
+        [partnerType, txn.dest_project_id, txn.project_id, txn.amount, id]
+      );
+      const partnerId = partner[0]?.id ?? null;
+      await conn.query("DELETE FROM transactions WHERE id = ?", [id]);
+      if (partnerId) await conn.query("DELETE FROM transactions WHERE id = ?", [partnerId]);
+      await logActivity(
+        {
+          action: "deleted",
+          entity: "transaction",
+          entityId: id,
+          projectId: txn.project_id ?? null,
+          title: "Site fund transfer deleted",
+          amount: Number(txn.amount),
+          meta: { type: "transfer", site_transfer: true },
+        },
+        conn
+      );
+      await conn.commit();
+      return ok(null, "Transaction deleted");
     }
 
     // Guard: this is money INTO a site ("Add Site Fund" / income-to-site). Those funds

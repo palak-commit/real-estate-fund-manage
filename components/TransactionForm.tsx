@@ -53,9 +53,14 @@ export default function TransactionForm({
     const init = blank();
     if (preset?.type) init.type = preset.type;
     if (preset?.projectId) {
-      init.paidFrom = `proj:${preset.projectId}`;
-      init.dest = `proj:${preset.projectId}`;
-      init.project_id = String(preset.projectId);
+      if (preset.type === "transfer") {
+        // Transfer OUT of this site's funds — lock the source to the site; destination open.
+        init.source_account_id = `proj:${preset.projectId}`;
+      } else {
+        init.paidFrom = `proj:${preset.projectId}`;
+        init.dest = `proj:${preset.projectId}`;
+        init.project_id = String(preset.projectId);
+      }
     }
     setF(init);
     setErr("");
@@ -69,6 +74,17 @@ export default function TransactionForm({
   // Only accounts with money can be a source for transfers / partner withdrawals.
   const fundedPartners = accounts.filter((a) => a.account_type === "partner" && a.current_balance > 0);
   const fundedAll = accounts.filter((a) => a.current_balance > 0);
+  // Sites with spare funds can also be a transfer source (money moved back out into an account
+  // or into another site). Always include the currently-selected source site (e.g. when
+  // preset from the site page) so a locked source never renders blank.
+  const fundedSites = projects.filter((p) => p.balance > 0 || `proj:${p.id}` === f.source_account_id);
+  // When opened from a site's "Transfer Fund" button, the source is fixed to that site.
+  const lockSource = preset?.type === "transfer" && !!preset?.projectId && f.type === "transfer";
+  // Transfer source is a site's funds when its value is a "proj:<id>" sentinel.
+  const transferFromSite = f.type === "transfer" && f.source_account_id.startsWith("proj:");
+  const transferSite = transferFromSite
+    ? projects.find((p) => `proj:${p.id}` === f.source_account_id)
+    : undefined;
 
   // Site Expense: which site, and where it's paid from ("site" funds or "acc:<id>").
   const selectedSite = projects.find((p) => String(p.id) === f.project_id);
@@ -85,10 +101,13 @@ export default function TransactionForm({
       ? f.source_account_id
       : "";
   const sourceAcct = sourceAcctId ? accounts.find((a) => String(a.id) === sourceAcctId) : undefined;
-  // Over-budget when paying from an account, OR from site funds beyond the site's balance.
+  // Over-budget when paying from an account, OR from site funds beyond the site's balance
+  // (a site-funded expense, or a transfer out of a site's funds).
   const overSiteFunds =
     f.type === "site_expense" && siteExpenseFrom === "site" && !!selectedSite && amt > 0 && amt > selectedSite.balance;
-  const overBudget = (!!sourceAcct && amt > 0 && amt > sourceAcct.current_balance) || overSiteFunds;
+  const overTransferSite = !!transferSite && amt > 0 && amt > transferSite.balance;
+  const overBudget =
+    (!!sourceAcct && amt > 0 && amt > sourceAcct.current_balance) || overSiteFunds || overTransferSite;
 
   function decode(v: string) {
     if (v.startsWith("acc:")) return { dest_account_id: v.slice(4), project_id: "" };
@@ -124,23 +143,40 @@ export default function TransactionForm({
       payload.project_id = f.project_id;
     } else if (f.type === "transfer") {
       const d = decode(f.dest);
-      payload.source_account_id = f.source_account_id;
-      payload.dest_account_id = d.dest_account_id;
-      payload.project_id = d.project_id;
+      if (f.source_account_id.startsWith("proj:")) {
+        // Source is a site's funds. Destination is either an account (money moved back out —
+        // a withdrawal) or another site (a site→site fund transfer).
+        payload.source_account_id = "";
+        payload.project_id = f.source_account_id.slice(5);
+        if (f.dest.startsWith("proj:")) {
+          payload.dest_project_id = d.project_id; // site→site
+        } else {
+          payload.dest_account_id = d.dest_account_id; // site→account withdrawal
+        }
+      } else {
+        payload.source_account_id = f.source_account_id;
+        payload.dest_account_id = d.dest_account_id;
+        payload.project_id = d.project_id;
+      }
     } else if (f.type === "partner_withdrawal") {
       payload.source_account_id = f.source_account_id;
       payload.dest_account_id = f.dest_account_id;
     }
 
     if (!payload.amount || Number(payload.amount) <= 0) return setErr("Enter a valid amount");
-    if (f.type === "site_expense" && !f.category) return setErr("Select a category (Head)");
     if (f.type === "site_expense" && !f.project_id) return setErr("Select a site");
     if (f.type === "site_fund" && !f.source_account_id) return setErr("Select a source account");
     if (f.type === "site_fund" && !f.project_id) return setErr("Select a site");
     if (f.type === "income" && !f.project_id) return setErr("Select a site");
     if (f.type === "income" && !f.dest_account_id) return setErr("Select an account");
+    if (f.type === "transfer" && !f.source_account_id) return setErr("Select a source");
+    if (f.type === "transfer" && !f.dest) return setErr("Select a destination");
+    if (f.type === "transfer" && transferFromSite && f.dest === f.source_account_id)
+      return setErr("Source and destination sites must be different");
     if (overSiteFunds && selectedSite)
       return setErr(`Insufficient site funds — ${selectedSite.name} has only ${inr(selectedSite.balance)} available`);
+    if (overTransferSite && transferSite)
+      return setErr(`Insufficient site funds — ${transferSite.name} has only ${inr(transferSite.balance)} available`);
     if (sourceAcct && amt > sourceAcct.current_balance)
       return setErr(`Insufficient balance — ${sourceAcct.name} has only ${inr(sourceAcct.current_balance)} available`);
 
@@ -231,8 +267,7 @@ export default function TransactionForm({
         {f.type === "site_expense" && (
           <div className="mt-4">
             <p className="mb-1.5 text-sm font-medium text-muted-foreground">
-              Head
-              <Req />
+              Head <span className="text-xs font-normal text-muted-foreground/70">(optional)</span>
             </p>
             <CategoryPicker value={f.category} onChange={(id) => set({ category: String(id) })} />
           </div>
@@ -317,28 +352,69 @@ export default function TransactionForm({
 
           {f.type === "transfer" && (
             <>
-              <Labeled label="Source Account" required>
+              <Labeled label="Source" required>
                 <CustomSelect
                   value={f.source_account_id}
+                  disabled={lockSource}
                   onChange={(val) => {
-                    set({ source_account_id: val, dest: f.dest === `acc:${val}` ? "" : f.dest });
+                    // Clear the destination only if it now equals the new source (an account
+                    // can't transfer to itself; a site can't transfer to itself).
+                    const clearDest = f.dest === `acc:${val}` || f.dest === val;
+                    set({ source_account_id: val, dest: clearDest ? "" : f.dest });
                   }}
-                  options={groupByType(fundedAll, accOpt)}
+                  options={[
+                    // A site's own funds can be a source (money moved back out into an account).
+                    ...(fundedSites.length
+                      ? [{
+                          group: "Site funds",
+                          items: fundedSites.map((p) => ({
+                            label: `${p.name} · Site Fund (${inr(p.balance)})`,
+                            value: `proj:${p.id}`,
+                          })),
+                        }]
+                      : []),
+                    ...groupByType(fundedAll, accOpt),
+                  ]}
                   placeholder="Select…"
                 />
+                {transferFromSite && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Money is moved out of this site’s funds into the destination account.
+                  </p>
+                )}
               </Labeled>
-              <Labeled label="Destination Account" required>
+              <Labeled label="Destination" required>
                 <CustomSelect
                   value={f.dest}
                   onChange={(val) => set({ dest: val })}
-                  options={groupByType(
-                    accounts.filter((a) => String(a.id) !== f.source_account_id),
-                    (a) => ({ label: `${a.name} (${inr(a.current_balance)})`, value: `acc:${a.id}` })
-                  )}
+                  options={[
+                    ...groupByType(
+                      accounts.filter((a) => String(a.id) !== f.source_account_id),
+                      (a) => ({ label: `${a.name} (${inr(a.current_balance)})`, value: `acc:${a.id}` })
+                    ),
+                    // Money can also go INTO a site's funds: from an account it's the same as
+                    // "Add Site Fund"; from another site's funds it's a site→site transfer. The
+                    // source site itself is excluded (a site can't transfer to itself).
+                    ...(projects.length
+                      ? [{
+                          group: "Site funds",
+                          items: projects
+                            .filter((p) => `proj:${p.id}` !== f.source_account_id)
+                            .map((p) => ({
+                              label: `${p.name} · Site Fund (${inr(p.balance)})`,
+                              value: `proj:${p.id}`,
+                            })),
+                        }]
+                      : []),
+                  ]}
                   placeholder="Select…"
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
-                  To send money to a site, use “Add Fund” instead.
+                  {f.dest.startsWith("proj:")
+                    ? transferFromSite
+                      ? "Funds move from the source site into this site."
+                      : "Money is added to this site’s funds (like “Add Site Fund”)."
+                    : "Pick an account, or a site to add money into its funds."}
                 </p>
               </Labeled>
             </>

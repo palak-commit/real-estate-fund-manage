@@ -10,6 +10,7 @@ type Ctx = {
   recordExpense: (projectId?: number) => void;
   allocateFunds: (projectId?: number) => void;
   recordIncome: (projectId?: number) => void;
+  transferFund: (projectId: number) => void;
   openMore: () => void;
 };
 
@@ -26,6 +27,7 @@ export default function ActionsProvider({ children }: { children: React.ReactNod
   const [expense, setExpense] = useState<{ open: boolean; pid?: number }>({ open: false });
   const [allocate, setAllocate] = useState<{ open: boolean; pid?: number }>({ open: false });
   const [income, setIncome] = useState<{ open: boolean; pid?: number }>({ open: false });
+  const [transfer, setTransfer] = useState<{ open: boolean; pid?: number }>({ open: false });
   const [more, setMore] = useState(false);
 
   const openMenu = useCallback(() => setMenu(true), []);
@@ -41,13 +43,18 @@ export default function ActionsProvider({ children }: { children: React.ReactNod
     setMenu(false);
     setIncome({ open: true, pid });
   }, []);
+  // Move funds OUT of a site — opens the Transfer form with the source locked to this site.
+  const transferFund = useCallback((pid: number) => {
+    setMenu(false);
+    setTransfer({ open: true, pid });
+  }, []);
   const openMore = useCallback(() => {
     setMenu(false);
     setMore(true);
   }, []);
 
   return (
-    <ActionsCtx.Provider value={{ openMenu, recordExpense, allocateFunds, recordIncome, openMore }}>
+    <ActionsCtx.Provider value={{ openMenu, recordExpense, allocateFunds, recordIncome, transferFund, openMore }}>
       {children}
 
       {/* Chooser menu */}
@@ -93,6 +100,11 @@ export default function ActionsProvider({ children }: { children: React.ReactNod
         open={income.open}
         onClose={() => setIncome({ open: false })}
         preset={income.open ? { type: "income", projectId: income.pid } : undefined}
+      />
+      <TransactionForm
+        open={transfer.open}
+        onClose={() => setTransfer({ open: false })}
+        preset={transfer.open ? { type: "transfer", projectId: transfer.pid } : undefined}
       />
       <TransactionForm open={more} onClose={() => setMore(false)} />
     </ActionsCtx.Provider>

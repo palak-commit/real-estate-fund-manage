@@ -2,11 +2,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Plus, ArrowDownToLine, Building2, AlertTriangle, Receipt, Pencil, Check, X, Trash2, Wallet } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, ArrowDownToLine, ArrowLeftRight, Building2, AlertTriangle, Receipt, Pencil, Check, X, Trash2, Wallet } from "lucide-react";
 import { Card, Label, Button, Input, Skeleton, EmptyState, CustomSelect, CustomDatePicker, Table, THead, TBody, Th, Td } from "@/components/ui";
 import { useActions } from "@/components/ActionsProvider";
 import { useUI } from "@/components/UIProvider";
-import { inr, formatDate, TYPE_LABELS, profitStatus, PROFIT_LABEL, PROFIT_HINT, type ProfitLevel } from "@/lib/format";
+import { inr, formatDate, TYPE_LABELS, ACCOUNT_TYPE_LABELS, profitStatus, PROFIT_LABEL, PROFIT_HINT, type ProfitLevel } from "@/lib/format";
 import { TxnRow } from "@/components/TxnRow";
 import PaidToPicker from "@/components/PaidToPicker";
 import RaReceiptSheet, { ratesForReceipt, type RaReceipt } from "@/components/RaReceiptSheet";
@@ -24,7 +24,7 @@ const PAY_STATUS_LABEL: Record<string, string> = { pending: "Pending", partial: 
 const PAY_STATUS_COLOR: Record<string, string> = { pending: "amber", partial: "blue", complete: "green" };
 
 type TabKey = "transactions" | "books" | "rojmel" | "heads" | "ra" | "vendor" | "activity";
-type BookType = "bank" | "cash" | "partner";
+type BookType = "bank" | "cash" | "partner" | "site";
 type SiteHead = { id: number; name: string; spent: number; subheads: { id: number; name: string; spent: number }[] };
 const PROFIT_STYLE: Record<ProfitLevel, string> = {
   profit: "bg-success/10 text-success",
@@ -46,7 +46,7 @@ const PAGE_SIZE = 15;
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
-  const { recordExpense, allocateFunds } = useActions();
+  const { recordExpense, allocateFunds, transferFund } = useActions();
   const { toast, confirm } = useUI();
   const [p, setP] = useState<any>(null);
   const [notFound, setNotFound] = useState(false);
@@ -383,6 +383,9 @@ export default function ProjectDetail() {
               <Pencil className="h-4 w-4" />
             </button>
             <div className="ml-auto flex gap-2">
+              <Button variant="outline" onClick={() => transferFund(Number(id))}>
+                <ArrowLeftRight className="h-4 w-4" /> Transfer Fund
+              </Button>
               <Button variant="outline" onClick={() => allocateFunds(Number(id))}>
                 <ArrowDownToLine className="h-4 w-4" /> Add Site Fund
               </Button>
@@ -454,7 +457,7 @@ export default function ProjectDetail() {
       <div className="flex flex-wrap gap-1 border-b border-border">
         {([
           ["transactions", "Transactions"],
-          ["books", "Books"],
+          ["books", "Expenses"],
           ["rojmel", "Rojmel"],
           ["heads", "Heads"],
           ["ra", "Receipt of RA"],
@@ -526,7 +529,16 @@ export default function ProjectDetail() {
             onClear={() => setAccount("")}
             options={[
               { label: "All Accounts", value: "" },
-              ...accounts.map((a) => ({ label: a.name, value: String(a.id) })),
+              // Site funds isn't a real account — it filters transactions drawn from / added
+              // to this site's own funds (no bank/cash/partner account).
+              { group: "Site funds", items: [{ label: "Site Fund", value: "site" }] },
+              // Real accounts grouped by type (Bank / Cash / Partner).
+              ...(["bank", "cash", "partner"] as const)
+                .map((tp) => ({
+                  group: ACCOUNT_TYPE_LABELS[tp],
+                  items: accounts.filter((a) => a.account_type === tp).map((a) => ({ label: a.name, value: String(a.id) })),
+                }))
+                .filter((g) => g.items.length > 0),
             ]}
             placeholder="All Accounts"
             className="w-40"
@@ -628,30 +640,40 @@ export default function ProjectDetail() {
       {/* Books tab — this site's payment register, split by paying account type. */}
       {tab === "books" && (
         <div className="space-y-3">
-          {/* Bank / Cashbook / Partner sub-tabs — filter payments by the paying account type. */}
-          <div className="flex flex-wrap gap-2">
-            {([
-              ["bank", "Bank"],
-              ["cash", "Cashbook"],
-              ["partner", "Partner"],
-            ] as [BookType, string][]).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => { setBookType(key); setBkAccount(""); }}
-                className={`rounded-lg border px-4 py-1.5 text-sm font-medium transition ${
-                  bookType === key
-                    ? "border-primary bg-primary text-white"
-                    : "border-border text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+          {/* Bank / Cashbook / Partner / Site Fund sub-tabs + an Add Expense shortcut for this site. */}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              {([
+                ["bank", "Bank"],
+                ["cash", "Cashbook"],
+                ["partner", "Partner"],
+                ["site", "Site Fund"],
+              ] as [BookType, string][]).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => { setBookType(key); setBkAccount(""); }}
+                  className={`rounded-lg border px-4 py-1.5 text-sm font-medium transition ${
+                    bookType === key
+                      ? "border-primary bg-primary text-white"
+                      : "border-border text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <Button onClick={() => recordExpense(Number(id))} className="!py-1.5 text-sm">
+              <Plus className="h-4 w-4" /> Add Expense
+            </Button>
           </div>
           {(() => {
             if (!bookRows) return <Card className="overflow-hidden"><ListSkeleton /></Card>;
-            // Payments paid directly from an account of the selected type (direct site expenses).
-            const typeRows = bookRows.filter((t) => t.source_type === bookType);
+            // "Site Fund" = expenses paid from the site's own allocated funds (no paying account);
+            // Bank/Cashbook/Partner = expenses paid directly from an account of that type.
+            const isSiteFund = bookType === "site";
+            const typeRows = bookRows.filter((t) =>
+              isSiteFund ? !t.source_account_id : t.source_type === bookType
+            );
             // Filter option sources (from the type-scoped set, so they stay stable as you filter).
             const acctOpts = accounts.filter((a) => a.account_type === bookType);
             const partyOpts = [...new Set(typeRows.map((t) => t.paid_to).filter(Boolean))] as string[];
@@ -661,6 +683,7 @@ export default function ProjectDetail() {
             ] as string[];
             const accLabel = bookType === "bank" ? "Bank account" : bookType === "cash" ? "Cash account" : "Partner account";
             const allAccLabel = bookType === "bank" ? "All bank accounts" : bookType === "cash" ? "All cash accounts" : "All partners";
+            const emptyNoun = isSiteFund ? "site-fund" : bookType;
             // Apply the filters.
             const rows = typeRows.filter(
               (t) =>
@@ -677,16 +700,18 @@ export default function ProjectDetail() {
               <>
               {/* Filter bar — mirrors the Bank/Cashbook register filters, scoped to this site. */}
               <div className="flex flex-wrap items-end gap-3">
-                <Filter label={accLabel}>
-                  <CustomSelect
-                    value={bkAccount}
-                    onChange={setBkAccount}
-                    onClear={() => setBkAccount("")}
-                    options={[{ label: allAccLabel, value: "" }, ...acctOpts.map((a) => ({ label: a.name, value: String(a.id) }))]}
-                    placeholder={allAccLabel}
-                    className="w-44"
-                  />
-                </Filter>
+                {!isSiteFund && (
+                  <Filter label={accLabel}>
+                    <CustomSelect
+                      value={bkAccount}
+                      onChange={setBkAccount}
+                      onClear={() => setBkAccount("")}
+                      options={[{ label: allAccLabel, value: "" }, ...acctOpts.map((a) => ({ label: a.name, value: String(a.id) }))]}
+                      placeholder={allAccLabel}
+                      className="w-44"
+                    />
+                  </Filter>
+                )}
                 <Filter label="From">
                   <CustomDatePicker value={bkFrom} onChange={setBkFrom} onClear={() => setBkFrom("")} maxDate={bkTo || undefined} className="w-40" />
                 </Filter>
@@ -733,7 +758,7 @@ export default function ProjectDetail() {
               {rows.length === 0 ? (
                 <Card>
                   <EmptyState icon={<Receipt className="h-6 w-6" />}>
-                    {hasFilters ? "No payments match these filters." : `No ${bookType} payments for this site.`}
+                    {hasFilters ? "No payments match these filters." : `No ${emptyNoun} payments for this site.`}
                   </EmptyState>
                 </Card>
               ) : (
@@ -744,7 +769,7 @@ export default function ProjectDetail() {
                     <Th>Date</Th>
                     <Th>Party Name</Th>
                     <Th>Particular / Bill Details</Th>
-                    <Th>{bookType === "bank" ? "Bank" : bookType === "cash" ? "Cash Account" : "Partner"}</Th>
+                    <Th>{bookType === "bank" ? "Bank" : bookType === "cash" ? "Cash Account" : bookType === "partner" ? "Partner" : "Paid From"}</Th>
                     <Th>Head</Th>
                     <Th>Type of Head</Th>
                     <Th right>Net Payment</Th>
@@ -756,7 +781,7 @@ export default function ProjectDetail() {
                         <Td>{t.txn_date ? formatDate(t.txn_date) : "—"}</Td>
                         <Td>{t.paid_to || "—"}</Td>
                         <Td className="max-w-[220px] truncate text-muted-foreground">{t.note || t.project_name || "—"}</Td>
-                        <Td>{t.source_name || "—"}</Td>
+                        <Td>{t.source_name || (isSiteFund ? "Site funds" : "—")}</Td>
                         <Td>{t.category_head || "—"}</Td>
                         <Td>{t.category || "—"}</Td>
                         <Td right className="font-medium text-danger">{inr(t.amount)}</Td>

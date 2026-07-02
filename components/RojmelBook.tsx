@@ -13,6 +13,7 @@ type Row = {
   note: string | null;
   paid_to: string | null;
   project_name: string | null;
+  dest_name: string | null;
   category: string | null; // Type of Head (sub-head)
   category_head: string | null; // Head
   debit: number; // money IN
@@ -300,7 +301,11 @@ function DayBlock({ day }: { day: Day }) {
           <td className="px-3 py-2 text-muted-foreground">{r.paid_to || "—"}</td>
           <td className="whitespace-nowrap px-3 py-2 text-right font-medium">{inr(r.credit)}</td>
           <td className="px-3 py-2">
-            {r.type === "transfer" ? `Site fund → ${r.project_name ?? "site"}` : r.note || r.project_name || "—"}
+            {r.type === "transfer"
+              ? r.dest_name
+                ? `${r.project_name ?? "Site"} → ${r.dest_name}` // site-fund withdrawal into an account
+                : `Site fund → ${r.project_name ?? "site"}` // account → site allocation (account ledgers)
+              : r.note || r.project_name || "—"}
           </td>
           <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{r.category || "—"}</td>
           <td className="whitespace-nowrap px-3 py-2">{r.type === "transfer" ? "Site Fund" : r.category_head || "—"}</td>

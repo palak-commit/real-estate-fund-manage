@@ -3,7 +3,7 @@ import { pool, query, ready } from "@/lib/db";
 import { ok, fail } from "@/lib/api";
 import { vendorPaymentSchema, parseId, zErr } from "@/lib/validation";
 import { postExpense, recompute } from "@/lib/vendorTxn";
-import { RECEIVED_SQL, SPENT_SQL } from "@/lib/queries";
+import { RECEIVED_SQL, SPENT_SQL, SITE_OUT_SQL, SITE_XFER_OUT_SQL } from "@/lib/queries";
 
 // Payments made against one vendor bill, oldest first.
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -58,9 +58,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return fail(`Not enough balance in that account (₹${Number(accRow[0].bal).toLocaleString("en-IN")} available).`);
     }
   } else {
-    // Paid from site funds: site balance = received − site-funded spend, for this project.
+    // Paid from site funds: site balance = received − site-funded spend − money moved back out.
     const fundsRow = await query<{ funds: number }>(
-      `SELECT (${RECEIVED_SQL} - ${SPENT_SQL}) AS funds FROM transactions t WHERE t.project_id = ?`,
+      `SELECT (${RECEIVED_SQL} - ${SPENT_SQL} - ${SITE_OUT_SQL} - ${SITE_XFER_OUT_SQL}) AS funds FROM transactions t WHERE t.project_id = ?`,
       [b[0].project_id]
     );
     const funds = Number(fundsRow[0]?.funds || 0);

@@ -1,5 +1,5 @@
 import { query } from "@/lib/db";
-import { RECEIVED_SQL, SPENT_SQL, SPENT_TOTAL_SQL, SPENT_14D_SQL, INCOME_SQL } from "@/lib/queries";
+import { RECEIVED_SQL, SPENT_SQL, SITE_OUT_SQL, SITE_XFER_OUT_SQL, SPENT_TOTAL_SQL, SPENT_14D_SQL, INCOME_SQL } from "@/lib/queries";
 import { siteStatus, profitStatus } from "@/lib/format";
 import { ok } from "@/lib/api";
 
@@ -11,9 +11,9 @@ export async function GET() {
   const acc: Record<string, number> = { bank: 0, cash: 0, partner: 0 };
   for (const r of byType) acc[r.account_type] = Number(r.total);
 
-  // Total site funds (received - spent across all projects)
+  // Total site funds (received − site-fund spend − money transferred back out, across all projects)
   const siteAgg = await query<{ funds: number }>(
-    `SELECT (${RECEIVED_SQL} - ${SPENT_SQL}) AS funds FROM transactions t`
+    `SELECT (${RECEIVED_SQL} - ${SPENT_SQL} - ${SITE_OUT_SQL} - ${SITE_XFER_OUT_SQL}) AS funds FROM transactions t`
   );
   const siteFunds = Number(siteAgg[0]?.funds || 0);
 
@@ -147,20 +147,24 @@ export async function GET() {
        ${INCOME_SQL} AS income,
        ${SPENT_TOTAL_SQL} AS spent,
        ${SPENT_SQL} AS spent_site,
+       ${SITE_OUT_SQL} AS site_out,
+       ${SITE_XFER_OUT_SQL} AS site_xfer_out,
        ${SPENT_14D_SQL} AS spent14
      FROM projects p LEFT JOIN transactions t ON t.project_id = p.id
      WHERE p.status <> 'completed'
-     GROUP BY p.id ORDER BY (${RECEIVED_SQL} - ${SPENT_SQL}) DESC`
+     GROUP BY p.id ORDER BY (${RECEIVED_SQL} - ${SPENT_SQL} - ${SITE_OUT_SQL} - ${SITE_XFER_OUT_SQL}) DESC`
   );
 
   // Recent transactions
   const recent = await query(
     `SELECT t.*, sa.name AS source_name, da.name AS dest_name, p.name AS project_name,
+            dp.name AS dest_project_name,
             CASE WHEN c.parent_id IS NOT NULL THEN c.name END AS category, COALESCE(pc.name, c.name) AS category_head
      FROM transactions t
      LEFT JOIN accounts sa ON sa.id = t.source_account_id
      LEFT JOIN accounts da ON da.id = t.dest_account_id
      LEFT JOIN projects p ON p.id = t.project_id
+     LEFT JOIN projects dp ON dp.id = t.dest_project_id
      LEFT JOIN categories c ON c.id = t.category_id
      LEFT JOIN categories pc ON pc.id = c.parent_id
      ORDER BY t.txn_date DESC, t.id DESC LIMIT 10`
@@ -195,7 +199,7 @@ export async function GET() {
     totalIncome,
     sites: sites.map((s: any) => {
       // Balance reflects only allocated site funds; "spent" shows total spend on the site.
-      const balance = Number(s.received) - Number(s.spent_site);
+      const balance = Number(s.received) - Number(s.spent_site) - Number(s.site_out || 0) - Number(s.site_xfer_out || 0);
       // Profit = income earned − ALL money spent on the site (site funds + direct).
       const { profit, level: profitLevel } = profitStatus(Number(s.income), Number(s.spent));
       return {

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { query, pool, ready } from "@/lib/db";
-import { RECEIVED_SQL, SPENT_SQL, SPENT_TOTAL_SQL, INCOME_SQL } from "@/lib/queries";
+import { RECEIVED_SQL, SPENT_SQL, SITE_OUT_SQL, SITE_XFER_OUT_SQL, SPENT_TOTAL_SQL, INCOME_SQL } from "@/lib/queries";
 import { ok, fail } from "@/lib/api";
 import { projectCreateSchema, zErr } from "@/lib/validation";
 import { logActivity } from "@/lib/activity";
@@ -12,6 +12,8 @@ export async function GET() {
        ${INCOME_SQL} AS income,
        ${SPENT_TOTAL_SQL} AS spent,
        ${SPENT_SQL} AS spent_site,
+       ${SITE_OUT_SQL} AS site_out,
+       ${SITE_XFER_OUT_SQL} AS site_xfer_out,
        MAX(t.txn_date) AS last_txn_date
      FROM projects p
      LEFT JOIN transactions t ON t.project_id = p.id
@@ -24,7 +26,7 @@ export async function GET() {
       received: Number(p.received),
       income: Number(p.income), // money earned from the site (revenue)
       spent: Number(p.spent), // total spend (site funds + direct bank)
-      balance: Number(p.received) - Number(p.spent_site), // balance uses site funds only
+      balance: Number(p.received) - Number(p.spent_site) - Number(p.site_out) - Number(p.site_xfer_out || 0), // balance uses site funds only (net of money moved back out / to another site)
       // Profit = income earned − ALL money spent on the site (site funds + direct).
       profit: Number(p.income) - Number(p.spent),
     })),

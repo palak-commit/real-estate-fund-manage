@@ -32,8 +32,11 @@ export async function GET(req: NextRequest) {
        ${INCOME_SQL} AS income,
        ${SPENT_TOTAL_SQL} AS spent,
        ${SPENT_SQL} AS spent_site,
-       (SELECT COALESCE(SUM(CASE WHEN t2.type IN ('transfer','income') AND t2.dest_account_id IS NULL THEN t2.amount END), 0)
+       (SELECT COALESCE(SUM(CASE WHEN t2.dest_account_id IS NULL
+                  AND ((t2.type = 'transfer' AND t2.source_account_id IS NOT NULL) OR t2.type = 'income') THEN t2.amount END), 0)
              - COALESCE(SUM(CASE WHEN t2.type = 'expense' AND t2.source_account_id IS NULL THEN t2.amount END), 0)
+             - COALESCE(SUM(CASE WHEN t2.type = 'transfer' AND t2.source_account_id IS NULL AND t2.dest_account_id IS NOT NULL THEN t2.amount END), 0)
+             - COALESCE(SUM(CASE WHEN t2.type = 'transfer' AND t2.source_account_id IS NULL AND t2.dest_account_id IS NULL THEN t2.amount END), 0)
           FROM transactions t2 WHERE t2.project_id = p.id) AS current_balance
      FROM projects p
      LEFT JOIN transactions t ON t.project_id = p.id ${df.length ? "AND " + df.join(" AND ") : ""}

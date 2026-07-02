@@ -29,17 +29,29 @@ export async function GET(req: NextRequest) {
     const rows = await query<any>(
       `SELECT t.id, DATE_FORMAT(t.txn_date, '%Y-%m-%d') AS txn_date, t.type, t.note, t.paid_to,
          sa.name AS source_name, da.name AS dest_name, t.project_id, p.name AS project_name,
+         t.dest_project_id, dp.name AS dest_project_name,
          CASE WHEN c.parent_id IS NOT NULL THEN c.name END AS category, COALESCE(pc.name, c.name) AS category_head,
-         CASE WHEN t.type IN ('transfer','income') AND t.dest_account_id IS NULL THEN t.amount ELSE 0 END AS debit,
-         CASE WHEN t.type = 'expense' AND t.source_account_id IS NULL THEN t.amount ELSE 0 END AS credit
+         -- Money IN: Add Site Fund (transfer with a source account, no dest account), RA money
+         -- received into the fund, and the incoming leg of a site→site transfer (both income).
+         CASE WHEN t.dest_account_id IS NULL
+                AND ((t.type = 'transfer' AND t.source_account_id IS NOT NULL) OR t.type = 'income')
+              THEN t.amount ELSE 0 END AS debit,
+         -- Money OUT: site-funded expense, withdrawal back to an account, or a site→site
+         -- transfer out (any transfer drawn from the site's funds — no source account).
+         CASE WHEN (t.type = 'expense' AND t.source_account_id IS NULL)
+                OR (t.type = 'transfer' AND t.source_account_id IS NULL)
+              THEN t.amount ELSE 0 END AS credit
        FROM transactions t
        LEFT JOIN accounts sa ON sa.id = t.source_account_id
        LEFT JOIN accounts da ON da.id = t.dest_account_id
        LEFT JOIN projects p ON p.id = t.project_id
+       LEFT JOIN projects dp ON dp.id = t.dest_project_id
        LEFT JOIN categories c ON c.id = t.category_id
        LEFT JOIN categories pc ON pc.id = c.parent_id
        WHERE t.project_id = ?
-         AND ((t.type IN ('transfer','income') AND t.dest_account_id IS NULL) OR (t.type = 'expense' AND t.source_account_id IS NULL))
+         AND ((t.type IN ('transfer','income') AND t.dest_account_id IS NULL)
+           OR (t.type = 'expense' AND t.source_account_id IS NULL)
+           OR (t.type = 'transfer' AND t.source_account_id IS NULL AND t.dest_account_id IS NOT NULL))
        ORDER BY t.txn_date ASC, t.id ASC`,
       [projectId]
     );

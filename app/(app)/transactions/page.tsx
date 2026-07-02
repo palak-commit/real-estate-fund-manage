@@ -7,7 +7,7 @@ import { TxnRow } from "@/components/TxnRow";
 import EditTxnSheet from "@/components/EditTxnSheet";
 import PaidToPicker from "@/components/PaidToPicker";
 import { useUI } from "@/components/UIProvider";
-import { TYPE_LABELS, inr, todayISO, formatDate } from "@/lib/format";
+import { TYPE_LABELS, ACCOUNT_TYPE_LABELS, inr, todayISO, formatDate } from "@/lib/format";
 import { downloadCsv } from "@/lib/csv";
 import { downloadPdf } from "@/lib/pdf";
 
@@ -312,7 +312,16 @@ function HistoryPageInner() {
             onClear={() => setAccount("")}
             options={[
               { label: "All Accounts", value: "" },
-              ...accounts.map((a) => ({ label: a.name, value: String(a.id) }))
+              // Site funds isn't a real account — it filters transactions drawn from / added
+              // to a site's own funds (no bank/cash/partner account).
+              { group: "Site funds", items: [{ label: "Site Fund", value: "site" }] },
+              // Real accounts grouped by type (Bank / Cash / Partner).
+              ...(["bank", "cash", "partner"] as const)
+                .map((tp) => ({
+                  group: ACCOUNT_TYPE_LABELS[tp],
+                  items: accounts.filter((a) => a.account_type === tp).map((a) => ({ label: a.name, value: String(a.id) })),
+                }))
+                .filter((g) => g.items.length > 0),
             ]}
             placeholder="All Accounts"
             className="w-40"

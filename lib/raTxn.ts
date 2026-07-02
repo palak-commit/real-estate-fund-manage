@@ -1,7 +1,7 @@
 import type { PoolConnection } from "mysql2/promise";
 import { pool, query } from "@/lib/db";
 import { recomputeBalances, toPaisa, toRupees } from "@/lib/ledger";
-import { RECEIVED_SQL, SPENT_SQL } from "@/lib/queries";
+import { RECEIVED_SQL, SPENT_SQL, SITE_OUT_SQL, SITE_XFER_OUT_SQL } from "@/lib/queries";
 import { inr } from "@/lib/format";
 import { logActivity } from "@/lib/activity";
 
@@ -121,7 +121,7 @@ async function siteFundReversalBlock(ids: number[]): Promise<string | null> {
   }
   const siteIds = [...perSite.keys()];
   const balances = await query<{ id: number; name: string; balance: number }>(
-    `SELECT p.id, p.name, (${RECEIVED_SQL} - ${SPENT_SQL}) AS balance
+    `SELECT p.id, p.name, (${RECEIVED_SQL} - ${SPENT_SQL} - ${SITE_OUT_SQL} - ${SITE_XFER_OUT_SQL}) AS balance
        FROM projects p LEFT JOIN transactions t ON t.project_id = p.id
       WHERE p.id IN (${siteIds.map(() => "?").join(",")})
       GROUP BY p.id, p.name`,

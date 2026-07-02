@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { pool, query, ready } from "@/lib/db";
-import { RECEIVED_SQL, SPENT_SQL, SPENT_TOTAL_SQL, SPENT_14D_SQL, INCOME_SQL } from "@/lib/queries";
+import { RECEIVED_SQL, SPENT_SQL, SITE_OUT_SQL, SITE_XFER_OUT_SQL, SPENT_TOTAL_SQL, SPENT_14D_SQL, INCOME_SQL } from "@/lib/queries";
 import { ok, fail } from "@/lib/api";
 import { projectUpdateSchema, parseId, zErr } from "@/lib/validation";
 import { logActivity } from "@/lib/activity";
@@ -26,6 +26,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
        ${INCOME_SQL} AS income,
        ${SPENT_TOTAL_SQL} AS spent,
        ${SPENT_SQL} AS spent_site,
+       ${SITE_OUT_SQL} AS site_out,
+       ${SITE_XFER_OUT_SQL} AS site_xfer_out,
        ${SPENT_14D_SQL} AS spent14,
        MAX(t.txn_date) AS last_txn_date
      FROM projects p
@@ -49,11 +51,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   );
 
   const txns = await query(
-    `SELECT t.*, sa.name AS source_name, da.name AS dest_name,
+    `SELECT t.*, sa.name AS source_name, da.name AS dest_name, dp.name AS dest_project_name,
             CASE WHEN c.parent_id IS NOT NULL THEN c.name END AS category, COALESCE(pc.name, c.name) AS category_head
      FROM transactions t
      LEFT JOIN accounts sa ON sa.id = t.source_account_id
      LEFT JOIN accounts da ON da.id = t.dest_account_id
+     LEFT JOIN projects dp ON dp.id = t.dest_project_id
      LEFT JOIN categories c ON c.id = t.category_id
      LEFT JOIN categories pc ON pc.id = c.parent_id
      WHERE t.project_id = ?
@@ -62,6 +65,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   );
 
   const spentSite = Number(p.spent_site); // paid FROM site funds (reduces balance)
+  const siteOut = Number(p.site_out || 0); // moved back out of site funds into an account
+  const siteXferOut = Number(p.site_xfer_out || 0); // moved out of site funds into another site
   const spentTotal = Number(p.spent); // site funds + direct-from-account
   return ok(
     {
@@ -74,7 +79,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       // Profit = income earned − ALL money spent on the site (site funds + direct).
       profit: Number(p.income) - spentTotal,
       spent14: Number(p.spent14),
-      balance: Number(p.received) - spentSite, // balance uses site funds only
+      balance: Number(p.received) - spentSite - siteOut - siteXferOut, // balance uses site funds only (net of money moved back out / to another site)
       byCategory: byCategory.map((c: any) => ({ ...c, total: Number(c.total) })),
       transactions: txns,
     },

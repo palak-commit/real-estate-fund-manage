@@ -123,7 +123,6 @@ export default function QuickExpenseSheet({
   async function submit(addAnother: boolean) {
     setErr("");
     if (!amount || Number(amount) <= 0) return setErr("Enter a valid amount");
-    if (!categoryId) return setErr("Select a category (Head)");
     if (!projectId) return setErr("Select a site");
     if (!fromSite && !sourceAccount) return setErr("Select where the money is paid from");
     if (Number(amount) > available)
@@ -219,8 +218,8 @@ export default function QuickExpenseSheet({
           </p>
         )}
 
-        {/* Category chips */}
-        <p className="mb-1.5 mt-4 text-sm font-medium text-muted-foreground">Head <span className="text-danger">*</span></p>
+        {/* Category chips — Head (and Type of Head) are optional. */}
+        <p className="mb-1.5 mt-4 text-sm font-medium text-muted-foreground">Head <span className="text-xs font-normal text-muted-foreground/70">(optional)</span></p>
         <CategoryPicker value={categoryId} onChange={setCategoryId} />
 
         {/* Site */}
