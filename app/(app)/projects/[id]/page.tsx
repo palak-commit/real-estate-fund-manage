@@ -1048,12 +1048,13 @@ export default function ProjectDetail() {
               {raHasFilters ? "No RA receipts match these filters." : "No RA receipts for this site."}
             </EmptyState>
           ) : (
-            <Table minWidth={1900}>
+            <Table minWidth={2060}>
               <THead>
                 <Th>Date</Th>
                 <Th>Received From</Th>
                 <Th>Received In</Th>
                 <Th>Status</Th>
+                <Th>Note</Th>
                 <Th right>Amount</Th>
                 <Th right>GST @ {siteRates.gst}%</Th>
                 <Th right>Total Bill</Th>
@@ -1086,6 +1087,7 @@ export default function ProjectDetail() {
                       <Td>{r.paid_to || "—"}</Td>
                       <Td>{r.account_name || "—"}</Td>
                       <Td><Label color={PAY_STATUS_COLOR[r.status]}>{PAY_STATUS_LABEL[r.status] || r.status}</Label></Td>
+                      <Td className="max-w-[200px] truncate text-muted-foreground" title={r.note || undefined}>{r.note || "—"}</Td>
                       <Td right>{inr(r.amount)}</Td>
                       <Td right>{inr(c.gst)}<RateTag row={rowRates.gst} site={siteRates.gst} /></Td>
                       <Td right>{inr(c.total_bill)}</Td>
@@ -1218,11 +1220,12 @@ export default function ProjectDetail() {
               {vbHasFilters ? "No vendor bills match these filters." : "No vendor bills for this site."}
             </EmptyState>
           ) : (
-            <Table minWidth={920}>
+            <Table minWidth={1040}>
               <THead>
                 <Th>Date</Th>
                 <Th>Vendor</Th>
                 <Th>Head</Th>
+                <Th>Note</Th>
                 <Th right>Amount</Th>
                 <Th right>GST</Th>
                 <Th right>Total Bill</Th>
@@ -1250,6 +1253,7 @@ export default function ProjectDetail() {
                         </span>
                       </Td>
                       <Td>{r.category_head || "—"}</Td>
+                      <Td className="max-w-[200px] truncate text-muted-foreground" title={r.note || undefined}>{r.note || "—"}</Td>
                       <Td right>{inr(Number(r.amount) || 0)}</Td>
                       <Td right>
                         {inr(Number(r.gst) || 0)}

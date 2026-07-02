@@ -218,19 +218,28 @@ export default function VendorPaymentsSheet({
               // Payments are oldest-first. On an advance bill the first one is the up-front
               // advance; the rest are later installments.
               const isAdvance = bill?.payment_type === "advance" && i === 0;
-              const label = isAdvance ? "Advance" : `Installment ${bill?.payment_type === "advance" ? i : i + 1}`;
+              // Only tag installments when the bill was actually paid in more than one
+              // instalment — a single, direct payment needs no "Installment 1" noise.
+              const installmentCount = payments.length - (bill?.payment_type === "advance" ? 1 : 0);
+              const label = isAdvance
+                ? "Advance"
+                : installmentCount > 1
+                  ? `Installment ${bill?.payment_type === "advance" ? i : i + 1}`
+                  : null;
               return (
                 <div key={p.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
                   <div className="min-w-0">
                     <p className="flex items-center gap-1.5 font-semibold">
                       {inr(p.amount)}
-                      <span
-                        className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                          isAdvance ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {label}
-                      </span>
+                      {label && (
+                        <span
+                          className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                            isAdvance ? "bg-warning/10 text-warning" : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {label}
+                        </span>
+                      )}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {formatDate(p.txn_date)}
