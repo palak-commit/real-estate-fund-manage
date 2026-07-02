@@ -155,12 +155,18 @@ export function Td({
   children,
   right,
   className = "",
+  title,
 }: {
   children?: ReactNode;
   right?: boolean;
   className?: string;
+  title?: string;
 }) {
-  return <td className={`whitespace-nowrap px-3 py-2.5 ${right ? "text-right" : ""} ${className}`}>{children}</td>;
+  return (
+    <td className={`whitespace-nowrap px-3 py-2.5 ${right ? "text-right" : ""} ${className}`} title={title}>
+      {children}
+    </td>
+  );
 }
 
 export function Spinner({ className = "" }: { className?: string }) {
